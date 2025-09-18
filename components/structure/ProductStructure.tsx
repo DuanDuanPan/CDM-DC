@@ -11,12 +11,16 @@ import StructuralOverview from './structure/StructuralOverview';
 import ThermalOverview from './thermal/ThermalOverview';
 import ControlOverview from './control/ControlOverview';
 import ManufacturingOverview from './manufacturing/ManufacturingOverview';
+import VerificationOverview from './verification/VerificationOverview';
+import ConfigurationQualityOverview from './quality/ConfigurationQualityOverview';
+import CollaborationHub from './collaboration/CollaborationHub';
 import SimulationTreePanel from './simulation/SimulationTreePanel';
 import SimulationContentPanel from './simulation/SimulationContentPanel';
 import SimulationFilePreview from './simulation/SimulationFilePreview';
 import SimulationCompareDrawer from './simulation/SimulationCompareDrawer';
 import { useSimulationExplorerState, TreeNodeReference } from './simulation/useSimulationExplorerState';
 import type { SimulationFile, SimulationFilters } from './simulation/types';
+import ProductDefinitionPanel from './definition/ProductDefinitionPanel';
 
 interface BomNode {
   id: string;
@@ -26,6 +30,8 @@ interface BomNode {
   unitType?: string;
   nodeCategory?: string;
   schemeType?: string;
+  // 扩展字段：用于专业视图判定
+  subsystemType?: string; // e.g., 'compressor', 'combustor'
   children?: BomNode[];
 }
 
@@ -88,6 +94,23 @@ interface OutputData {
   deliverables?: string[]; // 交付物清单
 }
 
+const VIEW_PREFERENCE_PREFIX = 'product-structure-active-tab';
+
+const getStoredTabPreference = (bomType: string) => {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem(`${VIEW_PREFERENCE_PREFIX}-${bomType}`);
+};
+
+const setStoredTabPreference = (bomType: string, tabId: string) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(`${VIEW_PREFERENCE_PREFIX}-${bomType}`, tabId);
+};
+
+const secondaryActionButtonClass =
+  'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600';
+const primaryActionButtonClass =
+  'rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white shadow-sm hover:bg-blue-700';
+
 /* Simulation interfaces added */
 /* Component */
 export default function ProductStructure() {
@@ -99,6 +122,8 @@ export default function ProductStructure() {
   const [selectedVersion, setSelectedVersion] = useState('v2.1');
   const [activeTab, setActiveTab] = useState('structure');
   const [showDetailedReport, setShowDetailedReport] = useState(false);
+  const [activePhase, setActivePhase] = useState('concept');
+  const [requirementsInView, setRequirementsInView] = useState(false);
   
   // 添加缺失的状态变量
   const [showInputDataForm, setShowInputDataForm] = useState(false);
@@ -355,6 +380,56 @@ export default function ProductStructure() {
     risks: [
       { label: '燃油接口压力未确认', level: 'warning' },
       { label: '热负荷验证待完成', level: 'risk' }
+    ],
+    phases: [
+      {
+        id: 'concept',
+        label: '概念',
+        timeline: '2023 Q3',
+        status: 'done',
+        summary: '完成需求匹配度评估与概念方案审查。',
+        highlights: [
+          '需求匹配度 85%',
+          '关键风险识别 6 项',
+          '概念审查通过'
+        ]
+      },
+      {
+        id: 'preliminary',
+        label: '初样',
+        timeline: '2023 Q4',
+        status: 'in-progress',
+        summary: '聚焦性能迭代与控制律补偿，关键接口基本冻结。',
+        highlights: [
+          '性能指标达成 78%',
+          '接口冻结率 82%',
+          '开放风险 5 项'
+        ]
+      },
+      {
+        id: 'detailed',
+        label: '试样',
+        timeline: '2024 Q1',
+        status: 'attention',
+        summary: '试样件制造排产进入关键窗口，验证闭环推进中。',
+        highlights: [
+          '制造就绪度 68%',
+          '验证闭环率 72%',
+          '待审签文档 3 份'
+        ]
+      },
+      {
+        id: 'production',
+        label: '正样',
+        timeline: '2024 Q2',
+        status: 'pending',
+        summary: '正样阶段准备中，需锁定供应链节奏与质量门通过方案。',
+        highlights: [
+          '质量门计划 3 项',
+          '供应风险监控 4 项',
+          '正样装配窗口 待确认'
+        ]
+      }
     ],
     performance: {
       operatingPoints: [
@@ -657,22 +732,22 @@ export default function ProductStructure() {
         {
           name: '涡轮盘热等静压',
           owner: '制造中心 · 许工',
-          status: '进行中',
-          risk: '高',
+          status: '进行中' as const,
+          risk: '高' as const,
           note: '等待设备维护完成'
         },
         {
           name: '叶片涂层工艺',
           owner: '表面处理 · 李工',
-          status: '计划中',
-          risk: '中',
+          status: '计划中' as const,
+          risk: '中' as const,
           note: '需要试验验证数据'
         },
         {
           name: '机匣精密机加工',
           owner: '机加中心 · 王工',
-          status: '已完成',
-          risk: '低'
+          status: '已完成' as const,
+          risk: '低' as const
         }
       ],
       delivery: [
@@ -680,21 +755,21 @@ export default function ProductStructure() {
           item: '高压涡轮盘',
           supplier: '航材集团',
           eta: '2024-02-02',
-          status: 'delay',
+          status: 'delay' as const,
           note: '热处理排产延后 5 天'
         },
         {
           item: '燃烧室衬套',
           supplier: '复合材料厂',
           eta: '2024-01-28',
-          status: 'pending',
+          status: 'pending' as const,
           note: '等待工艺评审'
         },
         {
           item: '控制电子盒',
           supplier: '电子系统公司',
           eta: '2024-01-22',
-          status: 'on-time',
+          status: 'on-time' as const,
           note: '检验计划已安排'
         }
       ],
@@ -782,6 +857,447 @@ export default function ProductStructure() {
           mitigation: '维持现有看板协同与双周例会机制。'
         }
       ]
+    },
+    verification: {
+      summary: [
+        {
+          label: '验证闭环率',
+          value: '72%',
+          trend: '+6%',
+          status: 'warning' as const,
+          note: '距目标 85% 仍缺 5 条试验证据。'
+        },
+        {
+          label: '试验准时率',
+          value: '88%',
+          trend: '-2%',
+          status: 'warning' as const,
+          note: '燃烧室热试任务需重新排期。'
+        },
+        {
+          label: '数据包完成度',
+          value: '63%',
+          trend: '+8%',
+          status: 'warning' as const,
+          note: '8 个包已完成 5 个，剩余需补齐仿真数据。'
+        },
+        {
+          label: '问题关闭率',
+          value: '64%',
+          trend: '+10%',
+          status: 'good' as const,
+          note: '最新一轮评审关闭 7 个验证动作。'
+        }
+      ],
+      coverage: [
+        {
+          area: '核心机热端',
+          coverage: 0.68,
+          tests: 12,
+          critical: 5,
+          lastRun: '2024-01-18',
+          status: 'attention' as const,
+          note: '热冲击试验数据待补录，中温段试验安排 1 月底完成。'
+        },
+        {
+          area: '整机性能对比',
+          coverage: 0.82,
+          tests: 9,
+          critical: 3,
+          lastRun: '2024-01-16',
+          status: 'on-track' as const,
+          note: '巡航与起飞工况数据齐备，剩余失速工况等待仿真复核。'
+        },
+        {
+          area: '控制律验证',
+          coverage: 0.56,
+          tests: 7,
+          critical: 4,
+          lastRun: '2024-01-20',
+          status: 'delayed' as const,
+          note: '极端低温工况设备故障，需调配备用试验台。'
+        }
+      ],
+      campaigns: [
+        {
+          id: 'VVP-FT-01',
+          name: 'V2.1 首轮功能试车',
+          scope: '覆盖基础性能、起飞推力与加速响应验证。',
+          window: 'W04-W05',
+          owner: '试验组 · 周工',
+          progress: 0.72,
+          status: 'running' as const,
+          note: '第二阶段采集正在进行，注意燃油温控。'
+        },
+        {
+          id: 'VVP-ENV-02',
+          name: '环境应力筛选',
+          scope: '高低温循环与振动试验，确认关键部件可靠性。',
+          window: 'W05-W06',
+          owner: '环境实验室 · 朱工',
+          progress: 0.38,
+          status: 'preparing' as const,
+          note: '待完成试验件二次检查与仪器校准。'
+        },
+        {
+          id: 'VVP-SIM-03',
+          name: '仿真-试验对标',
+          scope: '对比仿真模型与试验结果，确认指标偏差控制。',
+          window: 'W03-W06',
+          owner: '仿真团队 · 孙工',
+          progress: 0.86,
+          status: 'done' as const,
+          note: '差异小于 4%，等待归档报告。'
+        }
+      ],
+      packages: [
+        {
+          id: 'PKG-ENV-001',
+          name: '环境试验阶段数据包',
+          owner: '环境实验室 · 朱工',
+          updatedAt: '2024-01-19 18:20',
+          size: '1.8 GB',
+          status: 'in-review' as const,
+          type: 'CSV/图像/报告',
+          note: '评审中，需补充热像仪原始文件。'
+        },
+        {
+          id: 'PKG-FUNC-002',
+          name: '功能试车采集包',
+          owner: '试验组 · 周工',
+          updatedAt: '2024-01-18 22:05',
+          size: '3.2 GB',
+          status: 'uploaded' as const,
+          type: '时序数据/视频',
+          note: '已推送控制团队校核。'
+        },
+        {
+          id: 'PKG-CONT-003',
+          name: '控制律验证包',
+          owner: '控制团队 · 刘工',
+          updatedAt: '2024-01-17 14:40',
+          size: '850 MB',
+          status: 'pending' as const,
+          type: '仿真结果/脚本',
+          note: '等待上传低温工况仿真结果。'
+        }
+      ],
+      blockers: [
+        {
+          id: 'BLK-01',
+          title: '低温试验台液压异常',
+          impact: '阻塞控制律低温响应验证，影响验证闭环率 6%。',
+          owner: '试验保障 · 王工',
+          due: '2024-01-24',
+          status: 'open' as const,
+          note: '需备件更换并重新标定传感器。'
+        },
+        {
+          id: 'BLK-02',
+          title: '热防护试验报告待审',
+          impact: '未通过审签，导致环境工况数据包无法归档。',
+          owner: '热防护小组 · 陈工',
+          due: '2024-01-23',
+          status: 'mitigating' as const,
+          note: '评审委员已排期 1 月 22 日加会。'
+        },
+        {
+          id: 'BLK-03',
+          title: '试验参数同步滞后',
+          impact: '试验与仿真参数版本不一致，需统一配置文件。',
+          owner: '数据管理 · 赵工',
+          due: '2024-01-25',
+          status: 'cleared' as const,
+          note: '脚本已更新，将在下一轮试验验证。'
+        }
+      ]
+    },
+    configuration: {
+      baselineMetrics: [
+        {
+          label: '基线一致性',
+          value: '94%',
+          trend: '+3%',
+          status: 'aligned' as const,
+          note: '核心模块配置已与 V2.1 基线同步。'
+        },
+        {
+          label: '变更积压',
+          value: '7 项',
+          trend: '-2',
+          status: 'deviation' as const,
+          note: '两项高风险变更需要本周评审。'
+        },
+        {
+          label: '质量逃逸',
+          value: '1 起',
+          trend: '0',
+          status: 'risk' as const,
+          note: '热防护件批次需追加取样。'
+        },
+        {
+          label: '审查完成率',
+          value: '68%',
+          trend: '+5%',
+          status: 'deviation' as const,
+          note: '配置评审预计 W05 完成 80%。'
+        }
+      ],
+      changeImpacts: [
+        {
+          id: 'CCB-2024-017',
+          title: '燃油系统管路 reroute',
+          domain: '动力系统',
+          impact: '需调整安装包络并更新 CFD 模型，可能影响热负荷分布。',
+          scope: '燃油系统/热防护/维护手册',
+          owner: '配置管理 · 赵工',
+          status: 'approving' as const,
+          risk: 'medium' as const,
+          due: '2024-01-26',
+          note: '等待热防护小组补充风险评估。'
+        },
+        {
+          id: 'CCB-2024-019',
+          title: '控制律版本 3.3 升级',
+          domain: '控制系统',
+          impact: '引入低温补偿逻辑，需要同步更新仿真模型与试验脚本。',
+          scope: '控制软件/试验脚本/诊断库',
+          owner: '控制团队 · 刘工',
+          status: 'assessing' as const,
+          risk: 'high' as const,
+          due: '2024-01-29',
+          note: '需确认低温试验窗口是否可用。'
+        },
+        {
+          id: 'CCB-2024-021',
+          title: '线束固定点优化',
+          domain: '装配工艺',
+          impact: '减少振动失效风险，对 BOM 节点与装配指令轻量变动。',
+          scope: '装配指令/BOM/质检作业',
+          owner: '总装专家 · 马工',
+          status: 'implemented' as const,
+          risk: 'low' as const,
+          due: '2024-01-18'
+        }
+      ],
+      baselineGaps: [
+        {
+          item: 'XBOM 节点同步',
+          plan: '100%',
+          current: '92%',
+          delta: '-8%',
+          owner: '配置组 · 孙工',
+          status: 'watch' as const,
+          note: '仿真视图新增节点待归档，影响接口一致性。'
+        },
+        {
+          item: '配置手册更新',
+          plan: 'V2.1',
+          current: 'V2.0',
+          delta: '滞后 1 版',
+          owner: '文控组 · 王工',
+          status: 'issue' as const,
+          note: '待集成最新变更记录，需调配编制资源。'
+        },
+        {
+          item: '质量策划闭环',
+          plan: '95%',
+          current: '90%',
+          delta: '-5%',
+          owner: '质量部 · 李工',
+          status: 'ok' as const,
+          note: '剩余问题来自供应商件取样。'
+        }
+      ],
+      qualityGates: [
+        {
+          name: '配置基线审查 (CBR)',
+          stage: 'W04 · 生产准备',
+          owner: '配置管理 · 赵工',
+          scheduled: '2024-01-24',
+          completion: 0.62,
+          status: 'attention' as const,
+          finding: '需补充控制律升级关联矩阵。'
+        },
+        {
+          name: '供应商质量例会',
+          stage: 'W05 · 交付保证',
+          owner: '质量部 · 李工',
+          scheduled: '2024-01-27',
+          completion: 0.48,
+          status: 'delayed' as const,
+          finding: '航材集团未提交最新过程能力报告。'
+        },
+        {
+          name: '数字主线一致性审核',
+          stage: 'W06 · 交付准备',
+          owner: '数字工程 · 钱工',
+          scheduled: '2024-02-02',
+          completion: 0.35,
+          status: 'on-track' as const
+        }
+      ],
+      nonConformances: [
+        {
+          id: 'NC-2024-012',
+          type: '热防护涂层气孔偏高',
+          severity: 'major' as const,
+          module: '燃烧室段',
+          owner: '质量部 · 李工',
+          status: 'containment' as const,
+          due: '2024-01-25',
+          note: '已隔离批次，等待复检数据。'
+        },
+        {
+          id: 'NC-2024-015',
+          type: '文档版本冲突',
+          severity: 'minor' as const,
+          module: '控制系统',
+          owner: '文控组 · 王工',
+          status: 'open' as const,
+          due: '2024-01-23',
+          note: '控制律指令 V3.3 未同步至维护手册。'
+        },
+        {
+          id: 'NC-2024-016',
+          type: '供应商质检缺陷',
+          severity: 'critical' as const,
+          module: '高压涡轮盘',
+          owner: '供应商质量 · 周工',
+          status: 'closed' as const,
+          due: '2024-01-18',
+          note: '返工完成并验证通过。'
+        }
+      ]
+    },
+    collaboration: {
+      presence: [
+        {
+          id: 'presence-01',
+          name: '张工程师',
+          role: '总体设计',
+          status: 'online' as const,
+          location: '上海 · 办公室'
+        },
+        {
+          id: 'presence-02',
+          name: '李博士',
+          role: '控制系统',
+          status: 'busy' as const,
+          location: '在线 · 评审会议'
+        },
+        {
+          id: 'presence-03',
+          name: '周工',
+          role: '试验组',
+          status: 'online' as const,
+          location: '西安 · 试验台站'
+        },
+        {
+          id: 'presence-04',
+          name: '王工',
+          role: '文控',
+          status: 'offline' as const,
+          location: '同步中'
+        }
+      ],
+      activities: [
+        {
+          id: 'activity-01',
+          title: 'V2.1 方案设计评审纪要更新',
+          summary: '补充了控制律 3.3 版本新增的低温补偿策略，评审意见已处理 5/6 条。',
+          owner: '控制团队 · 刘工',
+          timestamp: '10 分钟前',
+          status: 'in-progress' as const,
+          type: 'review' as const
+        },
+        {
+          id: 'activity-02',
+          title: '风扇叶片验证工况数据对齐',
+          summary: '仿真与试验参数差异 <3%，待 QA 复核后可关闭验证阻塞项 BLK-03。',
+          owner: '试验组 · 周工',
+          timestamp: '35 分钟前',
+          status: 'completed' as const,
+          type: 'handover' as const
+        },
+        {
+          id: 'activity-03',
+          title: '供应商质量例会议程草稿',
+          summary: '重点跟踪涡轮盘返工进展与新供应商切换方案，需提前提交资料。',
+          owner: '质量部 · 李工',
+          timestamp: '1 小时前',
+          status: 'pending' as const,
+          type: 'sync' as const
+        }
+      ],
+      notifications: [
+        {
+          id: 'notification-01',
+          message: '热防护试验报告待审签，需在 1 月 23 日前完成。',
+          severity: 'warning' as const,
+          time: '7 分钟前',
+          action: '查看报告'
+        },
+        {
+          id: 'notification-02',
+          message: '控制律 3.3 版本已上传，请安排评审。',
+          severity: 'info' as const,
+          time: '24 分钟前',
+          action: '安排评审'
+        },
+        {
+          id: 'notification-03',
+          message: '低温试验台液压异常待确认恢复窗口，如延迟需同步 VVP-ENV-02。',
+          severity: 'critical' as const,
+          time: '50 分钟前'
+        }
+      ],
+      actions: [
+        {
+          id: 'action-01',
+          label: '分配整改任务',
+          icon: 'ri-task-line',
+          description: '将新的评审结论分配给责任人'
+        },
+        {
+          id: 'action-02',
+          label: '同步供应风险',
+          icon: 'ri-alert-line',
+          description: '推送最新的供应链风险到消息流'
+        },
+        {
+          id: 'action-03',
+          label: '导出协同日志',
+          icon: 'ri-file-history-line',
+          description: '下载最近 7 天的协同记录'
+        }
+      ],
+      reviews: [
+        {
+          id: 'review-01',
+          title: '控制策略专项评审',
+          date: '1 月 22 日 09:00',
+          owner: '控制团队 · 刘工',
+          scope: '聚焦低温补偿逻辑及诊断覆盖调整',
+          status: 'scheduled' as const
+        },
+        {
+          id: 'review-02',
+          title: '供应链例行同步',
+          date: '1 月 23 日 13:30',
+          owner: '质量部 · 李工',
+          scope: '检查返工批次状态与备份供应商切换计划',
+          status: 'drafting' as const
+        },
+        {
+          id: 'review-03',
+          title: 'V2.1 基线评审总结',
+          date: '1 月 18 日',
+          owner: '总体设计 · 张工程师',
+          scope: '输出最终基线包并归档会议纪要',
+          status: 'completed' as const
+        }
+      ]
     }
   };
 
@@ -823,10 +1339,20 @@ export default function ProductStructure() {
     { id: 'assembly', name: '总装专家', icon: 'ri-tools-line' },
     { id: 'component', name: '部件负责人', icon: 'ri-puzzle-line' }
   ];
+  const [contentScrolled, setContentScrolled] = useState(false);
+  // 需求视图的全局筛选（与需求面板联动）
+  const [requirementFilters, setRequirementFilters] = useState({
+    keyword: '',
+    status: 'all' as 'all' | 'in-progress' | 'pending' | 'completed',
+    priority: 'all' as 'all' | 'high' | 'medium' | 'low',
+    type: 'all' as 'all' | 'performance' | 'functional' | 'interface' | 'quality',
+    showOnlyLinked: false,
+  });
 
   const bomTypes: BomType[] = [
-    { id: 'solution', name: '方案BOM', count: 15, icon: 'ri-lightbulb-line', color: 'blue' },
+    // 调整顺序：需求BOM 放在 方案BOM 前面
     { id: 'requirement', name: '需求BOM', count: 23, icon: 'ri-file-list-2-line', color: 'green' },
+    { id: 'solution', name: '方案BOM', count: 15, icon: 'ri-lightbulb-line', color: 'blue' },
     { id: 'design', name: '设计BOM', count: 45, icon: 'ri-pencil-ruler-2-line', color: 'purple' },
     { id: 'simulation', name: '仿真BOM', count: 32, icon: 'ri-computer-line', color: 'orange' },
     { id: 'test', name: '试验BOM', count: 18, icon: 'ri-test-tube-line', color: 'red' },
@@ -859,6 +1385,7 @@ export default function ProductStructure() {
                   level: 2,
                   bomType: 'solution',
                   unitType: 'subsystem',
+                  subsystemType: 'compressor',
                   nodeCategory: 'subsystem',
                   children: [
                     {
@@ -1061,6 +1588,13 @@ export default function ProductStructure() {
 
   const bomStructureData = getBomStructureData();
   const currentRequirementNode = selectedNode ? findNodeById(selectedNode, bomStructureData) : null;
+  const currentRequirementList = selectedNode ? requirementsByNode[selectedNode] || [] : [];
+  const requirementStats = {
+    total: currentRequirementList.length,
+    high: currentRequirementList.filter(item => item.priority === 'high').length,
+    inProgress: currentRequirementList.filter(item => item.status === 'in-progress').length,
+    pending: currentRequirementList.filter(item => item.status === 'pending').length
+  };
 
   // 添加参数
   // 添加缺失的处理函数
@@ -1181,6 +1715,8 @@ export default function ProductStructure() {
           setSelectedRole('system');
         } else if (node.nodeCategory === 'system') {
           setSelectedRole('assembly');
+          // 点击系统级节点（如推进系统）时，直接进入“产品定义”视图
+          setActiveTab('definition');
         } else if (node.nodeCategory === 'subsystem' || node.nodeCategory === 'component') {
           setSelectedRole('component');
         }
@@ -1212,15 +1748,61 @@ export default function ProductStructure() {
   useEffect(() => {
     if (!bomStructureData.length) return;
     const firstNode = getFirstAvailableNode(bomStructureData);
-    if (!firstNode) return;
-    handleNodeClick(firstNode.id);
-    if (selectedBomType === 'solution' && activeTab !== 'basic') {
-      setActiveTab('basic');
+    if (firstNode) {
+      handleNodeClick(firstNode.id);
+    }
+
+    const storedTab = getStoredTabPreference(selectedBomType);
+    const normalizedTab = storedTab === 'solution' ? 'overview' : storedTab;
+    const availableTabs = selectedBomType === 'solution'
+      ? ['overview', 'definition', 'design', 'simulation', 'test', 'process', 'management']
+      : selectedBomType === 'requirement'
+      ? ['requirement']
+      : ['structure'];
+
+    if (normalizedTab && availableTabs.includes(normalizedTab)) {
+      setActiveTab(normalizedTab);
+      return;
+    }
+
+    if (selectedBomType === 'solution') {
+      setActiveTab('overview');
     } else if (selectedBomType === 'requirement') {
       setActiveTab('requirement');
+    } else {
+      setActiveTab('structure');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBomType]);
+
+  useEffect(() => {
+    setStoredTabPreference(selectedBomType, activeTab);
+  }, [activeTab, selectedBomType]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (activeTab !== 'definition') {
+      setRequirementsInView(false);
+      return;
+    }
+    const target = document.getElementById('requirements-section');
+    if (!target) {
+      setRequirementsInView(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      entries => {
+        const entry = entries[0];
+        setRequirementsInView(entry ? entry.isIntersecting : false);
+      },
+      {
+        rootMargin: '-120px 0px -60% 0px',
+        threshold: [0, 0.25, 0.5, 0.75]
+      }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeTab, selectedNode]);
 
   const getNodeIcon = (node: BomNode) => {
     if (node.bomType === 'solution') {
@@ -1683,36 +2265,105 @@ export default function ProductStructure() {
     }
   };
 
-  const renderSolutionOverview = () => (
+  const phaseStatusStyle: Record<string, string> = {
+    done: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    'in-progress': 'border-blue-200 bg-blue-50 text-blue-600',
+    attention: 'border-amber-200 bg-amber-50 text-amber-700',
+    pending: 'border-slate-200 bg-slate-50 text-slate-600'
+  };
+
+  const renderPhaseSwitcher = () => {
+    if (!solutionOverview.phases?.length) return null;
+    const active = solutionOverview.phases.find(phase => phase.id === activePhase) || solutionOverview.phases[0];
+
+    return (
+      <div className="mt-6 space-y-4">
+        <div className="flex flex-wrap gap-2">
+          {solutionOverview.phases.map(phase => (
+            <button
+              key={phase.id}
+              type="button"
+              onClick={() => setActivePhase(phase.id)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                activePhase === phase.id
+                  ? 'border-blue-500 bg-blue-50 text-blue-600 shadow-sm'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600'
+              }`}
+              aria-pressed={activePhase === phase.id}
+            >
+              <span>{phase.label}</span>
+              <span className="ml-2 text-[11px] text-gray-400">{phase.timeline}</span>
+            </button>
+          ))}
+        </div>
+
+        {active && (
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-gray-100 bg-slate-50/80 p-4">
+              <div className="text-xs text-gray-400">阶段状态</div>
+              <div className="mt-2 inline-flex items-center gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-xs ${phaseStatusStyle[active.status] || 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                  {active.label}
+                </span>
+                <span className="text-xs text-gray-400">{active.timeline}</span>
+              </div>
+              <p className="mt-3 text-sm text-gray-600 leading-relaxed">{active.summary}</p>
+            </div>
+
+            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm lg:col-span-2">
+              <div className="text-xs text-gray-400">阶段重点</div>
+              <ul className="mt-3 space-y-2 text-sm text-gray-700">
+                {active.highlights?.map((item, index) => (
+                  <li key={`${active.id}-highlight-${index}`} className="flex items-start gap-2">
+                    <span className="mt-1 inline-block h-2 w-2 rounded-full bg-blue-400"></span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderOverview = () => (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
+        <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
             <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-blue-600">
-              <i className="ri-rocket-2-line"></i>
-              方案总览
+              <i className="ri-compass-3-line"></i>
+              概览
             </span>
             <span>基线版本：{solutionOverview.baseline}</span>
             <span>对比：{solutionOverview.compareTo}</span>
           </div>
           <h2 className="mt-2 text-xl font-semibold text-gray-900">航空发动机方案状态</h2>
           <p className="mt-1 text-sm text-gray-500">责任人：{solutionOverview.owner} · 最近更新 {solutionOverview.updatedAt}</p>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <i className="ri-database-2-line"></i>
+            <span>数据来源 · 方案基线台账 / 风险库</span>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 hover:border-blue-300 hover:text-blue-600">
+          <button type="button" className={secondaryActionButtonClass}>
             <i className="ri-refresh-line mr-1"></i>
             切换基线
           </button>
-          <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 hover:border-blue-300 hover:text-blue-600">
+          <button type="button" className={secondaryActionButtonClass}>
             <i className="ri-git-merge-line mr-1"></i>
             变更影响
           </button>
-          <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700">
+          <button type="button" className={primaryActionButtonClass}>
             <i className="ri-download-2-line mr-1"></i>
             导出报告
           </button>
         </div>
       </div>
+
+      {renderPhaseSwitcher()}
+
       <div className="mt-6 grid gap-4 lg:grid-cols-5">
         {solutionOverview.metrics.map((metric, index) => (
           <div
@@ -1752,7 +2403,7 @@ export default function ProductStructure() {
   );
 
   const renderRoleBasedSummary = () => {
-    if (selectedBomType !== 'solution') return null;
+    if (selectedBomType !== 'solution' || activeTab !== 'overview') return null;
 
     const summaryData = {
       system: {
@@ -3280,16 +3931,19 @@ export default function ProductStructure() {
         {/* 右侧内容区域 */}
         <div className="flex-1 flex flex-col">
           {/* Tab切换 */}
-          <div className="border-b border-gray-200 bg-white px-6 py-4">
-            <div className="flex space-x-8">
+          <div className={`border-b border-gray-200 bg-white px-6 py-4 transition-shadow ${contentScrolled ? 'shadow-sm' : ''}`}>
+            <div className="flex space-x-8" role="tablist" aria-label="方案视图">
               {(() => {
                 const tabs = [];
                 if (selectedBomType === 'solution') {
                   tabs.push(
-                    { id: 'basic', name: '基本信息', icon: 'ri-information-line' },
-                    { id: 'requirement', name: '需求详情', icon: 'ri-file-list-2-line' },
-                    { id: 'solution', name: '方案数据', icon: 'ri-dashboard-line' },
-                    { id: 'simulation', name: '仿真数据', icon: 'ri-computer-line' }
+                    { id: 'overview', name: '概览', icon: 'ri-compass-3-line' },
+                    { id: 'definition', name: '产品定义', icon: 'ri-book-2-line' },
+                    { id: 'design', name: '设计实现', icon: 'ri-pencil-ruler-2-line' },
+                    { id: 'simulation', name: '仿真验证', icon: 'ri-computer-line' },
+                    { id: 'test', name: '试验与测量', icon: 'ri-test-tube-line' },
+                    { id: 'process', name: '工艺与生产', icon: 'ri-tools-line' },
+                    { id: 'management', name: '管理与保障', icon: 'ri-shield-check-line' }
                   );
                 } else if (selectedBomType === 'requirement') {
                   tabs.push(
@@ -3309,6 +3963,12 @@ export default function ProductStructure() {
                         ? 'border-blue-600 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    aria-controls={`panel-${tab.id}`}
+                    id={`tab-${tab.id}`}
+                    tabIndex={activeTab === tab.id ? 0 : -1}
                   >
                     <i className={tab.icon}></i>
                     <span>{tab.name}</span>
@@ -3319,37 +3979,193 @@ export default function ProductStructure() {
           </div>
 
         {/* 内容区域 */}
-        <div className="flex-1 overflow-y-auto pr-1">
+        <div
+          className="flex-1 overflow-y-auto pr-1 pt-4 md:pt-6 pb-24 scroll-pt-20"
+          onScroll={(e) => setContentScrolled((e.currentTarget as HTMLDivElement).scrollTop > 0)}
+        >
+            {/* 次级工具条：在内容顶部形成层级分隔，可放筛选/导出等操作 */}
+            {selectedBomType === 'requirement' && (
+              <div className="sticky top-0 z-10 px-6 py-2 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-gray-100">
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="text-xs font-medium text-gray-500 mr-2">快速筛选</div>
+                    {/* 状态切片 */}
+                    {['all','in-progress','pending','completed'].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setRequirementFilters(prev => ({ ...prev, status: v as any }))}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${requirementFilters.status === v ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700'}`}
+                      >
+                        {v === 'all' ? '全部' : v === 'in-progress' ? '进行中' : v === 'pending' ? '待启动' : '已完成'}
+                      </button>
+                    ))}
+                    <span className="text-gray-300">|</span>
+                    {/* 类型切片 */}
+                    {[
+                      {v:'all', l:'全部'},
+                      {v:'performance', l:'性能'},
+                      {v:'functional', l:'功能'},
+                      {v:'interface', l:'接口'},
+                      {v:'quality', l:'六性'},
+                    ].map(opt => (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() => setRequirementFilters(prev => ({ ...prev, type: opt.v as any }))}
+                        className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${requirementFilters.type === opt.v ? 'bg-slate-50 border-slate-300 text-slate-700' : 'border-gray-200 text-gray-600 hover:border-slate-300 hover:text-slate-700'}`}
+                      >
+                        {opt.l}
+                      </button>
+                    ))}
+                    <label className="ml-2 inline-flex items-center gap-1 text-xs text-gray-600">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={requirementFilters.showOnlyLinked}
+                        onChange={(e) => setRequirementFilters(prev => ({ ...prev, showOnlyLinked: e.target.checked }))}
+                      />
+                      仅关注
+                    </label>
+                    <div className="relative ml-auto">
+                      <i className="ri-search-line pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                      <input
+                        value={requirementFilters.keyword}
+                        onChange={(e) => setRequirementFilters(prev => ({ ...prev, keyword: e.target.value }))}
+                        placeholder="搜索需求关键词"
+                        className="w-56 rounded-md border border-gray-200 pl-7 pr-3 py-1.5 text-xs focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs px-3 py-1.5 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setRequirementFilters({ keyword: '', status: 'all', priority: 'all', type: 'all', showOnlyLinked: false })}
+                    >
+                      重置
+                    </button>
+                    <button type="button" className="text-xs px-3 py-1.5 rounded-md border border-blue-300 text-blue-600 hover:bg-blue-50">
+                      导出
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="min-h-full space-y-6">
+              {activeTab === 'requirement' && selectedBomType === 'requirement' && (
+                <div
+                  role="tabpanel"
+                  id="panel-requirement"
+                  aria-labelledby="tab-requirement"
+                  className="space-y-6"
+                >
+                  <RequirementDetailPanel
+                    selectedNode={selectedNode}
+                    selectedBomType={selectedBomType}
+                    selectedRequirementRole={selectedRequirementRole}
+                    onRequirementRoleChange={setSelectedRequirementRole}
+                    requirementRoles={requirementRoles}
+                    requirementRoleInsights={requirementRoleInsights}
+                    requirementsByNode={requirementsByNode}
+                    currentNode={currentRequirementNode ? { id: currentRequirementNode.id, name: currentRequirementNode.name } : null}
+                    filters={requirementFilters}
+                    onFiltersChange={setRequirementFilters}
+                  />
+                </div>
+              )}
               {activeTab === 'structure' && (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500">
+                <div
+                  className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500"
+                  role="tabpanel"
+                  id="panel-structure"
+                  aria-labelledby="tab-structure"
+                >
                   <i className="ri-node-tree text-4xl mb-2"></i>
                   <p>结构视图内容</p>
                 </div>
               )}
 
-              {activeTab === 'basic' && (
-                <div className="rounded-2xl bg-white p-0 shadow-sm border border-gray-200">
-                  {renderBasicInfo()}
+              {activeTab === 'definition' && selectedBomType === 'solution' && (
+                <div role="tabpanel" id="panel-definition" aria-labelledby="tab-definition" className="space-y-6 focus:outline-none">
+                  <ProductDefinitionPanel
+                    node={currentRequirementNode ? { id: currentRequirementNode.id, name: currentRequirementNode.name, unitType: currentRequirementNode.unitType as any, subsystemType: (currentRequirementNode as any).subsystemType } : null}
+                    versionId={selectedVersion}
+                    onNavigateToNode={(nodeId) => handleNodeClick(nodeId)}
+                    defaultRole={selectedRole as 'system' | 'assembly' | 'component'}
+                  />
+                  <section className="rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 px-6 py-5 shadow-sm flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="max-w-xl space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-blue-700">
+                        <i className="ri-compass-3-line"></i>
+                        需求闭环 · Requirement Traceability
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900">从产品定义到需求BOM，一次看清状态</h3>
+                      <p className="text-sm text-gray-600">
+                        当前节点关联 {requirementStats.total} 条需求，进行中 {requirementStats.inProgress} 条，待启动 {requirementStats.pending} 条，高优 {requirementStats.high} 条。
+                        支持导出清单、同步主数据与快速筛选。
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <button
+                        type="button"
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-blue-700 hover:border-blue-300 hover:text-blue-800"
+                        onClick={() => setActiveTab('definition')}
+                      >
+                        <i className="ri-refresh-line mr-1"></i>
+                        同步主数据
+                      </button>
+                      <button
+                        type="button"
+                        className={`rounded-lg px-3 py-1.5 text-sm shadow-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                          requirementsInView ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                        onClick={() => {
+                          const el = document.getElementById('requirements-section');
+                          if (el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }
+                        }}
+                        aria-pressed={requirementsInView}
+                      >
+                        <i className="ri-file-list-2-line mr-1"></i>
+                        查看需求清单
+                      </button>
+                    </div>
+                  </section>
+                  <div id="requirements-section" className="scroll-mt-[120px]">
+                    <RequirementDetailPanel
+                      selectedNode={selectedNode}
+                      selectedBomType={selectedBomType}
+                      selectedRequirementRole={selectedRequirementRole}
+                      onRequirementRoleChange={setSelectedRequirementRole}
+                      requirementRoles={requirementRoles}
+                      requirementRoleInsights={requirementRoleInsights}
+                      requirementsByNode={requirementsByNode}
+                      currentNode={currentRequirementNode ? { id: currentRequirementNode.id, name: currentRequirementNode.name } : null}
+                    />
+                  </div>
                 </div>
               )}
 
-              {activeTab === 'requirement' && (
-                <RequirementDetailPanel
-                  selectedNode={selectedNode}
-                  selectedBomType={selectedBomType}
-                  selectedRequirementRole={selectedRequirementRole}
-                  onRequirementRoleChange={setSelectedRequirementRole}
-                  requirementRoles={requirementRoles}
-                  requirementRoleInsights={requirementRoleInsights}
-                  requirementsByNode={requirementsByNode}
-                  currentNode={currentRequirementNode ? { id: currentRequirementNode.id, name: currentRequirementNode.name } : null}
-                />
+              {activeTab === 'overview' && selectedBomType === 'solution' && (
+                <div
+                  className="space-y-6"
+                  role="tabpanel"
+                  id="panel-overview"
+                  aria-labelledby="tab-overview"
+                >
+                  {renderOverview()}
+                  {/* 概览下仅展示总览信息与阶段切换；专业面板迁移至六域 */}
+                </div>
               )}
 
-              {activeTab === 'solution' && selectedBomType === 'solution' && (
-                <div className="space-y-6">
-                  {renderSolutionOverview()}
+              {activeTab === 'simulation' && selectedBomType === 'solution' && (
+                <div role="tabpanel" id="panel-simulation" aria-labelledby="tab-simulation" className="space-y-6">
+                  {renderSimulationData()}
+                </div>
+              )}
+
+              {activeTab === 'design' && selectedBomType === 'solution' && (
+                <div role="tabpanel" id="panel-design" aria-labelledby="tab-design" className="space-y-6">
                   <PerformanceOverview
                     operatingPoints={solutionOverview.performance.operatingPoints}
                     assumptions={solutionOverview.performance.assumptions}
@@ -3369,6 +4185,24 @@ export default function ProductStructure() {
                     strategies={solutionOverview.control.strategies}
                     diagnostics={solutionOverview.control.diagnostics}
                   />
+                  {renderRoleBasedSummary()}
+                </div>
+              )}
+
+              {activeTab === 'test' && selectedBomType === 'solution' && (
+                <div role="tabpanel" id="panel-test" aria-labelledby="tab-test" className="space-y-6">
+                  <VerificationOverview
+                    summary={solutionOverview.verification.summary}
+                    coverage={solutionOverview.verification.coverage}
+                    campaigns={solutionOverview.verification.campaigns}
+                    packages={solutionOverview.verification.packages}
+                    blockers={solutionOverview.verification.blockers}
+                  />
+                </div>
+              )}
+
+              {activeTab === 'process' && selectedBomType === 'solution' && (
+                <div role="tabpanel" id="panel-process" aria-labelledby="tab-process" className="space-y-6">
                   <ManufacturingOverview
                     readiness={solutionOverview.manufacturing.readiness}
                     specialProcesses={solutionOverview.manufacturing.specialProcesses}
@@ -3377,13 +4211,29 @@ export default function ProductStructure() {
                     capacity={solutionOverview.manufacturing.capacity}
                     supplierRisks={solutionOverview.manufacturing.supplierRisks}
                   />
-                  {renderRoleBasedSummary()}
+                </div>
+              )}
+
+              {activeTab === 'management' && selectedBomType === 'solution' && (
+                <div role="tabpanel" id="panel-management" aria-labelledby="tab-management" className="space-y-6">
+                  <ConfigurationQualityOverview
+                    baselineMetrics={solutionOverview.configuration.baselineMetrics}
+                    changeImpacts={solutionOverview.configuration.changeImpacts}
+                    baselineGaps={solutionOverview.configuration.baselineGaps}
+                    qualityGates={solutionOverview.configuration.qualityGates}
+                    nonConformances={solutionOverview.configuration.nonConformances}
+                  />
+                  <CollaborationHub
+                    presence={solutionOverview.collaboration.presence}
+                    activities={solutionOverview.collaboration.activities}
+                    notifications={solutionOverview.collaboration.notifications}
+                    actions={solutionOverview.collaboration.actions}
+                    reviews={solutionOverview.collaboration.reviews}
+                  />
                   {renderSolutionInputData()}
                   {renderOutputDataManagement()}
                 </div>
               )}
-
-              {activeTab === 'simulation' && selectedBomType === 'solution' && renderSimulationData()}
             </div>
           </div>
         </div>

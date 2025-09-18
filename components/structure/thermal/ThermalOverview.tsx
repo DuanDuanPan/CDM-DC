@@ -35,21 +35,32 @@ const trendStyle = (trend: string) =>
     ? 'text-red-600'
     : 'text-gray-500';
 
+const secondaryButtonClass =
+  'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600';
+const primaryButtonClass =
+  'rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white shadow-sm hover:bg-blue-700';
+
 const ThermalOverview = ({ scenarios, effectiveness, assumptions }: ThermalOverviewProps) => (
   <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">热防护与冷却概览</h3>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900">热防护与冷却概览</h3>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+            <i className="ri-database-2-line"></i>
+            数据来源 · 热分析 / 环境试验
+          </span>
+        </div>
+        <p className="text-sm text-gray-500">
           覆盖核心燃烧区、涡轮部件和尾喷口的温度、热流密度及冷却效率，跟踪热裕度变化。
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 hover:border-blue-300 hover:text-blue-600">
+        <button type="button" className={secondaryButtonClass}>
           <i className="ri-flask-line mr-1"></i>
           更新热分析
         </button>
-        <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700">
+        <button type="button" className={primaryButtonClass}>
           <i className="ri-download-2-line mr-1"></i>
           导出热平衡
         </button>

@@ -22,6 +22,21 @@ interface RequirementDetailPanelProps {
   requirementRoleInsights: Record<RequirementRoleKey, RequirementRoleInsight>;
   requirementsByNode: Record<string, RequirementItem[]>;
   currentNode: NodeSummary | null;
+  // 可选：外部控制筛选（用于右侧次级工具条联动）
+  filters?: {
+    keyword: string;
+    status: 'all' | RequirementItem['status'];
+    priority: 'all' | RequirementItem['priority'];
+    type: 'all' | RequirementItem['type'];
+    showOnlyLinked: boolean;
+  };
+  onFiltersChange?: (f: {
+    keyword: string;
+    status: 'all' | RequirementItem['status'];
+    priority: 'all' | RequirementItem['priority'];
+    type: 'all' | RequirementItem['type'];
+    showOnlyLinked: boolean;
+  }) => void;
 }
 
 const getTypeLabel = (type: RequirementItem['type']) => {
@@ -369,7 +384,9 @@ const RequirementDetailPanel = ({
   requirementRoles,
   requirementRoleInsights,
   requirementsByNode,
-  currentNode
+  currentNode,
+  filters,
+  onFiltersChange
 }: RequirementDetailPanelProps) => {
   const requirements = useMemo<RequirementItem[]>(() => {
     if (!selectedNode) return [];
@@ -377,11 +394,39 @@ const RequirementDetailPanel = ({
   }, [selectedNode, requirementsByNode]);
   const currentInsight = requirementRoleInsights[selectedRequirementRole];
 
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | RequirementItem['status']>('all');
-  const [priorityFilter, setPriorityFilter] = useState<'all' | RequirementItem['priority']>('all');
-  const [typeFilter, setTypeFilter] = useState<'all' | RequirementItem['type']>('all');
-  const [showOnlyLinked, setShowOnlyLinked] = useState(false);
+  // 受控/非受控筛选（若父级传入 filters 则受控，否则内部管理）
+  const [localSearchKeyword, setLocalSearchKeyword] = useState('');
+  const [localStatusFilter, setLocalStatusFilter] = useState<'all' | RequirementItem['status']>('all');
+  const [localPriorityFilter, setLocalPriorityFilter] = useState<'all' | RequirementItem['priority']>('all');
+  const [localTypeFilter, setLocalTypeFilter] = useState<'all' | RequirementItem['type']>('all');
+  const [localShowOnlyLinked, setLocalShowOnlyLinked] = useState(false);
+
+  const controlled = !!filters;
+  const searchKeyword = controlled ? (filters!.keyword ?? '') : localSearchKeyword;
+  const statusFilter: 'all' | RequirementItem['status'] = controlled ? (filters!.status ?? 'all') : localStatusFilter;
+  const priorityFilter: 'all' | RequirementItem['priority'] = controlled ? (filters!.priority ?? 'all') : localPriorityFilter;
+  const typeFilter: 'all' | RequirementItem['type'] = controlled ? (filters!.type ?? 'all') : localTypeFilter;
+  const showOnlyLinked = controlled ? (filters!.showOnlyLinked ?? false) : localShowOnlyLinked;
+
+  const emitChange = (patch: Partial<NonNullable<RequirementDetailPanelProps['filters']>>) => {
+    if (onFiltersChange) {
+      onFiltersChange({
+        keyword: searchKeyword,
+        status: statusFilter,
+        priority: priorityFilter,
+        type: typeFilter,
+        showOnlyLinked,
+        ...patch,
+      });
+    }
+  };
+
+  const setStatusFilter = (v: 'all' | RequirementItem['status']) => controlled ? emitChange({ status: v }) : setLocalStatusFilter(v);
+  const setPriorityFilter = (v: 'all' | RequirementItem['priority']) => controlled ? emitChange({ priority: v }) : setLocalPriorityFilter(v);
+  const setTypeFilter = (v: 'all' | RequirementItem['type']) => controlled ? emitChange({ type: v }) : setLocalTypeFilter(v);
+  const setSearchKeyword = (v: string) => controlled ? emitChange({ keyword: v }) : setLocalSearchKeyword(v);
+  const setShowOnlyLinked = (v: boolean) => controlled ? emitChange({ showOnlyLinked: v }) : setLocalShowOnlyLinked(v);
+  
 
   const linkedRequirementIds = useMemo(
     () => new Set(currentInsight?.linkedRequirements ?? []),
@@ -470,11 +515,15 @@ const RequirementDetailPanel = ({
   }, [selectedBomType, currentNode]);
 
   const handleResetFilters = () => {
-    setStatusFilter('all');
-    setPriorityFilter('all');
-    setTypeFilter('all');
-    setSearchKeyword('');
-    setShowOnlyLinked(false);
+    if (filters && onFiltersChange) {
+      onFiltersChange({ keyword: '', status: 'all', priority: 'all', type: 'all', showOnlyLinked: false });
+    } else {
+      setStatusFilter('all');
+      setPriorityFilter('all');
+      setTypeFilter('all');
+      setSearchKeyword('');
+      setShowOnlyLinked(false);
+    }
   };
 
   const showEmptyState = filteredRequirements.length === 0;
@@ -513,16 +562,6 @@ const RequirementDetailPanel = ({
             <p className="mt-1 text-sm text-gray-500">
               {currentNode ? `节点ID：${currentNode.id}` : '选择节点以查看详细需求信息'}
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:border-blue-300 hover:text-blue-600">
-              <i className="ri-refresh-line"></i>
-              同步主数据
-            </button>
-            <button className="flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700">
-              <i className="ri-download-2-line"></i>
-              导出需求清单
-            </button>
           </div>
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-4">

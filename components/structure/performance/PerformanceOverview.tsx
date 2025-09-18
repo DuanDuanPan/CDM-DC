@@ -40,9 +40,15 @@ const PerformanceOverview = ({ operatingPoints, assumptions }: PerformanceOvervi
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">循环参数与性能概览</h3>
-          <p className="mt-1 text-sm text-gray-500">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900">循环参数与性能概览</h3>
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+              <i className="ri-database-2-line"></i>
+              数据来源 · 循环仿真库 / 试车结果
+            </span>
+          </div>
+          <p className="text-sm text-gray-500">
             支持多工况切换，快速查看推力、比冲、燃油流量等关键参数及裕度。
           </p>
         </div>

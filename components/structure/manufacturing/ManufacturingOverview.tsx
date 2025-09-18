@@ -113,6 +113,11 @@ const supplierStatusLabel: Record<SupplierStatus, string> = {
   red: '风险'
 };
 
+const secondaryButtonClass =
+  'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600';
+const primaryButtonClass =
+  'rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white shadow-sm hover:bg-blue-700';
+
 const ManufacturingOverview = ({
   readiness,
   specialProcesses,
@@ -131,9 +136,15 @@ const ManufacturingOverview = ({
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900">供应链与制造态势</h3>
-          <p className="mt-1 text-sm text-gray-500">
+        <div className="flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-semibold text-gray-900">供应链与制造态势</h3>
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+              <i className="ri-database-2-line"></i>
+              数据来源 · 供应链台账 / MES 看板
+            </span>
+          </div>
+          <p className="text-sm text-gray-500">
             监控制造成熟度、工艺瓶颈和供应风险，确保样机生产节奏与验证窗口对齐。
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -159,19 +170,19 @@ const ManufacturingOverview = ({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600">
-            <i className="ri-clipboard-line mr-1"></i>
-            更新制造状态
-          </button>
-          <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600">
-            <i className="ri-share-forward-line mr-1"></i>
-            发布供应风险
-          </button>
-          <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700">
-            <i className="ri-download-2-line mr-1"></i>
-            导出供应计划
-          </button>
-        </div>
+        <button type="button" className={secondaryButtonClass}>
+          <i className="ri-clipboard-line mr-1"></i>
+          更新制造状态
+        </button>
+        <button type="button" className={secondaryButtonClass}>
+          <i className="ri-share-forward-line mr-1"></i>
+          发布供应风险
+        </button>
+        <button type="button" className={primaryButtonClass}>
+          <i className="ri-download-2-line mr-1"></i>
+          导出供应计划
+        </button>
+      </div>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">

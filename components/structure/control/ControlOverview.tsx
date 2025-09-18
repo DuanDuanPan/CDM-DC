@@ -42,21 +42,32 @@ const diagnosticStyle: Record<DiagnosticMetric['status'], string> = {
 
 const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
 
+const secondaryButtonClass =
+  'rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-600';
+const primaryButtonClass =
+  'rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white shadow-sm hover:bg-blue-700';
+
 const ControlOverview = ({ interfaces, strategies, diagnostics }: ControlOverviewProps) => (
   <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">控制与电子概览</h3>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900">控制与电子概览</h3>
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+            <i className="ri-database-2-line"></i>
+            数据来源 · 控制系统台账 / 仿真回放
+          </span>
+        </div>
+        <p className="text-sm text-gray-500">
           涵盖关键接口规格、控制策略版本与诊断覆盖度，确保控制链路和健康管理符合要求。
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <button className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 hover:border-blue-300 hover:text-blue-600">
+        <button type="button" className={secondaryButtonClass}>
           <i className="ri-link-m mr-1"></i>
           校验接口
         </button>
-        <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700">
+        <button type="button" className={primaryButtonClass}>
           <i className="ri-save-3-line mr-1"></i>
           导出控制策略
         </button>
