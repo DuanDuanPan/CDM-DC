@@ -1,4 +1,6 @@
-import { SimulationFile } from './types';
+import { useEffect, useMemo, useState } from 'react';
+import { SimulationFile, SimulationFileVariantPreview } from './types';
+import ConditionBar from './ConditionBar';
 
 interface Props {
   file: SimulationFile | null;
@@ -8,15 +10,16 @@ interface Props {
   onAddCompare?: (file: SimulationFile) => void;
 }
 
-const renderPreviewContent = (file: SimulationFile) => {
+const renderPreviewContent = (file: SimulationFile, variant?: SimulationFileVariantPreview) => {
+  const preview = variant ?? file.preview;
   switch (file.type) {
     case 'result':
-      if (file.preview?.curveData) {
+      if (preview?.curveData) {
         return (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-900">结果曲线预览</h4>
             <div className="grid grid-cols-1 gap-3">
-              {file.preview.curveData.map((curve, idx) => (
+              {preview.curveData.map((curve, idx) => (
                 <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3">
                   <div className="text-xs text-gray-500 mb-2">曲线 {idx + 1}</div>
                   <div className="h-32 overflow-hidden rounded-md bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100">
@@ -39,13 +42,13 @@ const renderPreviewContent = (file: SimulationFile) => {
       }
       return <div className="text-sm text-gray-600">暂无可视化预览，支持下载查看。</div>;
     case 'geometry':
-      if (file.preview?.meshInfo) {
+      if (preview?.meshInfo) {
         return (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-900">几何/网格信息</h4>
             <div className="grid grid-cols-2 gap-3 text-xs text-gray-600">
-              <div className="bg-gray-50 rounded-lg p-3">节点数量：{file.preview.meshInfo.nodes}</div>
-              <div className="bg-gray-50 rounded-lg p-3">单元数量：{file.preview.meshInfo.elements}</div>
+              <div className="bg-gray-50 rounded-lg p-3">节点数量：{preview.meshInfo.nodes}</div>
+              <div className="bg-gray-50 rounded-lg p-3">单元数量：{preview.meshInfo.elements}</div>
             </div>
             <div className="h-40 rounded-lg bg-gradient-to-br from-slate-50 to-slate-200 p-4">
               <div className="h-full w-full rounded border border-dashed border-slate-400 bg-white/60 grid grid-cols-6 grid-rows-4 gap-1">
@@ -60,11 +63,11 @@ const renderPreviewContent = (file: SimulationFile) => {
       }
       return <div className="text-sm text-gray-600">暂无几何预览图。</div>;
     case 'report':
-      if (file.preview?.reportSections) {
+      if (preview?.reportSections) {
         return (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-900">报告摘要</h4>
-            {file.preview.reportSections.map(section => (
+            {preview.reportSections.map(section => (
               <div key={section.title} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
                 <div className="text-xs font-semibold text-gray-700">{section.title}</div>
                 <div className="text-xs text-gray-600 mt-1 leading-relaxed">{section.excerpt}</div>
@@ -79,7 +82,7 @@ const renderPreviewContent = (file: SimulationFile) => {
         <div className="space-y-3">
           <h4 className="text-sm font-medium text-gray-900">文档摘要</h4>
           <div className="rounded-lg border border-gray-200 bg-white p-4 text-xs text-gray-600">
-            {file.preview?.documentSummary || '支持在线阅读，可嵌入文档组件展示详细内容。'}
+            {preview?.documentSummary || '支持在线阅读，可嵌入文档组件展示详细内容。'}
           </div>
         </div>
       );
@@ -105,7 +108,42 @@ const renderPreviewContent = (file: SimulationFile) => {
 };
 
 const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, onAddCompare }: Props) => {
+  const [activeConditionId, setActiveConditionId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!file) {
+      setActiveConditionId(undefined);
+      return;
+    }
+    setActiveConditionId(file.activeConditionId || file.conditions?.[0]?.id);
+  }, [file]);
+
+  const activeCondition = useMemo(() => {
+    if (!file) return undefined;
+    return file.conditions?.find(condition => condition.id === activeConditionId);
+  }, [file, activeConditionId]);
+
+  const variantPreview = useMemo<SimulationFileVariantPreview | undefined>(() => {
+    if (!file || !activeConditionId) return undefined;
+    return file.conditionVariants?.[activeConditionId];
+  }, [file, activeConditionId]);
+
   if (!file) return null;
+
+  const previewContent = renderPreviewContent(file, variantPreview);
+
+  const handleAddCompare = () => {
+    if (!onAddCompare) return;
+    const compareKey = activeConditionId ? `${file.id}::${activeConditionId}` : file.id;
+    const compareItem: SimulationFile = {
+      ...file,
+      activeConditionId: activeConditionId,
+      activeConditionName: activeCondition?.name,
+      compareKey,
+      preview: variantPreview ? { ...variantPreview } : file.preview
+    };
+    onAddCompare(compareItem);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -144,26 +182,39 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
             <div className="text-sm text-gray-600 leading-relaxed">{file.description}</div>
           )}
           {file.conditions && file.conditions.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-900">关联工况</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-900">关联工况</h4>
+                {activeCondition && (
+                  <span className="text-xs text-gray-500">当前：{activeCondition.name}</span>
+                )}
+              </div>
+              <ConditionBar
+                conditions={file.conditions}
+                selectedIds={activeConditionId ? [activeConditionId] : []}
+                baselineId={activeConditionId}
+                onChange={ids => setActiveConditionId(ids.length ? ids[ids.length - 1] : undefined)}
+                onBaselineChange={id => setActiveConditionId(id)}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {file.conditions.map(condition => (
-                  <div key={condition.id} className="border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
-                    <div className="text-gray-500 mb-1">{condition.name}</div>
+                  <div key={condition.id} className={`border rounded-lg p-3 text-xs ${condition.id === activeConditionId ? 'border-blue-300 bg-blue-50/50 text-blue-700' : 'border-gray-200 text-gray-600'}`}>
+                    <div className="font-medium mb-1">{condition.name}</div>
                     <div className="grid grid-cols-2 gap-1">
                       {condition.parameters.map(param => (
-                        <div key={param.name} className="bg-gray-50 rounded px-2 py-1">
+                        <div key={param.name} className="bg-white/70 rounded px-2 py-1">
                           <span className="text-gray-500 mr-1">{param.name}:</span>
                           <span>{param.value}{param.unit ? ` ${param.unit}` : ''}</span>
                         </div>
                       ))}
+                      {condition.parameters.length === 0 && <div className="text-gray-400">无额外参数</div>}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
-          <div>{renderPreviewContent(file)}</div>
+          <div>{previewContent}</div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-6 py-3">
           <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -190,8 +241,8 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
             {onAddCompare && (
               <button
                 className="rounded-lg border border-blue-300 px-3 py-1.5 text-blue-600 hover:bg-blue-50"
-                onClick={() => onAddCompare(file)}
-              >
+                onClick={handleAddCompare}
+                >
                 加入对比
               </button>
             )}

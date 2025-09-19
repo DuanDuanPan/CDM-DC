@@ -2807,7 +2807,20 @@ export default function ProductStructure() {
     };
 
     const handleAddCompareFile = (file: SimulationFile) => {
-      simulationDispatch({ type: 'ADD_COMPARE', payload: file });
+      const conditionId = file.activeConditionId || file.conditions?.[0]?.id;
+      const conditionName = file.activeConditionName || file.conditions?.find(condition => condition.id === conditionId)?.name;
+      const compareKey = file.compareKey ?? (conditionId ? `${file.id}::${conditionId}` : file.id);
+      const variant = conditionId ? file.conditionVariants?.[conditionId] : undefined;
+      simulationDispatch({
+        type: 'ADD_COMPARE',
+        payload: {
+          ...file,
+          activeConditionId: conditionId,
+          activeConditionName: conditionName,
+          compareKey,
+          preview: variant ? { ...variant } : file.preview
+        }
+      });
     };
 
     const handleFilterChange = (nextFilters: Partial<SimulationFilters>) => {

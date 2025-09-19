@@ -24,7 +24,7 @@ const palette = [
   '#a855f7'
 ];
 
-export default function ConditionBar({ conditions, selectedIds, baselineId, onChange, onBaselineChange }: Props) {
+export default function ConditionBar({ conditions, selectedIds, baselineId, onChange }: Props) {
   const colorMap = useMemo(() => {
     const map: Record<string, string> = {};
     conditions.forEach((c, idx) => (map[c.id] = palette[idx % palette.length]));
@@ -45,32 +45,28 @@ export default function ConditionBar({ conditions, selectedIds, baselineId, onCh
     <div className="flex flex-wrap items-center gap-2">
       <div className="text-xs text-gray-500">工况</div>
       {conditions.map(cond => (
-        <div
+        <button
           key={cond.id}
-          className={`inline-flex items-center gap-1 rounded-full border px-1 py-1 text-xs transition-colors ${
+          onClick={() => toggle(cond.id)}
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${
             selectedIds.includes(cond.id)
-              ? 'bg-white border-gray-300 text-gray-800'
-              : 'bg-gray-50 border-gray-200 text-gray-500'
+              ? 'bg-white border-gray-300 text-gray-800 shadow-sm'
+              : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
           }`}
           title={cond.parameters?.map(p => `${p.name}:${p.value}${p.unit ? p.unit : ''}`).join(' · ')}
+          type="button"
         >
-          <button
-            onClick={() => toggle(cond.id)}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full hover:bg-gray-100"
-            type="button"
-          >
+          <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colorMap[cond.id] }}></span>
             {cond.name}
-          </button>
-          <button
-            type="button"
-            aria-label="设为基准"
-            className={`inline-flex items-center rounded px-1 py-0.5 text-[10px] border ${
-              baselineId === cond.id ? 'border-blue-300 text-blue-600 bg-blue-50' : 'border-gray-200 text-gray-500 hover:bg-gray-100'
-            }`}
-            onClick={() => onBaselineChange(cond.id)}
-          >基准</button>
-        </div>
+          </span>
+          {baselineId === cond.id && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] text-blue-600">
+              <i className="ri-flag-2-line"></i>
+              基准
+            </span>
+          )}
+        </button>
       ))}
 
       <span className="mx-1 text-gray-300">|</span>

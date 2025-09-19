@@ -22,6 +22,7 @@ Use TypeScript for all modules and export React components as `PascalCase` funct
 - **Performance**: Memoize expensive calculations, virtualize long lists, and lazy-load heavy modules via dynamic imports when appropriate. Monitor bundle changes with `next build` if adding third-party libraries.
 - **Data contracts**: Type incoming data with explicit interfaces in module-level `types.ts`. Keep mock data in `docs/` synchronized; update both the contract and documentation when fields change.
 - **Linting**: After every code change, run `npm run lint` (or the relevant lint task) and address all issues immediately—do not suppress or ignore rules unless the team agrees to adjust the configuration.
+- **Design traceability**: When implementing or altering UI, capture the intent and key decisions in the relevant doc under `docs/` (e.g., product briefs、UX 规格). A PR should link to the updated document so reviewers understand context.
 
 ## Testing Guidelines
 No automated test harness ships with the repository yet; add coverage alongside features using React Testing Library or Playwright as appropriate. Place component tests in a co-located `__tests__/ComponentName.test.tsx` folder and favor descriptive test names such as `renders dashboard KPIs`. When adding integration tests, ensure they run headless so they can be wired into CI later.

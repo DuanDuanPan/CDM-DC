@@ -26,6 +26,13 @@ export interface SimulationCondition {
   }>;
 }
 
+export interface SimulationFileVariantPreview {
+  curveData?: Array<{ x: number; y: number }[]>;
+  meshInfo?: { nodes: number; elements: number; previewImage: string };
+  documentSummary?: string;
+  reportSections?: Array<{ title: string; excerpt: string }>;
+}
+
 export interface SimulationFile {
   id: string;
   name: string;
@@ -53,6 +60,10 @@ export interface SimulationFile {
     testLinks?: string[];
   };
   conditions?: SimulationCondition[];
+  conditionVariants?: Record<string, SimulationFileVariantPreview>;
+  activeConditionId?: string;
+  activeConditionName?: string;
+  compareKey?: string;
 }
 
 export interface SimulationFolder {

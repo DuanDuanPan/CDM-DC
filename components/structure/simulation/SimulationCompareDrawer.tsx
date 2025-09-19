@@ -38,7 +38,19 @@ const renderCompareContent = (
         const selectedIds = opts?.selectedConditionIds ?? conditions.map(c => c.id);
         const baselineId = opts?.baselineId;
         const curveMode = opts?.curveMode || 'overlay';
-        const [haveImage] = [items.some(it => /\.(png|jpg|jpeg|bmp|gif|webp|svg)$/i.test(it.name))];
+        const normalizedItems = items.map(item => {
+          if (item.activeConditionId) {
+            const variant = item.conditionVariants?.[item.activeConditionId];
+            if (variant) {
+              return {
+                ...item,
+                preview: { ...variant }
+              };
+            }
+          }
+          return item;
+        });
+        const [haveImage] = [normalizedItems.some(it => /\.(png|jpg|jpeg|bmp|gif|webp|svg)$/i.test(it.name))];
         const [view, setView] = [
           (typeof window !== 'undefined' && (window as any).__sim_view_result__) || 'curve',
           (v: 'curve' | 'image') => { if (typeof window !== 'undefined') (window as any).__sim_view_result__ = v; }
@@ -116,15 +128,15 @@ const renderCompareContent = (
             <div className="flex-1 min-h-0 flex flex-col gap-3">
               {view === 'image' && haveImage ? (
                 <div className="flex-1 min-h-[220px] rounded-lg bg-slate-50">
-                  <ImageComparePanel files={items} mode={imageMode as any} />
+                  <ImageComparePanel files={normalizedItems} mode={imageMode as any} />
                 </div>
               ) : (
                 <>
                   <div className="max-h-36 overflow-auto">
-                    <KpiMatrix files={items} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} />
+                    <KpiMatrix files={normalizedItems} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} />
                   </div>
                   <div className="flex-1 min-h-[220px] rounded-lg bg-white">
-                    <CurveComparePanel files={items} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} mode={curveMode} alignMode={alignMode as any} yNormMode={yNormMode as any} fillHeight />
+                    <CurveComparePanel files={normalizedItems} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} mode={curveMode} alignMode={alignMode as any} yNormMode={yNormMode as any} fillHeight />
                   </div>
                 </>
               )}
@@ -342,16 +354,19 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
       {/* Body */}
       <div className={`flex-1 overflow-hidden transition-opacity duration-200 ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <div className="px-4 pb-3">
-          <div className="flex space-x-2 overflow-x-auto">
-            {items.map(item => (
-              <div key={item.id} className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-700 flex items-center space-x-2">
-                <span className="truncate max-w-[140px]">{item.name}</span>
-                <button className="text-blue-500 hover:text-blue-700" onClick={() => onRemove(item.id)}>
-                  <i className="ri-close-line"></i>
-                </button>
-              </div>
-            ))}
-          </div>
+        <div className="flex space-x-2 overflow-x-auto">
+          {items.map(item => (
+            <div key={item.compareKey ?? item.id} className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-700 flex items-center space-x-2">
+              <span className="truncate max-w-[140px]">
+                {item.name}
+                {item.activeConditionName && <span className="ml-1 text-[10px] text-blue-500">· {item.activeConditionName}</span>}
+              </span>
+              <button className="text-blue-500 hover:text-blue-700" onClick={() => onRemove(item.compareKey ?? item.id)}>
+                <i className="ri-close-line"></i>
+              </button>
+            </div>
+          ))}
+        </div>
         </div>
         <div className="flex-1 min-h-0 border-t border-gray-100 bg-gray-50">
           <div className={`${(!isMaximized && items.length === 0) ? 'h-auto' : 'h-full'} flex flex-col overflow-hidden border border-dashed border-gray-300 rounded-lg mx-4 my-2 p-3 bg-white`}>

@@ -97,21 +97,28 @@ function explorerReducer(state: ExplorerState, action: ExplorerAction): Explorer
       };
     case 'RESET_PAGE':
       return { ...state, page: 1 };
-    case 'ADD_COMPARE':
-      if (state.compareQueue.some(item => item.id === action.payload.id)) return state;
+    case 'ADD_COMPARE': {
+      const compareKey = action.payload.compareKey ?? (action.payload.activeConditionId ? `${action.payload.id}::${action.payload.activeConditionId}` : action.payload.id);
+      if (state.compareQueue.some(item => (item.compareKey ?? (item.activeConditionId ? `${item.id}::${item.activeConditionId}` : item.id)) === compareKey)) {
+        return state;
+      }
       if (state.compareQueue.length >= 6) return state;
       return {
         ...state,
-        compareQueue: [...state.compareQueue, action.payload],
+        compareQueue: [...state.compareQueue, { ...action.payload, compareKey }],
         lastCompareEvent: {
           type: 'file',
-          id: action.payload.id,
+          id: compareKey,
           label: action.payload.name,
           timestamp: Date.now()
         }
       };
+    }
     case 'REMOVE_COMPARE':
-      return { ...state, compareQueue: state.compareQueue.filter(item => item.id !== action.payload) };
+      return {
+        ...state,
+        compareQueue: state.compareQueue.filter(item => (item.compareKey ?? (item.activeConditionId ? `${item.id}::${item.activeConditionId}` : item.id)) !== action.payload)
+      };
     case 'CLEAR_COMPARE':
       return { ...state, compareQueue: [], lastCompareEvent: null };
     case 'REGISTER_COMPARE_EVENT':
