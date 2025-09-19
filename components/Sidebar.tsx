@@ -15,7 +15,7 @@ export default function Sidebar({ activeModule, onModuleChange }: SidebarProps) 
     { id: 'dashboard', label: '仪表盘', icon: 'ri-dashboard-3-line' },
     { id: 'explorer', label: '数据探索器', icon: 'ri-search-2-line' },
     { id: 'structure', label: '产品结构(XBOM)', icon: 'ri-node-tree' },
-    { id: 'compare', label: '对比中心', icon: 'ri-compare-line' },
+    { id: 'compare', label: '对比中心', icon: 'ri-slideshow-line' },
     { id: 'upload', label: '上传管理器', icon: 'ri-upload-cloud-2-line' },
     { id: 'completion', label: '成套性管理', icon: 'ri-checkbox-multiple-line' },
     { id: 'graph', label: '关系图谱', icon: 'ri-share-circle-line' },

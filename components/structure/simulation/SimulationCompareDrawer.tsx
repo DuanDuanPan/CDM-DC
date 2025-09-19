@@ -1,5 +1,10 @@
-import { useEffect, useState } from 'react';
-import { SimulationFile } from './types';
+import { useEffect, useMemo, useState } from 'react';
+import { SimulationFile, SimulationCondition } from './types';
+import ConditionBar from './ConditionBar';
+import KpiMatrix from './KpiMatrix';
+import CurveComparePanel from './CurveComparePanel';
+import ImageComparePanel from './ImageComparePanel';
+import GeometryComparePanel from './GeometryComparePanel';
 
 interface Props {
   items: SimulationFile[];
@@ -7,7 +12,18 @@ interface Props {
   onClear: () => void;
 }
 
-const renderCompareContent = (items: SimulationFile[]) => {
+const renderCompareContent = (
+  items: SimulationFile[],
+  opts?: {
+    conditions?: SimulationCondition[];
+    selectedConditionIds?: string[];
+    baselineId?: string;
+    onChangeSelected?: (ids: string[]) => void;
+    onChangeBaseline?: (id: string) => void;
+    curveMode?: 'overlay' | 'grid';
+    onChangeCurveMode?: (m: 'overlay' | 'grid') => void;
+  }
+) => {
   if (items.length === 0) {
     return <div className="text-sm text-gray-500">请选择文件加入对比。</div>;
   }
@@ -17,24 +33,107 @@ const renderCompareContent = (items: SimulationFile[]) => {
   if (types.size === 1) {
     const [type] = Array.from(types);
     switch (type) {
-      case 'result':
+      case 'result': {
+        const conditions = opts?.conditions ?? [];
+        const selectedIds = opts?.selectedConditionIds ?? conditions.map(c => c.id);
+        const baselineId = opts?.baselineId;
+        const curveMode = opts?.curveMode || 'overlay';
+        const [haveImage] = [items.some(it => /\.(png|jpg|jpeg|bmp|gif|webp|svg)$/i.test(it.name))];
+        const [view, setView] = [
+          (typeof window !== 'undefined' && (window as any).__sim_view_result__) || 'curve',
+          (v: 'curve' | 'image') => { if (typeof window !== 'undefined') (window as any).__sim_view_result__ = v; }
+        ] as const;
+        const [alignMode, setAlignMode] = [
+          (typeof window !== 'undefined' && (window as any).__sim_align_mode__) || 'original',
+          (v: 'original' | 'normalizedX') => { if (typeof window !== 'undefined') (window as any).__sim_align_mode__ = v; }
+        ] as const;
+        const [yNormMode, setYNormMode] = [
+          (typeof window !== 'undefined' && (window as any).__sim_ynorm_mode__) || 'none',
+          (v: 'none' | 'delta' | 'percent') => { if (typeof window !== 'undefined') (window as any).__sim_ynorm_mode__ = v; }
+        ] as const;
+        const [imageMode, setImageMode] = [
+          (typeof window !== 'undefined' && (window as any).__sim_image_mode__) || 'slider',
+          (v: 'side' | 'slider' | 'diff') => { if (typeof window !== 'undefined') (window as any).__sim_image_mode__ = v; }
+        ] as const;
         return (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-900">结果文件曲线对比</h4>
-            <div className="h-48 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center text-xs text-blue-600">
-              曲线叠加对比占位图（可接入图表组件）
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1 overflow-x-auto pr-2">
+                <ConditionBar
+                  conditions={conditions}
+                  selectedIds={selectedIds}
+                  baselineId={baselineId}
+                  onChange={ids => opts?.onChangeSelected?.(ids)}
+                  onBaselineChange={id => opts?.onChangeBaseline?.(id)}
+                />
+              </div>
+              <div className="text-xs text-gray-600 flex items-center gap-2 md:gap-3 flex-wrap justify-end">
+                {haveImage && (
+                  <>
+                    <span className="text-gray-500">对比视图</span>
+                    <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
+                      <button className={`px-2 py-1 ${view==='curve'?'bg-blue-50 text-blue-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setView('curve')}>曲线</button>
+                      <button className={`px-2 py-1 ${view==='image'?'bg-blue-50 text-blue-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setView('image')}>图像</button>
+                    </div>
+                  </>
+                )}
+                {view !== 'image' && (
+                  <>
+                    <span className="text-gray-400">|</span>
+                    <span className="text-gray-500">曲线模式</span>
+                    <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
+                      <button className={`px-2 py-1 ${curveMode==='overlay' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => opts?.onChangeCurveMode?.('overlay')}>叠加</button>
+                      <button className={`px-2 py-1 ${curveMode==='grid' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`} onClick={() => opts?.onChangeCurveMode?.('grid')}>小网格</button>
+                    </div>
+                    <span className="text-gray-400">|</span>
+                    <span className="text-gray-500">对齐</span>
+                    <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
+                      <button className={`px-2 py-1 ${alignMode==='original'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setAlignMode('original')}>原始X</button>
+                      <button className={`px-2 py-1 ${alignMode==='normalizedX'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setAlignMode('normalizedX')}>归一化X</button>
+                    </div>
+                    <span className="text-gray-400">|</span>
+                    <span className="text-gray-500">Y</span>
+                    <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
+                      <button className={`px-2 py-1 ${yNormMode==='none'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setYNormMode('none')}>原值</button>
+                      <button className={`px-2 py-1 ${yNormMode==='delta'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setYNormMode('delta')}>Δ基准</button>
+                      <button className={`px-2 py-1 ${yNormMode==='percent'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setYNormMode('percent')}>%基准</button>
+                    </div>
+                  </>
+                )}
+                {view === 'image' && haveImage && (
+                  <>
+                    <span className="text-gray-400">|</span>
+                    <span className="text-gray-500">图像模式</span>
+                    <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
+                      <button className={`px-2 py-1 ${imageMode==='side'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setImageMode('side')}>并排</button>
+                      <button className={`px-2 py-1 ${imageMode==='slider'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setImageMode('slider')}>滑块</button>
+                      <button className={`px-2 py-1 ${imageMode==='diff'?'bg-gray-50 text-gray-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setImageMode('diff')}>差异</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col gap-3">
+              {view === 'image' && haveImage ? (
+                <div className="flex-1 min-h-[220px] rounded-lg bg-slate-50">
+                  <ImageComparePanel files={items} mode={imageMode as any} />
+                </div>
+              ) : (
+                <>
+                  <div className="max-h-36 overflow-auto">
+                    <KpiMatrix files={items} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} />
+                  </div>
+                  <div className="flex-1 min-h-[220px] rounded-lg bg-white">
+                    <CurveComparePanel files={items} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} mode={curveMode} alignMode={alignMode as any} yNormMode={yNormMode as any} fillHeight />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );
+      }
       case 'geometry':
-        return (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-900">几何模型叠加对比</h4>
-            <div className="h-48 bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center text-xs text-purple-600">
-              3D 模型叠加对比占位图（可接入三维组件）
-            </div>
-          </div>
-        );
+        return <GeometryComparePanel files={items} />;
       case 'model':
         return (
           <div className="space-y-3">
@@ -64,6 +163,22 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
   const [isHighlighted, setIsHighlighted] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true); // 默认折叠
   const [isMaximized, setIsMaximized] = useState(false);
+  const [selectedConditionIds, setSelectedConditionIds] = useState<string[]>([]);
+  const [baselineConditionId, setBaselineConditionId] = useState<string | undefined>(undefined);
+  const [curveMode, setCurveMode] = useState<'overlay' | 'grid'>('overlay');
+
+  const allConditions = useMemo(() => {
+    const map = new Map<string, SimulationCondition>();
+    items.forEach(f => (f.conditions || []).forEach(c => { if (!map.has(c.id)) map.set(c.id, c); }));
+    return Array.from(map.values());
+  }, [items]);
+
+  useEffect(() => {
+    if (allConditions.length && selectedConditionIds.length === 0) {
+      setSelectedConditionIds(allConditions.map(c => c.id));
+      setBaselineConditionId(allConditions[0].id);
+    }
+  }, [allConditions, selectedConditionIds.length]);
 
   // 读取持久化状态
   useEffect(() => {
@@ -104,16 +219,26 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key.toLowerCase() === 'c') toggleCollapsed();
-      if (e.key.toLowerCase() === 'm') toggleMaximize();
-      if (e.key.toLowerCase() === 'e' && items.length >= 2) {
+      const k = e.key.toLowerCase();
+      if (k === 'c') {
+        // 折叠/展开（与最大化互斥）
+        setIsCollapsed(prev => {
+          if (!prev && isMaximized) setIsMaximized(false);
+          return !prev;
+        });
+      }
+      if (k === 'm') {
+        setIsCollapsed(false);
+        setIsMaximized(prev => !prev);
+      }
+      if (k === 'e' && items.length >= 2) {
         // 未来可触发导出
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') onClear();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [items.length]);
+  }, [items.length, onClear, isMaximized]);
 
   // 展开/最大化互斥逻辑
   const toggleCollapsed = () => {
@@ -130,12 +255,13 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
     }
   };
 
-  // 高度策略：折叠 44px；展开 320px；最大化 75vh
+  // 高度策略
+  // 折叠 44px；最大化 75vh；展开时：有内容固定 400px，无内容自适应（避免大面积留白）
   const containerHeightClass = isCollapsed
     ? 'h-11'
     : isMaximized
       ? 'h-[75vh]'
-      : 'h-[320px]';
+      : (items.length === 0 ? 'h-auto min-h-[140px]' : 'h-[400px]');
 
   const canExport = items.length >= 2;
 
@@ -180,7 +306,7 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2">
           {!isCollapsed && (
             <>
               <button
@@ -192,19 +318,21 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
                 <span className="hidden sm:inline text-xs">{isMaximized ? '退出' : '最大化'}</span>
               </button>
               <button
-                className="text-xs px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-100"
+                className="inline-flex items-center gap-1 text-[11px] sm:text-xs px-2 sm:px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-100"
                 onClick={onClear}
               >
-                清空
+                <i className="ri-eraser-line"></i>
+                <span className="hidden xs:inline">清空</span>
               </button>
               <button
-                className={`text-xs px-3 py-1.5 rounded-md border ${
+                className={`inline-flex items-center gap-1 text-[11px] sm:text-xs px-2 sm:px-3 py-1.5 rounded-md border ${
                   canExport ? 'border-blue-300 text-blue-600 hover:bg-blue-50' : 'border-gray-200 text-gray-400 cursor-not-allowed'
                 }`}
                 disabled={!canExport}
                 title={canExport ? '导出对比' : '至少选择 2 项可导出'}
               >
-                导出对比
+                <i className="ri-upload-2-line"></i>
+                <span className="hidden xs:inline">导出对比</span>
               </button>
             </>
           )}
@@ -226,9 +354,16 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
           </div>
         </div>
         <div className="flex-1 min-h-0 border-t border-gray-100 bg-gray-50">
-          <div className="h-full overflow-auto border border-dashed border-gray-300 rounded-lg m-4 p-4 bg-white">
-            {renderCompareContent(items)}
-            <div className="mt-2 text-xs text-gray-500">对比栏位于页面底部，可随时展开导出结果。</div>
+          <div className={`${(!isMaximized && items.length === 0) ? 'h-auto' : 'h-full'} flex flex-col overflow-hidden border border-dashed border-gray-300 rounded-lg mx-4 my-2 p-3 bg-white`}>
+            {renderCompareContent(items, {
+              conditions: allConditions,
+              selectedConditionIds,
+              baselineId: baselineConditionId,
+              onChangeSelected: setSelectedConditionIds,
+              onChangeBaseline: setBaselineConditionId,
+              curveMode,
+              onChangeCurveMode: setCurveMode,
+            })}
           </div>
         </div>
       </div>

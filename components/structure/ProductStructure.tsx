@@ -3980,7 +3980,7 @@ export default function ProductStructure() {
 
         {/* 内容区域 */}
         <div
-          className="flex-1 overflow-y-auto pr-1 pt-4 md:pt-6 pb-24 scroll-pt-20"
+          className="flex-1 overflow-y-auto pr-1 pt-4 md:pt-6 pb-0 scroll-pt-20"
           onScroll={(e) => setContentScrolled((e.currentTarget as HTMLDivElement).scrollTop > 0)}
         >
             {/* 次级工具条：在内容顶部形成层级分隔，可放筛选/导出等操作 */}
