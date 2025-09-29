@@ -1,0 +1,5 @@
+- 开发启动：`npm run dev` （0.0.0.0:3000 热更新）。
+- 生产校验：`npm run build`。
+- Lint 检查：`npm run lint`（Next.js + Tailwind 规则）。
+- 依赖安装：`npm install`（CI 使用 `npm ci`）。
+- 快速检索代码：`rg <pattern>`；查看结构 `ls`，系统为 Darwin。

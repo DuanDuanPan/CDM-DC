@@ -1,0 +1,15 @@
+{
+  "nodeId": "EBOM-ROOT/FAN/BLD-GRP/BLD-01",
+  "source": { "system": "SIMSYS", "updatedAt": "2025-09-28T02:12:00Z", "trust": "mid", "freshnessSec": 7200 },
+  "requirement": {
+    "coverage": 0.86,
+    "items": [
+      { "id": "REQ-ENG-001", "title": "推力目标", "status": "open" },
+      { "id": "REQ-STR-017", "title": "叶片一阶频带避让", "status": "risk" },
+      { "id": "REQ-MFG-004", "title": "表面粗糙度上限", "status": "done" }
+    ]
+  },
+  "simulation": { "modelVer": "CFD-MOD-889@v2.3", "cases": 12, "lastRunAt": "2025-09-27T15:02:00Z", "hotIssues": 2, "queueLen": 3 },
+  "test": { "plan": 5, "done": 3, "blockers": 1, "last": "合格", "anomalies": [{"type":"泄漏", "count":1}] },
+  "links": { "detailUrl": "https://sim.example.com/models/CFD-MOD-889" }
+}

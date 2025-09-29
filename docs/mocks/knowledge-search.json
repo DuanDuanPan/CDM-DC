@@ -1,0 +1,43 @@
+{
+  "queries": {
+    "燃油泵": [
+      {
+        "id": "KS-001",
+        "type": "experience",
+        "title": "燃油泵换型后的空化风险评估",
+        "snippet": "针对 FPP-160 新型号在高海拔条件下出现的空化噪声，调整旁通孔间隙并优化入口滤网。",
+        "tags": ["燃油系统", "空化", "适航"],
+        "score": 0.92,
+        "updatedAt": "2025-09-10",
+        "owner": "动力附件组",
+        "link": "https://mock.cdm/knowledge/fuelpump/risk",
+        "highlights": ["FPP-160", "空化噪声"],
+        "recommendation": "在 EBOM 节点中提示需同步更新试验验证计划。"
+      },
+      {
+        "id": "KS-002",
+        "type": "standard",
+        "title": "附件燃油泵台架试验规范 REV-B",
+        "snippet": "涵盖台架压力循环、泄漏、效率与 NVH 测试工况，要求 96 小时连续工况稳定运行。",
+        "tags": ["试验规范", "REV-B"],
+        "score": 0.84,
+        "updatedAt": "2025-08-22",
+        "owner": "试验中心",
+        "link": "https://mock.cdm/docs/fuelpump/test-standard"
+      }
+    ],
+    "风扇叶片": [
+      {
+        "id": "KS-101",
+        "type": "review",
+        "title": "风扇叶片材料变更评审纪要",
+        "snippet": "评审结论：通过；需补充低温冲击试验。相关风险项 2 项，责任人 结构设计组。",
+        "tags": ["评审", "材料变更"],
+        "score": 0.88,
+        "updatedAt": "2025-09-05",
+        "meeting": "2025-Q3 风扇子系统评审",
+        "link": "https://mock.cdm/review/fan-blade/material-change"
+      }
+    ]
+  }
+}

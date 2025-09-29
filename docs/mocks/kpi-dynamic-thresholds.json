@@ -1,0 +1,70 @@
+{
+  "rules": [
+    {
+      "id": "HLT-001-stage-s2",
+      "kpiId": "HLT-001",
+      "label": "S2 详细设计阶段",
+      "type": "stage",
+      "source": "Mock-BFF",
+      "window": "30d",
+      "stage": "S2",
+      "bounds": { "low": 72, "high": 88 },
+      "parameters": {
+        "milestone": "设计冻结",
+        "baseline": "EBOM-BL-B",
+        "owner": "系统工程"
+      },
+      "explanation": "根据详细设计阶段目标阈值自动收敛，结合最新基线成熟度评估得出区间 72-88 分。",
+      "lastEvaluatedAt": "2025-09-28T09:30:00Z"
+    },
+    {
+      "id": "DEV-CPL-001-percentile-12w",
+      "kpiId": "DEV-CPL-001",
+      "label": "近12周完成度分位线",
+      "type": "percentile",
+      "source": "Mock-BFF",
+      "window": "12w",
+      "bounds": { "low": 68, "high": 91 },
+      "parameters": {
+        "percentileLow": 0.15,
+        "percentileHigh": 0.75,
+        "sampleSize": 36
+      },
+      "samples": [
+        { "t": "2025-07-07", "v": 62 },
+        { "t": "2025-07-21", "v": 65 },
+        { "t": "2025-08-04", "v": 70 },
+        { "t": "2025-08-18", "v": 74 },
+        { "t": "2025-09-01", "v": 80 },
+        { "t": "2025-09-15", "v": 88 }
+      ],
+      "explanation": "以近12周滚动进度序列计算 15%/75% 分位线，对应黄色/绿色阈值。",
+      "lastEvaluatedAt": "2025-09-28T08:50:00Z"
+    },
+    {
+      "id": "BL-CHG-001-mu-sigma-7d",
+      "kpiId": "BL-CHG-001",
+      "label": "近7天 µ±σ 动态阈值",
+      "type": "mu_sigma",
+      "source": "Mock-BFF",
+      "window": "7d",
+      "bounds": { "low": 12, "high": 28 },
+      "parameters": {
+        "mean": 20,
+        "sigma": 8,
+        "sampleSize": 168,
+        "samplingFrequency": "hourly"
+      },
+      "samples": [
+        { "t": "2025-09-22T00:00:00Z", "v": 18 },
+        { "t": "2025-09-23T00:00:00Z", "v": 24 },
+        { "t": "2025-09-24T00:00:00Z", "v": 19 },
+        { "t": "2025-09-25T00:00:00Z", "v": 21 },
+        { "t": "2025-09-26T00:00:00Z", "v": 27 },
+        { "t": "2025-09-27T00:00:00Z", "v": 22 }
+      ],
+      "explanation": "对近168 个小时内的变更数求 µ±1σ，作为绿色/黄色边界；红色边界为 µ+2σ。",
+      "lastEvaluatedAt": "2025-09-28T07:05:00Z"
+    }
+  ]
+}

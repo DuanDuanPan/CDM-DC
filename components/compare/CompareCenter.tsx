@@ -1,7 +1,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { EBOM_BASELINES } from '../structure/ebom/data';
+import type { EbomTreeNode } from '../structure/ebom/types';
+import EbomMiniTreeDiff from './EbomMiniTreeDiff';
+import { useRef } from 'react';
+import { exportDomToPng } from '../structure/ebom/exportUtils';
+import { useEbomCompareState } from '../structure/ebom/useEbomCompareState';
 
 interface CompareItem {
   id: number;
@@ -45,7 +51,8 @@ export default function CompareCenter() {
     { id: 'scheme', name: '方案对比', icon: 'ri-git-branch-line', desc: '不同设计方案的对比分析' },
     { id: 'condition', name: '工况对比', icon: 'ri-dashboard-line', desc: '不同工作条件下的性能对比' },
     { id: 'test-sim', name: '试验/仿真对比', icon: 'ri-test-tube-line', desc: '试验数据与仿真结果对比' },
-    { id: 'design-req', name: '设计/需求对比', icon: 'ri-file-list-2-line', desc: '设计指标与需求规范对比' }
+    { id: 'design-req', name: '设计/需求对比', icon: 'ri-file-list-2-line', desc: '设计指标与需求规范对比' },
+    { id: 'ebom', name: 'EBOM基线对比', icon: 'ri-node-tree', desc: '两条设计BOM基线的结构差异' }
   ];
 
   const dataTypes = [
@@ -90,6 +97,95 @@ export default function CompareCenter() {
       case 'requirement': return 'ri-file-list-2-line';
       default: return 'ri-file-3d-line';
     }
+  };
+
+  // ——— EBOM 基线对比逻辑（简版，与 EBOM 面板一致）
+  const [compareState, setCompareState] = useEbomCompareState();
+  const [activeDiffId, setActiveDiffId] = useState<string | null>(null);
+  const leftId = compareState.leftBaseline;
+  const rightId = compareState.rightBaseline;
+  const changeFilter = compareState.filter;
+  const depth = compareState.depth;
+  const [linkNotified, setLinkNotified] = useState<string | null>(null);
+  const miniRef = useRef<HTMLDivElement | null>(null);
+  const leftBL = useMemo(() => EBOM_BASELINES.find(b => b.id === leftId)!, [leftId]);
+  const rightBL = useMemo(() => EBOM_BASELINES.find(b => b.id === rightId)!, [rightId]);
+  const flatten = (root: EbomTreeNode): Array<{ id: string; node: EbomTreeNode; path: string[] }> => {
+    const out: Array<{ id: string; node: EbomTreeNode; path: string[] }> = [];
+    const walk = (n: EbomTreeNode, path: string[]) => { out.push({ id: n.id, node: n, path }); (n.children ?? []).forEach(c => walk(c, [...path, c.name])); };
+    walk(root, [root.name]);
+    return out;
+  };
+  const ebomChanges = useMemo(() => {
+    const A = flatten(leftBL.root), B = flatten(rightBL.root);
+    const aMap = new Map(A.map(x => [x.node.id, x]));
+    const bMap = new Map(B.map(x => [x.node.id, x]));
+    const ch: Array<{type:'added'|'removed'|'modified'; id:string; pn:string; name:string; fields?:string[]; path:string}> = [];
+    for (const [id, a] of aMap) {
+      const b = bMap.get(id);
+      if (!b) ch.push({ type:'removed', id, pn:a.node.partNumber, name:a.node.name, path: a.path.join(' / ') });
+      else {
+        const f: string[] = [];
+        if ((a.node.qty ?? 1) !== (b.node.qty ?? 1)) f.push(`数量 ${a.node.qty ?? 1}→${b.node.qty ?? 1}`);
+        if (a.node.revision !== b.node.revision) f.push(`版本 ${a.node.revision}→${b.node.revision}`);
+        if (f.length) ch.push({ type:'modified', id, pn:a.node.partNumber, name:a.node.name, fields:f, path: a.path.join(' / ') });
+      }
+    }
+    for (const [id, b] of bMap) { if (!aMap.has(id)) ch.push({ type:'added', id, pn:b.node.partNumber, name:b.node.name, path: b.path.join(' / ') }); }
+    return ch;
+  }, [leftBL, rightBL]);
+
+  const filteredChanges = useMemo(() => changeFilter === 'all' ? ebomChanges : ebomChanges.filter(c => c.type === changeFilter), [ebomChanges, changeFilter]);
+
+  useEffect(() => {
+    if (activeDiffId && !filteredChanges.some((c) => c.id === activeDiffId)) {
+      setActiveDiffId(null);
+    }
+  }, [filteredChanges, activeDiffId]);
+
+  const exportCsv = () => {
+    const rows = [['变更','部件号','名称','字段','路径'], ...filteredChanges.map(c => [c.type, c.pn, c.name, (c.fields?.join('；') || ''), c.path])];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'EBOM-基线对比.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const filterLabels: Record<'all' | 'added' | 'removed' | 'modified', string> = {
+    all: '全部差异',
+    added: '仅新增',
+    removed: '仅移除',
+    modified: '仅修改',
+  };
+
+  const handleExportMiniPng = () => {
+    if (!miniRef.current) return;
+    const now = new Date();
+    const depthLabel = depth === 'all' ? '全部层级' : `≤${depth} 层`;
+    exportDomToPng(miniRef.current, 'EBOM-并排视图.png', {
+      header: {
+        title: 'EBOM 并排差异视图',
+        subtitle: `${leftBL.label} vs ${rightBL.label}`,
+        meta: [
+          { label: '导出时间', value: now.toLocaleString() },
+          { label: '左基线', value: leftBL.label },
+          { label: '右基线', value: rightBL.label },
+          { label: '差异筛选', value: filterLabels[changeFilter] },
+          { label: '深度', value: depthLabel },
+        ],
+      },
+      padding: 32,
+    });
+  };
+
+  const deepLinkToEbom = (nodeId: string) => {
+    try {
+      window.localStorage.setItem('ebomDeepLink', JSON.stringify({ module: 'structure', bomType: 'design', nodeId }));
+      setLinkNotified(nodeId);
+      setTimeout(() => setLinkNotified(null), 2000);
+    } catch {}
   };
 
   return (
@@ -188,6 +284,101 @@ export default function CompareCenter() {
 
       {/* 对比视图内容 */}
       <div className="flex-1 overflow-hidden">
+        {compareMode === 'ebom' && (
+          <div className="p-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-sm text-gray-600">左基线</label>
+              <select value={leftId} onChange={(e)=>setCompareState({ leftBaseline: e.target.value })} className="rounded border border-gray-300 bg-white px-2 py-1 text-sm">
+                {EBOM_BASELINES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+              </select>
+              <span className="text-gray-400">对比</span>
+              <label className="text-sm text-gray-600">右基线</label>
+              <select value={rightId} onChange={(e)=>setCompareState({ rightBaseline: e.target.value })} className="rounded border border-gray-300 bg-white px-2 py-1 text-sm">
+                {EBOM_BASELINES.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+              </select>
+              <span className="text-gray-400">筛选</span>
+              <select value={changeFilter} onChange={(e)=>setCompareState({ filter: e.target.value as any })} className="rounded border border-gray-300 bg-white px-2 py-1 text-sm">
+                <option value="all">全部</option>
+                <option value="added">仅新增</option>
+                <option value="removed">仅移除</option>
+                <option value="modified">仅修改</option>
+              </select>
+              <button type="button" onClick={exportCsv} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:border-blue-300 hover:text-blue-600">
+                <i className="ri-download-2-line mr-1"/>导出CSV
+              </button>
+              <button type="button" onClick={handleExportMiniPng} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:border-emerald-300 hover:text-emerald-600">
+                <i className="ri-image-2-line mr-1"/>导出并排PNG
+              </button>
+            </div>
+            {linkNotified && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                已写入定位指令，切换到“产品结构→设计BOM”即可定位到节点：{linkNotified}
+              </div>
+            )}
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700"><i className="ri-add-line"/>新增 {ebomChanges.filter(c=>c.type==='added').length}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-rose-700"><i className="ri-subtract-line"/>移除 {ebomChanges.filter(c=>c.type==='removed').length}</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-amber-700"><i className="ri-edit-line"/>修改 {ebomChanges.filter(c=>c.type==='modified').length}</span>
+              </div>
+              <div className="mt-3 overflow-hidden rounded-lg border border-gray-100">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-gray-600">变更</th>
+                      <th className="px-3 py-2 text-left text-gray-600">部件号</th>
+                      <th className="px-3 py-2 text-left text-gray-600">名称</th>
+                      <th className="px-3 py-2 text-left text-gray-600">字段</th>
+                      <th className="px-3 py-2 text-left text-gray-600">路径</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {filteredChanges.length === 0 && (
+                      <tr><td colSpan={4} className="px-3 py-6 text-center text-gray-500">无差异</td></tr>
+                    )}
+                    {filteredChanges.map(c => {
+                      const isActive = activeDiffId === c.id;
+                      return (
+                      <tr
+                        key={c.id}
+                        className={`cursor-pointer ${isActive ? 'bg-blue-50/60' : 'hover:bg-slate-50/60'}`}
+                        onMouseEnter={() => setActiveDiffId(c.id)}
+                        onFocus={() => setActiveDiffId(c.id)}
+                        onMouseLeave={() => setActiveDiffId(null)}
+                        onBlur={() => setActiveDiffId(null)}
+                        onClick={() => deepLinkToEbom(c.id)}
+                        title="点击写入定位指令到产品结构"
+                      >
+                        <td className="px-3 py-2">
+                          {c.type==='added' && <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">新增</span>}
+                          {c.type==='removed' && <span className="rounded bg-rose-50 px-2 py-0.5 text-xs text-rose-700">移除</span>}
+                          {c.type==='modified' && <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">修改</span>}
+                        </td>
+                        <td className="px-3 py-2">{c.pn}</td>
+                        <td className="px-3 py-2">{c.name}</td>
+                        <td className="px-3 py-2 text-xs text-gray-600">{c.fields?.join('；') ?? '—'}</td>
+                        <td className="px-3 py-2 text-xs text-gray-500">{c.path}</td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 并排迷你树 */}
+            <div ref={miniRef}>
+              <EbomMiniTreeDiff
+                leftRoot={leftBL.root}
+                rightRoot={rightBL.root}
+                depth={depth}
+                onDepthChange={(nextDepth) => setCompareState({ depth: nextDepth })}
+                activeId={activeDiffId}
+                onActiveIdChange={setActiveDiffId}
+              />
+            </div>
+          </div>
+        )}
         {activeTab === 'parameter' && (
           <div className="p-6">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

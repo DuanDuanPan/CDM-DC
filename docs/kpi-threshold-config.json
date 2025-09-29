@@ -1,0 +1,38 @@
+{
+  "presets": {
+    "default": { "label": "默认", "weights": { "dev": 0.25, "sim": 0.25, "test": 0.25, "risk": 0.25 } },
+    "chief": { "label": "总师", "weights": { "dev": 0.20, "sim": 0.30, "test": 0.30, "risk": 0.20 } }
+  },
+  "healthFactors": {
+    "dev": { "kpiId": "DEV-CPL-001", "label": "研发完成度" },
+    "sim": { "kpiId": "SIM-COV-001", "label": "仿真覆盖率" },
+    "test": { "kpiId": "TST-COV-001", "label": "试验覆盖率" },
+    "risk": { "kpiId": "RSK-CLS-001", "label": "风险关闭率" }
+  },
+  "thresholds": {
+    "HLT-001": {
+      "default": { "low": 60, "high": 80, "rule": "mu_sigma" },
+      "chief": { "low": 70, "high": 85, "rule": "mu_sigma" }
+    },
+    "DEV-CPL-001": {
+      "default": { "low": 70, "high": 90, "rule": "R<70,Y<90,G>=90" },
+      "chief": { "low": 80, "high": 92, "rule": "R<80,Y<92,G>=92" }
+    },
+    "SIM-COV-001": {
+      "default": { "low": 60, "high": 85, "rule": "R<60,Y<85,G>=85" },
+      "chief": { "low": 70, "high": 90, "rule": "R<70,Y<90,G>=90" }
+    },
+    "TST-COV-001": {
+      "default": { "low": 60, "high": 80, "rule": "R<60,Y<80,G>=80" },
+      "chief": { "low": 70, "high": 88, "rule": "R<70,Y<88,G>=88" }
+    },
+    "RSK-CLS-001": {
+      "default": { "low": 70, "high": 90, "rule": "R<70,Y<90,G>=90" },
+      "chief": { "low": 75, "high": 92, "rule": "R<75,Y<92,G>=92" }
+    },
+    "BL-CHG-001": {
+      "default": { "low": 0, "high": 40, "rule": "值越低越好" },
+      "chief": { "low": 0, "high": 30, "rule": "值越低越好" }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "nodeId": "EBOM-ROOT/ACC/PUMP",
+  "source": { "system": "REQSYS", "updatedAt": "2025-09-28T00:40:00Z", "trust": "mid", "freshnessSec": 10800 },
+  "requirement": { "coverage": 0.9, "items": [ { "id": "REQ-FLOW-011", "title": "流量-压差包线覆盖", "status": "done" } ] },
+  "simulation": { "modelVer": "PUMP-MAP-77@v1.2", "cases": 9, "lastRunAt": "2025-09-27T10:00:00Z", "queueLen": 2 },
+  "test": { "plan": 2, "done": 1, "blockers": 0, "last": "合格", "anomalies": [] },
+  "links": { "detailUrl": "https://req.example.com/items/REQ-FLOW-011" }
+}

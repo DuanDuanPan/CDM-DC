@@ -1,0 +1,14 @@
+{
+  "nodeId": "EBOM-ROOT/FAN/DISC",
+  "source": { "system": "SIMSYS", "updatedAt": "2025-09-28T03:20:00Z", "trust": "mid", "freshnessSec": 7200 },
+  "requirement": {
+    "coverage": 0.78,
+    "items": [
+      { "id": "REQ-STR-101", "title": "盘腹应力裕度≥15%", "status": "open" },
+      { "id": "REQ-MAT-022", "title": "材料等级与热处理符合性", "status": "done" }
+    ]
+  },
+  "simulation": { "modelVer": "FEA-DISK-510@v1.6", "cases": 8, "lastRunAt": "2025-09-27T11:02:00Z", "hotIssues": 1, "queueLen": 1 },
+  "test": { "plan": 3, "done": 1, "blockers": 1, "last": "进行中", "anomalies": [{"type":"振动", "count":1}] },
+  "links": { "detailUrl": "https://sim.example.com/models/FEA-DISK-510" }
+}

@@ -1,0 +1,63 @@
+{
+  "items": [
+    {
+      "id": "EXP-001",
+      "type": "experience",
+      "title": "风扇叶片前缘磨耗案例",
+      "snippet": "沙尘环境导致前缘提前磨耗，需在维护窗口前增加检查频次并调整防护方案。",
+      "tags": ["风扇", "磨耗"],
+      "link": "https://kb/exp/1",
+      "updatedAt": "2025-08-01",
+      "issue": "沙尘工况 200 小时后前缘磨耗超限",
+      "impact": "推力下降 1.8%，引起振动告警",
+      "solution": "增加防护涂层厚度并缩短检修周期至 120 小时",
+      "stage": "验证阶段",
+      "owner": "结构可靠性组"
+    },
+    {
+      "id": "STD-002",
+      "type": "standard",
+      "title": "叶片材料与热处理规范 V3.1",
+      "snippet": "定义 Ti-6Al-4V 热处理曲线、批次追溯要求与硬度验收窗口。",
+      "tags": ["材料", "热处理"],
+      "link": "https://kb/std/2",
+      "updatedAt": "2025-07-12",
+      "docId": "STD-MAT-003",
+      "version": "V3.1",
+      "scope": "风扇与高压叶片",
+      "status": "mandatory",
+      "owner": "材料技术室"
+    },
+    {
+      "id": "REV-003",
+      "type": "review",
+      "title": "燃烧室内胆技术评审纪要",
+      "snippet": "评审结论：在完成补充冷却孔 CFD 验证后，同意条件放行批产。",
+      "tags": ["燃烧室", "评审"],
+      "link": "https://kb/review/3",
+      "updatedAt": "2025-08-22",
+      "meeting": "燃烧室模块 2025Q3 技术评审",
+      "date": "2025-08-20",
+      "conclusion": "需补充 2 项仿真与 1 项台架试验，验证通过后放行",
+      "owner": "系统工程部",
+      "actions": [
+        "仿真：补充冷却孔 CFD 模型，截止 9/15",
+        "试验：新增高温循环台架，截止 9/30"
+      ]
+    },
+    {
+      "id": "MAT-004",
+      "type": "material",
+      "title": "高压涡轮叶片晶粒度控制经验",
+      "snippet": "总结 DS Rene 104 单晶铸造的温控窗口及 HIP 工艺注意事项。",
+      "tags": ["材料", "HIP"],
+      "link": "https://kb/material/4",
+      "updatedAt": "2025-07-30",
+      "material": "DS Rene 104",
+      "spec": "AMS 5416",
+      "process": "定向凝固 + HIP + 退火",
+      "temperature": "浇注温度 1510℃±5℃",
+      "supplier": "航材一厂"
+    }
+  ]
+}

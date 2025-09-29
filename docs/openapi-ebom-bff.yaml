@@ -1,0 +1,290 @@
+openapi: 3.0.3
+info:
+  title: EBOM Cockpit & XBOM Summary BFF API
+  version: 0.1.0
+  description: Unified proxy/aggregation endpoints for EBOM cockpit and XBOM summary (Mock-first)
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/cockpit/kpis:
+    get:
+      summary: Query KPI time-series for a node
+      parameters:
+        - in: query
+          name: nodeId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: interval
+          schema: { type: string, enum: [1h,4h,1d] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kpis:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CockpitKpi'
+  /api/cockpit/baseline-health:
+    get:
+      summary: Baseline stability & maturity summary
+      parameters:
+        - in: query
+          name: nodeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaselineHealth'
+  /api/xbom/summary:
+    get:
+      summary: Requirement/Simulation/Test summaries for a node
+      parameters:
+        - in: query
+          name: nodeId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/XbomSummary'
+  /api/knowledge/related:
+    get:
+      summary: Knowledge cards related to a node
+      parameters:
+        - in: query
+          name: nodeId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 6 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeCard'
+  /api/audit/jump:
+    post:
+      summary: Record external-system jump audit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JumpSpec'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  id: { type: string }
+components:
+  schemas:
+    CockpitKpi:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        unit: { type: string }
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              t: { type: string, format: date-time }
+              v: { type: number }
+        threshold:
+          type: object
+          properties:
+            high: { type: number, nullable: true }
+            low: { type: number, nullable: true }
+            rule: { type: string, nullable: true }
+        freshnessSec: { type: integer }
+        trust: { type: string, enum: [high, mid, low] }
+    BaselineHealth:
+      type: object
+      properties:
+        changes:
+          type: object
+          properties:
+            count: { type: integer }
+            byType:
+              type: object
+              properties:
+                added: { type: integer }
+                removed: { type: integer }
+                modified: { type: integer }
+        approvals:
+          type: object
+          properties:
+            rate: { type: number }
+            pending: { type: integer }
+        openItems:
+          type: object
+          properties:
+            count: { type: integer }
+        maturityScore: { type: integer }
+    XbomSummary:
+      type: object
+      properties:
+        nodeId: { type: string }
+        source:
+          type: object
+          properties:
+            system: { type: string }
+            updatedAt: { type: string, format: date-time }
+            trust: { type: string, enum: [high, mid, low] }
+            freshnessSec: { type: integer }
+        requirement:
+          type: object
+          nullable: true
+          properties:
+            coverage: { type: number }
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  title: { type: string }
+                  status: { type: string, enum: [open, done, risk] }
+                  owner: { type: string, nullable: true }
+        simulation:
+          type: object
+          nullable: true
+          properties:
+            modelVer: { type: string }
+            cases: { type: integer }
+            lastRunAt: { type: string, format: date-time, nullable: true }
+            hotIssues: { type: integer, nullable: true }
+        test:
+          type: object
+          nullable: true
+          properties:
+            plan: { type: integer }
+            done: { type: integer }
+            blockers: { type: integer, nullable: true }
+            last: { type: string, nullable: true }
+        links:
+          type: object
+          nullable: true
+          properties:
+            detailUrl: { type: string }
+            context:
+              type: object
+              additionalProperties: { type: string }
+    KnowledgeCard:
+      oneOf:
+        - type: object
+          required: [id, type, title, snippet, tags, link, updatedAt, issue, impact, solution]
+          properties:
+            id: { type: string }
+            type: { const: experience }
+            title: { type: string }
+            snippet: { type: string }
+            tags:
+              type: array
+              items: { type: string }
+            link: { type: string }
+            updatedAt: { type: string }
+            issue: { type: string }
+            impact: { type: string }
+            solution: { type: string }
+            stage: { type: string }
+            owner: { type: string }
+        - type: object
+          required: [id, type, title, snippet, tags, link, updatedAt, docId, version, scope, status]
+          properties:
+            id: { type: string }
+            type: { const: standard }
+            title: { type: string }
+            snippet: { type: string }
+            tags:
+              type: array
+              items: { type: string }
+            link: { type: string }
+            updatedAt: { type: string }
+            docId: { type: string }
+            version: { type: string }
+            scope: { type: string }
+            status: { type: string, enum: [mandatory, recommended] }
+            owner: { type: string }
+        - type: object
+          required: [id, type, title, snippet, tags, link, updatedAt, meeting, date, conclusion]
+          properties:
+            id: { type: string }
+            type: { const: review }
+            title: { type: string }
+            snippet: { type: string }
+            tags:
+              type: array
+              items: { type: string }
+            link: { type: string }
+            updatedAt: { type: string }
+            meeting: { type: string }
+            date: { type: string }
+            conclusion: { type: string }
+            owner: { type: string }
+            actions:
+              type: array
+              items: { type: string }
+        - type: object
+          required: [id, type, title, snippet, tags, link, updatedAt, material, spec, process]
+          properties:
+            id: { type: string }
+            type: { const: material }
+            title: { type: string }
+            snippet: { type: string }
+            tags:
+              type: array
+              items: { type: string }
+            link: { type: string }
+            updatedAt: { type: string }
+            material: { type: string }
+            spec: { type: string }
+            process: { type: string }
+            temperature: { type: string }
+            supplier: { type: string }
+    JumpSpec:
+      type: object
+      properties:
+        from: { type: string, enum: [EBOM] }
+        nodeId: { type: string }
+        system: { type: string }
+        at: { type: string, format: date-time }
+        url: { type: string }
+        context:
+          type: object
+          additionalProperties: { type: string }

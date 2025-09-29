@@ -1,0 +1,4 @@
+- Next.js App Router 原型项目，聚焦设计BOM（E-BOM）驾驶舱与 XBOM 交互体验重构。
+- 前端以 TypeScript + React 19 + Next.js 15.3 搭建，TailwindCSS 负责样式，Recharts 负责图表，附带 three.js/model-viewer 集成点用于 3D。
+- 模块按业务域拆分在 components/ 下（dashboard、explorer、graph、structure、compare 等），App Router 页面在 app/ 下 orchestrate 各模块；docs/ 内含产品方案、数据契约和联调笔记。
+- 当前重点迭代 Sprint-3：动态阈值规则库、设计BOM 并排迷你树、对比中心虚拟滚动、知识检索对接。
