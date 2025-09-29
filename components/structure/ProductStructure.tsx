@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { requirementRoles, requirementRoleInsights } from './data/requirementRoles';
 import { requirementsByNode } from './data/requirements';
 import RequirementDetailPanel from './RequirementDetailPanel';
@@ -21,6 +21,8 @@ import SimulationCompareDrawer from './simulation/SimulationCompareDrawer';
 import { useSimulationExplorerState, TreeNodeReference } from './simulation/useSimulationExplorerState';
 import type { SimulationFile, SimulationFilters } from './simulation/types';
 import ProductDefinitionPanel from './definition/ProductDefinitionPanel';
+import EbomDetailPanel from './ebom/EbomDetailPanel';
+import { EBOM_BASELINES } from './ebom/data';
 
 interface BomNode {
   id: string;
@@ -1340,6 +1342,7 @@ export default function ProductStructure() {
     { id: 'component', name: '部件负责人', icon: 'ri-puzzle-line' }
   ];
   const [contentScrolled, setContentScrolled] = useState(false);
+  const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
   // 需求视图的全局筛选（与需求面板联动）
   const [requirementFilters, setRequirementFilters] = useState({
     keyword: '',
@@ -1582,9 +1585,83 @@ export default function ProductStructure() {
       ];
     }
 
+    // 设计BOM（E-BOM）树
+    if (selectedBomType === 'design') {
+      const current = EBOM_BASELINES[EBOM_BASELINES.length - 1]; // 使用最新基线作为浏览树
+      const convert = (n: any, level = 0): BomNode => ({
+        id: n.id,
+        name: `${n.name}`,
+        level,
+        bomType: 'design',
+        unitType: 'part',
+        nodeCategory: n.phantom ? 'phantom' : 'part',
+        children: (n.children || []).map((c: any) => convert(c, level + 1))
+      });
+      return [convert(current.root, 0)];
+    }
+
     // 默认返回空数组
     return [];
   };
+
+  const handleBomTypeChange = useCallback((bomTypeId: string) => {
+    setSelectedBomType(bomTypeId);
+    setSelectedNode(null);
+
+    if (bomTypeId === 'solution') {
+      setActiveTab('structure');
+      setExpandedNodes(['001']);
+      setSelectedRole('system');
+    } else if (bomTypeId === 'requirement') {
+      setActiveTab('requirement');
+      setExpandedNodes(['REQ-ENGINE-001']);
+      setSelectedRequirementRole('system-team');
+    } else if (bomTypeId === 'design') {
+      setActiveTab('structure');
+      setExpandedNodes(['EBOM-ROOT']);
+      setSelectedNode('EBOM-ROOT');
+    } else {
+      setActiveTab('structure');
+      setExpandedNodes([]);
+    }
+  }, []);
+
+  // 读取对比中心写入的 EBOM 定位指令（一次性消费）
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('ebomDeepLink');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && obj.module === 'structure' && obj.bomType === 'design' && typeof obj.nodeId === 'string') {
+          setPendingDeepLink(obj.nodeId);
+          if (selectedBomType !== 'design') {
+            handleBomTypeChange('design');
+          }
+        }
+      }
+    } catch {}
+  }, [selectedBomType, handleBomTypeChange]);
+
+  // 在设计BOM视图就绪后定位到目标节点并展开父层
+  useEffect(() => {
+    if (selectedBomType !== 'design' || !pendingDeepLink) return;
+    const root = EBOM_BASELINES[EBOM_BASELINES.length - 1].root as any;
+    const pathIds: string[] = [];
+    const walk = (n: any, path: string[]): boolean => {
+      if (n.id === pendingDeepLink) { pathIds.push(...path); return true; }
+      for (const c of (n.children || [])) {
+        if (walk(c, [...path, c.id])) return true;
+      }
+      return false;
+    };
+    walk(root, [root.id]);
+    if (pathIds.length) {
+      setExpandedNodes(prev => Array.from(new Set([...prev, ...pathIds])));
+      setSelectedNode(pendingDeepLink);
+    }
+    try { window.localStorage.removeItem('ebomDeepLink'); } catch {}
+    setPendingDeepLink(null);
+  }, [selectedBomType, pendingDeepLink]);
 
   const bomStructureData = getBomStructureData();
   const currentRequirementNode = selectedNode ? findNodeById(selectedNode, bomStructureData) : null;
@@ -1670,24 +1747,6 @@ export default function ProductStructure() {
       case 'test_data': return { label: '试验数据', icon: 'ri-test-tube-line', color: 'text-orange-600 bg-orange-100' };
       case 'image': return { label: '图片', icon: 'ri-image-line', color: 'text-pink-600 bg-pink-100' };
       default: return { label: '其他', icon: 'ri-file-line', color: 'text-gray-600 bg-gray-100' };
-    }
-  };
-
-  const handleBomTypeChange = (bomTypeId: string) => {
-    setSelectedBomType(bomTypeId);
-    setSelectedNode(null);
-
-    if (bomTypeId === 'solution') {
-      setActiveTab('structure');
-      setExpandedNodes(['001']);
-      setSelectedRole('system');
-    } else if (bomTypeId === 'requirement') {
-      setActiveTab('requirement');
-      setExpandedNodes(['REQ-ENGINE-001']);
-      setSelectedRequirementRole('system-team');
-    } else {
-      setActiveTab('structure');
-      setExpandedNodes([]);
     }
   };
 
@@ -3548,321 +3607,6 @@ export default function ProductStructure() {
     );
   };
 
-  const renderBasicInfo = () => {
-    if (!selectedNode) {
-      return (
-        <div className="p-6 text-center text-gray-500">
-          <i className="ri-information-line text-4xl mb-2"></i>
-          <p>请选择节点查看基本信息</p>
-        </div>
-      );
-    }
-    
-    const currentNode = findNodeById(selectedNode, bomStructureData);
-    if (!currentNode) return null;
-
-    const getNodeTypeLabel = (node: BomNode) => {
-      if (node.bomType === 'solution') {
-        if (node.schemeType) return '设计方案';
-        switch (node.nodeCategory) {
-          case 'assembly': return '总成';
-          case 'system': return '系统';
-          case 'subsystem': return '分系统';
-          default: return '节点';
-        }
-      }
-      if (node.bomType === 'requirement') {
-        switch (node.unitType) {
-          case 'product_functional_unit': return '产品级功能单元';
-          case 'subsystem_functional_unit': return '子系统级功能单元';
-          case 'component_assembly': return '成附件';
-          case 'important_part': return '重要零件';
-          default: return '需求节点';
-        }
-      }
-      return '节点';
-    };
-
-    const getDetailedNodeInfo = (node: BomNode) => {
-      const basicInfo = [
-        { label: '节点ID', value: node.id, type: 'text' },
-        { label: '节点名称', value: node.name, type: 'text' },
-        { label: '节点类型', value: getNodeTypeLabel(node), type: 'badge' },
-        { label: '层级', value: `第${node.level + 1}层`, type: 'text' },
-      ];
-
-      if (node.bomType === 'solution') {
-        basicInfo.push(
-          { label: 'BOM类型', value: '方案BOM', type: 'badge' },
-          { label: '单元类型', value: node.unitType || '未定义', type: 'text' }
-        );
-        if (node.schemeType) {
-          basicInfo.push({ label: '方案类型', value: `方案${node.schemeType}`, type: 'scheme' });
-        }
-      }
-
-      if (node.bomType === 'requirement') {
-        basicInfo.push(
-          { label: 'BOM类型', value: '需求BOM', type: 'badge' },
-          { label: '功能单元类型', value: node.unitType || '未定义', type: 'text' }
-        );
-      }
-
-      return basicInfo;
-    };
-
-    const statusInfo = [
-      { label: '开发状态', value: '设计完成', status: 'completed' },
-      { label: '验证状态', value: '仿真验证中', status: 'in-progress' },
-      { label: '成熟度等级', value: 'TRL-6', status: 'normal' },
-      { label: '风险等级', value: '中等', status: 'warning' },
-      { label: '完成度', value: '85%', status: 'good' },
-      { label: '质量状态', value: '合格', status: 'completed' }
-    ];
-
-    const relationInfo = [
-      { label: '子节点数量', value: currentNode.children?.length || 0 },
-      { label: '需求条目', value: requirementsByNode[selectedNode]?.length || 0 },
-      { label: '设计文档', value: 15, clickable: true },
-      { label: '仿真模型', value: 3, clickable: true },
-      { label: '试验数据', value: 8, clickable: true },
-      { label: '变更记录', value: 12, clickable: true },
-      { label: '审查记录', value: 6, clickable: true },
-      { label: '问题清单', value: 2, clickable: true }
-    ];
-
-    const responsibilityInfo = [
-      { label: '设计负责人', value: '张工程师', contact: 'zhang@company.com' },
-      { label: '技术负责人', value: '李博士', contact: 'li@company.com' },
-      { label: '质量负责人', value: '王总师', contact: 'wang@company.com' },
-      { label: '项目经理', value: '赵经理', contact: 'zhao@company.com' },
-      { label: '创建时间', value: '2024-01-01 10:00' },
-      { label: '更新时间', value: '2024-01-15 14:30' },
-      { label: '最后审查', value: '2024-01-10 16:00' },
-      { label: '下次审查', value: '2024-01-25 09:00' }
-    ];
-
-    const technicalInfo = [
-      { label: '设计基准', value: 'V2.0', type: 'version' },
-      { label: '标准规范', value: 'GB/T 1234-2020', type: 'standard' },
-      { label: '材料等级', value: 'Grade A', type: 'grade' },
-      { label: '制造工艺', value: '精密铸造', type: 'process' },
-      { label: '检验标准', value: 'QC/T 5678', type: 'standard' },
-      { label: '服役环境', value: '高温高压', type: 'environment' }
-    ];
-
-    const versionHistory = [
-      { version: 'V2.1', date: '2024-01-15', author: '张工程师', changes: '性能优化' },
-      { version: 'V2.0', date: '2024-01-10', author: '李博士', changes: '设计基准' },
-      { version: 'V1.5', date: '2024-01-05', author: '王总师', changes: '初始设计' }
-    ];
-
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'completed': return 'bg-green-100 text-green-700';
-        case 'in-progress': return 'bg-blue-100 text-blue-700';
-        case 'warning': return 'bg-yellow-100 text-yellow-700';
-        case 'good': return 'bg-green-100 text-green-700';
-        default: return 'bg-gray-100 text-gray-700';
-      }
-    };
-
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">基本信息</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {currentNode.name} - {currentNode.id}
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <button className="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-              导出信息
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              编辑信息
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {/* 第一行：基本属性和状态信息 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 基本属性 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="ri-information-line text-blue-600"></i>
-                <h4 className="font-medium text-gray-900">基本属性</h4>
-              </div>
-              <div className="space-y-3">
-                {getDetailedNodeInfo(currentNode).map((info, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{info.label}</span>
-                    {info.type === 'badge' ? (
-                      <span className={`text-sm px-2 py-1 rounded-full ${getNodeColor(currentNode)}`}>
-                        {info.value}
-                      </span>
-                    ) : info.type === 'scheme' ? (
-                      <span className={`text-sm px-2 py-1 rounded-full ${
-                        currentNode.schemeType === 'A' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {info.value}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-900">{info.value}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 状态信息 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="ri-dashboard-line text-green-600"></i>
-                <h4 className="font-medium text-gray-900">状态信息</h4>
-              </div>
-              <div className="space-y-3">
-                {statusInfo.map((status, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{status.label}</span>
-                    <span className={`text-sm px-2 py-1 rounded-full ${getStatusColor(status.status)}`}>
-                      {status.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* 第二行：关联信息和责任人信息 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 关联信息 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="ri-links-line text-purple-600"></i>
-                <h4 className="font-medium text-gray-900">关联信息</h4>
-              </div>
-              <div className="space-y-3">
-                {relationInfo.map((relation, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{relation.label}</span>
-                    {relation.clickable ? (
-                      <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                        {relation.value} 个
-                      </button>
-                    ) : (
-                      <span className="text-sm text-gray-900">{relation.value}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 责任人信息 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="ri-team-line text-orange-600"></i>
-                <h4 className="font-medium text-gray-900">责任人信息</h4>
-              </div>
-              <div className="space-y-3">
-                {responsibilityInfo.map((resp, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{resp.label}</span>
-                    <div className="text-right">
-                      <span className="text-sm text-gray-900">{resp.value}</span>
-                      {resp.contact && (
-                        <div className="text-xs text-gray-500">{resp.contact}</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* 第三行：技术参数和版本历史 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 技术参数 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <i className="ri-settings-3-line text-indigo-600"></i>
-                <h4 className="font-medium text-gray-900">技术参数</h4>
-              </div>
-              <div className="space-y-3">
-                {technicalInfo.map((tech, index) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">{tech.label}</span>
-                    <span className={`text-sm px-2 py-1 rounded ${
-                      tech.type === 'version' ? 'bg-blue-100 text-blue-700' :
-                      tech.type === 'standard' ? 'bg-green-100 text-green-700' :
-                      tech.type === 'grade' ? 'bg-purple-100 text-purple-700' :
-                      tech.type === 'process' ? 'bg-orange-100 text-orange-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {tech.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 版本历史 */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <i className="ri-history-line text-cyan-600"></i>
-                  <h4 className="font-medium text-gray-900">版本历史</h4>
-                </div>
-                <button className="text-sm text-blue-600 hover:text-blue-800">
-                  查看全部
-                </button>
-              </div>
-              <div className="space-y-3">
-                {versionHistory.map((version, index) => (
-                  <div key={index} className="border-l-2 border-blue-200 pl-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-900">{version.version}</span>
-                      <span className="text-xs text-gray-500">{version.date}</span>
-                    </div>
-                    <div className="text-sm text-gray-600">{version.changes}</div>
-                    <div className="text-xs text-gray-500">by {version.author}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* 第四行：附加信息 */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <i className="ri-more-line text-gray-600"></i>
-              <h4 className="font-medium text-gray-900">附加信息</h4>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-lg font-semibold text-blue-600">98.5%</div>
-                <div className="text-sm text-gray-600">数据完整性</div>
-              </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-lg font-semibold text-green-600">5</div>
-                <div className="text-sm text-gray-600">关联系统</div>
-              </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-lg font-semibold text-orange-600">12</div>
-                <div className="text-sm text-gray-600">待办事项</div>
-              </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <div className="text-lg font-semibold text-purple-600">A</div>
-                <div className="text-sm text-gray-600">质量等级</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="h-full bg-slate-50">
@@ -4085,7 +3829,7 @@ export default function ProductStructure() {
                   />
                 </div>
               )}
-              {activeTab === 'structure' && (
+              {activeTab === 'structure' && selectedBomType !== 'design' && (
                 <div
                   className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500"
                   role="tabpanel"
@@ -4094,6 +3838,16 @@ export default function ProductStructure() {
                 >
                   <i className="ri-node-tree text-4xl mb-2"></i>
                   <p>结构视图内容</p>
+                </div>
+              )}
+
+              {activeTab === 'structure' && selectedBomType === 'design' && (
+                <div role="tabpanel" id="panel-structure" aria-labelledby="tab-structure" className="space-y-6">
+                  <EbomDetailPanel
+                    selectedNodeId={selectedNode}
+                    onNavigateBomType={(t) => handleBomTypeChange(t)}
+                    onSelectNode={(id)=>handleNodeClick(id)}
+                  />
                 </div>
               )}
 
