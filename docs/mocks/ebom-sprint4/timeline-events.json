@@ -1,0 +1,22 @@
+{
+  "nodeId": "EBOM-ROOT/HPT/BLADE",
+  "updatedAt": "2025-09-29T17:20:00Z",
+  "milestones": [
+    { "id": "MS-001", "title": "V38 基线冻结", "timestamp": "2025-08-18", "type": "baseline", "owner": "总师办" },
+    { "id": "MS-002", "title": "V40 设计冻结提交", "timestamp": "2025-09-25", "type": "baseline", "owner": "结构组" }
+  ],
+  "events": [
+    { "id": "EV-101", "title": "仿真案例 SIM-205 启动", "timestamp": "2025-09-22T09:00:00Z", "type": "simulation", "status": "running", "owner": "李青", "description": "转速 115% 瞬态仿真重跑" },
+    { "id": "EV-102", "title": "试验 TST-118 阻塞", "timestamp": "2025-09-24T14:10:00Z", "type": "test", "status": "blocked", "owner": "赵辰", "description": "夹具损坏需更换" },
+    { "id": "EV-103", "title": "知识卡 REV-005 发布", "timestamp": "2025-09-26T11:30:00Z", "type": "knowledge", "status": "info", "owner": "系统工程部", "description": "HPT 叶片冻结评审纪要" },
+    { "id": "EV-104", "title": "风险 RSK-210 更新", "timestamp": "2025-09-27T09:45:00Z", "type": "risk", "status": "warning", "owner": "陈刚", "description": "新增缓解措施待试验验证" },
+    { "id": "EV-105", "title": "Baseline V41 提交草案", "timestamp": "2025-09-29T16:00:00Z", "type": "baseline", "status": "draft", "owner": "结构组", "description": "包含叶片壁厚调整" }
+  ],
+  "categories": {
+    "baseline": { "label": "基线", "color": "#6366f1" },
+    "simulation": { "label": "仿真", "color": "#0ea5e9" },
+    "test": { "label": "试验", "color": "#f97316" },
+    "risk": { "label": "风险", "color": "#ef4444" },
+    "knowledge": { "label": "知识", "color": "#22c55e" }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "updatedAt": "2025-09-29T19:00:00Z",
+  "metrics": {
+    "total": 12,
+    "inProgress": 4,
+    "completed": 6,
+    "atRisk": 2,
+    "nextMilestone": "2025-10-05 设计冻结评审"
+  },
+  "columns": [
+    {
+      "id": "planning",
+      "title": "计划中",
+      "items": [
+        {
+          "id": "RV-014",
+          "title": "HPT 叶片材料切换评审",
+          "stage": "设计冻结",
+          "owner": "刘洋",
+          "scheduledAt": "2025-10-08",
+          "risk": "amber",
+          "tags": ["材料", "供应链"],
+          "nextAction": "确认供应商批次测试数据"
+        }
+      ]
+    },
+    {
+      "id": "inProgress",
+      "title": "进行中",
+      "items": [
+        {
+          "id": "RV-011",
+          "title": "HPT 叶片结构冻结评审",
+          "stage": "设计冻结",
+          "owner": "王雪",
+          "scheduledAt": "2025-10-02",
+          "risk": "red",
+          "tags": ["结构", "仿真"],
+          "nextAction": "补充转速 115% 仿真报告",
+          "checklist": [
+            { "label": "仿真分析结论", "done": true },
+            { "label": "材料批次追溯", "done": false },
+            { "label": "风险关闭计划", "done": false }
+          ]
+        },
+        {
+          "id": "RV-012",
+          "title": "试验资源协调会",
+          "stage": "试制",
+          "owner": "赵辰",
+          "scheduledAt": "2025-10-03",
+          "risk": "amber",
+          "tags": ["试验", "资源"],
+          "nextAction": "更新阻塞试验的恢复时间"
+        }
+      ]
+    },
+    {
+      "id": "decision",
+      "title": "待决策",
+      "items": [
+        {
+          "id": "RV-008",
+          "title": "高温涂层工艺复审",
+          "stage": "试制",
+          "owner": "张敏",
+          "scheduledAt": "2025-09-30",
+          "risk": "green",
+          "tags": ["工艺", "制造"],
+          "nextAction": "等待总师确认"
+        }
+      ]
+    },
+    {
+      "id": "closed",
+      "title": "已完成",
+      "items": [
+        {
+          "id": "RV-005",
+          "title": "材料认证闭环评审",
+          "stage": "试制",
+          "owner": "张敏",
+          "scheduledAt": "2025-09-20",
+          "risk": "green",
+          "tags": ["材料"],
+          "decision": "通过"
+        },
+        {
+          "id": "RV-006",
+          "title": "叶片制造工艺固化会",
+          "stage": "试制",
+          "owner": "李娜",
+          "scheduledAt": "2025-09-22",
+          "risk": "green",
+          "tags": ["制造"],
+          "decision": "通过"
+        }
+      ]
+    }
+  ],
+  "list": [
+    {
+      "id": "RV-011",
+      "title": "HPT 叶片结构冻结评审",
+      "status": "inProgress",
+      "stage": "设计冻结",
+      "owner": "王雪",
+      "risk": "red",
+      "scheduledAt": "2025-10-02",
+      "participants": ["总师办", "结构组", "仿真中心"],
+      "attachments": ["agenda-rv011.pdf", "sim-report-v5.pdf"],
+      "remarks": "待补充试验覆盖率说明"
+    },
+    {
+      "id": "RV-014",
+      "title": "HPT 叶片材料切换评审",
+      "status": "planning",
+      "stage": "设计冻结",
+      "owner": "刘洋",
+      "risk": "amber",
+      "scheduledAt": "2025-10-08",
+      "participants": ["材料专家", "供应链"],
+      "attachments": [],
+      "remarks": "需提前发送预读材料"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "updatedAt": "2025-09-29T18:45:00Z",
+  "tree": [
+    {
+      "id": "stage",
+      "label": "研制阶段",
+      "children": [
+        {
+          "id": "stage.design",
+          "label": "设计冻结",
+          "items": ["EXP-001", "REV-005", "STD-010"]
+        },
+        {
+          "id": "stage.trial",
+          "label": "试制",
+          "items": ["EXP-004", "MAT-004", "STD-011"]
+        }
+      ]
+    },
+    {
+      "id": "domain",
+      "label": "领域分类",
+      "children": [
+        {
+          "id": "domain.structure",
+          "label": "结构设计",
+          "items": ["EXP-001", "EXP-004", "REV-005"]
+        },
+        {
+          "id": "domain.material",
+          "label": "材料与制造",
+          "items": ["MAT-004", "STD-002", "STD-010"]
+        },
+        {
+          "id": "domain.test",
+          "label": "试验验证",
+          "items": ["REV-003", "REV-005", "STD-011"]
+        }
+      ]
+    }
+  ],
+  "collections": [
+    {
+      "id": "chief-focus",
+      "label": "总师关注",
+      "items": ["EXP-001", "REV-005", "MAT-004"],
+      "description": "影响型号节点的关键经验与评审结论"
+    },
+    {
+      "id": "recent",
+      "label": "近30天新增",
+      "items": ["EXP-004", "STD-010", "STD-011"],
+      "description": "近30天新沉淀的知识卡"
+    }
+  ]
+}

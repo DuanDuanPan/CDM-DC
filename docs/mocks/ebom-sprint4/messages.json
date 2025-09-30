@@ -1,0 +1,78 @@
+{
+  "updatedAt": "2025-09-29T20:30:00Z",
+  "channels": ["页面提醒", "消息中心", "邮件"],
+  "buckets": [
+    {
+      "id": "critical",
+      "label": "告警",
+      "count": 2
+    },
+    {
+      "id": "task",
+      "label": "待办",
+      "count": 3
+    },
+    {
+      "id": "info",
+      "label": "通知",
+      "count": 4
+    }
+  ],
+  "messages": [
+    {
+      "id": "MSG-9001",
+      "type": "alert",
+      "level": "critical",
+      "title": "健康度低于 70%",
+      "body": "HPT 叶片节点健康度 68%，请尽快查看试验阻塞情况。",
+      "category": "cockpit",
+      "createdAt": "2025-09-29T20:00:00Z",
+      "status": "unread",
+      "actions": [{ "label": "打开驾驶舱", "target": "cockpit" }]
+    },
+    {
+      "id": "MSG-9002",
+      "type": "task",
+      "level": "warning",
+      "title": "补充仿真报告",
+      "body": "SIM-205 瞬态仿真结果需上传评审材料。",
+      "category": "simulation",
+      "createdAt": "2025-09-29T18:12:00Z",
+      "status": "unread",
+      "owner": "李青",
+      "dueAt": "2025-09-30T16:00:00Z"
+    },
+    {
+      "id": "MSG-9003",
+      "type": "info",
+      "level": "info",
+      "title": "REV-005 评审纪要已发布",
+      "body": "结构组上传了 HPT 叶片冻结评审纪要。",
+      "category": "knowledge",
+      "createdAt": "2025-09-29T17:00:00Z",
+      "status": "read"
+    },
+    {
+      "id": "MSG-9004",
+      "type": "task",
+      "level": "info",
+      "title": "确认材料批次数据",
+      "body": "请在 10-03 前确认材料批次追溯补录进度。",
+      "category": "material",
+      "createdAt": "2025-09-28T10:30:00Z",
+      "status": "unread",
+      "owner": "赵辰",
+      "dueAt": "2025-10-03T09:00:00Z"
+    },
+    {
+      "id": "MSG-9005",
+      "type": "alert",
+      "level": "warning",
+      "title": "试验资源冲突",
+      "body": "TST-118 与 TST-132 占用同台架，需要协调排期。",
+      "category": "test",
+      "createdAt": "2025-09-29T08:20:00Z",
+      "status": "read"
+    }
+  ]
+}

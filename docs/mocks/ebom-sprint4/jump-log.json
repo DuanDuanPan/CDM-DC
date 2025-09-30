@@ -1,0 +1,60 @@
+{
+  "nodeId": "HPT-BLADE-001",
+  "baseline": "v36",
+  "entries": [
+    {
+      "id": "jump-001",
+      "ts": "2025-10-19T09:30:00Z",
+      "system": "SIMSYS",
+      "target": "https://simsys.example.com/models/SIM-HPT-2025.09",
+      "actor": {
+        "type": "user",
+        "id": "li.mei",
+        "role": "仿真工程师"
+      },
+      "context": {
+        "from": "EBOM",
+        "nodeId": "HPT-BLADE-001",
+        "baseline": "v36",
+        "caseId": "SIM-CASE-8801"
+      },
+      "status": "success"
+    },
+    {
+      "id": "jump-002",
+      "ts": "2025-10-19T11:05:00Z",
+      "system": "REQSYS",
+      "target": "https://reqsys.example.com/detail/REQ-3204",
+      "actor": {
+        "type": "ui",
+        "id": "cockpit-auto",
+        "role": "系统"
+      },
+      "context": {
+        "from": "EBOM",
+        "nodeId": "HPT-BLADE-001",
+        "baseline": "v36",
+        "filters": "risk" 
+      },
+      "status": "auto"
+    },
+    {
+      "id": "jump-003",
+      "ts": "2025-10-19T15:42:00Z",
+      "system": "TESTSYS",
+      "target": "https://testsys.example.com/campaigns/TEST-7721",
+      "actor": {
+        "type": "user",
+        "id": "sun.jia",
+        "role": "试验工程师"
+      },
+      "context": {
+        "from": "EBOM",
+        "nodeId": "HPT-BLADE-001",
+        "baseline": "v36",
+        "story": "follow-up-blocker"
+      },
+      "status": "success"
+    }
+  ]
+}

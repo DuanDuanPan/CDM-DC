@@ -58,6 +58,65 @@
       "process": "定向凝固 + HIP + 退火",
       "temperature": "浇注温度 1510℃±5℃",
       "supplier": "航材一厂"
+    },
+    {
+      "id": "EXP-004",
+      "type": "experience",
+      "title": "高转速振动抑制经验",
+      "snippet": "通过叶尖阻尼片优化将 115% 转速下的振动幅值降低 35%。",
+      "tags": ["振动", "高压涡轮"],
+      "link": "https://kb/exp/4",
+      "updatedAt": "2025-09-18",
+      "issue": "高转速下出现一阶振动超限",
+      "impact": "影响健康度评分与风险闭环",
+      "solution": "增加叶尖阻尼片并调整配平重量",
+      "stage": "设计冻结",
+      "owner": "结构动力组"
+    },
+    {
+      "id": "REV-005",
+      "type": "review",
+      "title": "HPT 叶片冻结评审纪要",
+      "snippet": "给出 4 条必备整改项与 2 条观察项，要求 10-05 前完成验证。",
+      "tags": ["评审", "高压涡轮"],
+      "link": "https://kb/review/5",
+      "updatedAt": "2025-09-26",
+      "meeting": "HPT 叶片设计冻结评审",
+      "date": "2025-09-26",
+      "conclusion": "条件通过，需补充仿真与试验证据",
+      "owner": "系统工程部",
+      "actions": [
+        "跟踪仿真 SIM-205 结果",
+        "恢复试验 TST-118 并采集阻尼数据"
+      ]
+    },
+    {
+      "id": "STD-010",
+      "type": "standard",
+      "title": "HPT 叶片加工工艺规范 V1.2",
+      "snippet": "定义壁厚加工公差、修磨流程与关键检验点。",
+      "tags": ["工艺", "加工"],
+      "link": "https://kb/std/10",
+      "updatedAt": "2025-09-15",
+      "docId": "STD-MFG-210",
+      "version": "V1.2",
+      "scope": "高压叶片加工",
+      "status": "mandatory",
+      "owner": "制造工程部"
+    },
+    {
+      "id": "STD-011",
+      "type": "standard",
+      "title": "试验数据质量控制指引",
+      "snippet": "规范试验数据采集、标签和偏差处理流程。",
+      "tags": ["试验", "质量"],
+      "link": "https://kb/std/11",
+      "updatedAt": "2025-09-19",
+      "docId": "STD-TEST-045",
+      "version": "V0.9",
+      "scope": "台架与现场试验",
+      "status": "recommended",
+      "owner": "试验质量组"
     }
   ]
 }

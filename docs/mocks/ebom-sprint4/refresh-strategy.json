@@ -1,0 +1,79 @@
+{
+  "updatedAt": "2025-09-29T21:10:00Z",
+  "strategies": [
+    {
+      "id": "summary.requirement",
+      "label": "需求摘要",
+      "frequency": "每 2 小时",
+      "autoRefresh": true,
+      "nextRefreshAt": "2025-09-29T23:00:00Z",
+      "owner": "需求系统王雪",
+      "sla": "≤30 分钟",
+      "status": "healthy",
+      "channels": ["页面提醒", "消息中心"],
+      "notes": "使用 BFF 增量接口 /requirements/summary"
+    },
+    {
+      "id": "summary.simulation",
+      "label": "仿真摘要",
+      "frequency": "每 1 小时",
+      "autoRefresh": true,
+      "nextRefreshAt": "2025-09-29T22:30:00Z",
+      "owner": "仿真中心李青",
+      "sla": "≤15 分钟",
+      "status": "warning",
+      "channels": ["页面提醒"],
+      "notes": "SIM-205 重跑中，预计 09-30 恢复"
+    },
+    {
+      "id": "summary.test",
+      "label": "试验摘要",
+      "frequency": "手动",
+      "autoRefresh": false,
+      "nextRefreshAt": null,
+      "owner": "试验中心赵辰",
+      "sla": "≤4 小时",
+      "status": "blocked",
+      "channels": ["消息中心", "邮件"],
+      "notes": "高温离心台架停机维护"
+    }
+  ],
+  "reminderRules": [
+    {
+      "id": "rule.health-low",
+      "condition": "健康度 < 70%",
+      "level": "critical",
+      "channel": ["页面提醒", "消息中心"],
+      "owner": "总师办张博",
+      "cooldown": "2 小时",
+      "templates": [
+        "健康度跌破阈值 {value}% ，请检查需求/试验覆盖。"
+      ]
+    },
+    {
+      "id": "rule.sim-delay",
+      "condition": "仿真结果超过 SLA",
+      "level": "warning",
+      "channel": ["消息中心"],
+      "owner": "仿真中心李青",
+      "cooldown": "4 小时",
+      "templates": [
+        "仿真 {case} 超出 SLA {sla}，当前等待 {delay}。"
+      ]
+    }
+  ],
+  "previewAlerts": [
+    {
+      "id": "preview-health",
+      "level": "critical",
+      "title": "健康度低于阈值",
+      "message": "当前健康度 68% 低于阈值 70%，请尽快协调试验资源。"
+    },
+    {
+      "id": "preview-sim",
+      "level": "warning",
+      "title": "仿真结果延迟",
+      "message": "SIM-205 超出 SLA 15 分钟，已向仿真负责人发送提醒。"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "nodeId": "EBOM-ROOT/HPT/BLADE",
+  "baseline": "V40",
+  "updatedAt": "2025-09-29T18:12:00Z",
+  "factors": {
+    "high": 3,
+    "medium": 4,
+    "low": 5
+  },
+  "nodes": [
+    { "id": "part-blade", "label": "HPT 叶片", "type": "part", "impact": "high", "change": "+0.5mm 壁厚", "owner": "王雪" },
+    { "id": "req-115", "label": "REQ-115 振动限制", "type": "requirement", "impact": "high", "owner": "李青" },
+    { "id": "sim-205", "label": "SIM-205 瞬态仿真", "type": "simulation", "impact": "medium", "owner": "李青", "status": "running" },
+    { "id": "test-118", "label": "TST-118 高温离心", "type": "test", "impact": "high", "owner": "赵辰", "status": "blocked" },
+    { "id": "bom-supplier", "label": "供应商批次", "type": "supplier", "impact": "medium", "owner": "张敏" },
+    { "id": "doc-std", "label": "叶片制造标准", "type": "document", "impact": "low", "owner": "李娜" },
+    { "id": "risk-210", "label": "风险-210 振动超限", "type": "risk", "impact": "high", "owner": "陈刚", "status": "open" },
+    { "id": "process-heat", "label": "热处理工艺", "type": "process", "impact": "medium", "owner": "李娜" },
+    { "id": "req-133", "label": "REQ-133 材料追溯", "type": "requirement", "impact": "medium", "owner": "赵辰" },
+    { "id": "test-121", "label": "TST-121 材料认证", "type": "test", "impact": "low", "owner": "张敏", "status": "planned" }
+  ],
+  "edges": [
+    { "from": "part-blade", "to": "req-115", "type": "satisfy" },
+    { "from": "part-blade", "to": "risk-210", "type": "causes" },
+    { "from": "req-115", "to": "sim-205", "type": "verifiedBy" },
+    { "from": "req-115", "to": "test-118", "type": "verifiedBy" },
+    { "from": "part-blade", "to": "process-heat", "type": "implementedBy" },
+    { "from": "process-heat", "to": "test-118", "type": "feeds" },
+    { "from": "req-133", "to": "test-121", "type": "verifiedBy" },
+    { "from": "bom-supplier", "to": "req-133", "type": "contributes" },
+    { "from": "risk-210", "to": "sim-205", "type": "mitigatedBy" },
+    { "from": "risk-210", "to": "test-118", "type": "mitigatedBy" }
+  ],
+  "recommendations": [
+    "优先恢复 TST-118 试验以解除风险-210",
+    "检查供应商批次是否满足 REQ-133 要求",
+    "同步更新热处理工艺 SOP 并记录变更"
+  ]
+}

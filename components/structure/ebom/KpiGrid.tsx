@@ -2,6 +2,7 @@
 
 import type { CockpitKpi } from "./cockpitTypes";
 import { formatRuleType } from "./dynamicThresholds";
+import EmptyState from "@/components/common/EmptyState";
 
 function formatThresholdValue(value?: number): string {
   if (value === undefined) return "-";
@@ -69,7 +70,9 @@ function KpiCard({ k, defaultThresh, overrideThresh }: { k: CockpitKpi; defaultT
 }
 
 export default function KpiGrid({ kpis, defaultThresholds, overrides }: { kpis: CockpitKpi[]; defaultThresholds?: Record<string,{low?:number;high?:number}>; overrides?: Record<string,{low?:number;high?:number}> }) {
-  if (!kpis?.length) return null;
+  if (!kpis?.length) {
+    return <EmptyState dense title="暂无 KPI 指标" icon="ri-bar-chart-horizontal-line" description="等待数据刷新后自动展示。" />;
+  }
   return (
     <section className="grid gap-3 md:grid-cols-3">
       {kpis.map((k) => {

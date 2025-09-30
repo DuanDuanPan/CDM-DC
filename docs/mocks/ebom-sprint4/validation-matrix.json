@@ -1,0 +1,101 @@
+{
+  "nodeId": "EBOM-ROOT/HPT/BLADE",
+  "baseline": "V40",
+  "updatedAt": "2025-09-29T21:30:00Z",
+  "summary": {
+    "coverage": 0.82,
+    "requirements": 9,
+    "verified": 7,
+    "atRisk": 2,
+    "owners": ["结构组", "试验中心", "仿真团队"],
+    "window": "近30天"
+  },
+  "filters": {
+    "phases": ["概念验证", "设计冻结", "试制"],
+    "tags": ["高温", "叶片振动", "材料强度"],
+    "owners": ["王雪", "李青", "赵辰"]
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "HPT 叶片在 1350℃ 下结构完整性",
+      "phase": "设计冻结",
+      "owner": "王雪",
+      "priority": "P0",
+      "status": "covered",
+      "updatedAt": "2025-09-28T16:20:00Z"
+    },
+    {
+      "id": "REQ-002",
+      "title": "转速 115% 工况叶片振动包络",
+      "phase": "设计冻结",
+      "owner": "李青",
+      "priority": "P1",
+      "status": "partial",
+      "updatedAt": "2025-09-27T10:05:00Z"
+    },
+    {
+      "id": "REQ-003",
+      "title": "材料批次一致性与可追溯性",
+      "phase": "试制",
+      "owner": "赵辰",
+      "priority": "P1",
+      "status": "planned",
+      "updatedAt": "2025-09-25T08:42:00Z"
+    }
+  ],
+  "verifications": [
+    {
+      "id": "SIM-201",
+      "title": "CFD 高温稳态仿真",
+      "type": "simulation",
+      "status": "pass",
+      "owner": "李青",
+      "lastRunAt": "2025-09-28T05:30:00Z",
+      "coverage": 0.9
+    },
+    {
+      "id": "SIM-205",
+      "title": "转速超限瞬态仿真",
+      "type": "simulation",
+      "status": "running",
+      "owner": "李青",
+      "lastRunAt": "2025-09-29T11:05:00Z",
+      "coverage": 0.6
+    },
+    {
+      "id": "TST-118",
+      "title": "高温离心试验",
+      "type": "test",
+      "status": "blocked",
+      "owner": "赵辰",
+      "lastRunAt": "2025-09-24T14:10:00Z",
+      "coverage": 0.4
+    },
+    {
+      "id": "TST-121",
+      "title": "材料批次认证",
+      "type": "test",
+      "status": "planned",
+      "owner": "张敏",
+      "lastRunAt": null,
+      "coverage": 0.2
+    }
+  ],
+  "matrix": [
+    { "requirementId": "REQ-001", "verificationId": "SIM-201", "status": "pass", "evidence": "report-CFD-921" },
+    { "requirementId": "REQ-001", "verificationId": "SIM-205", "status": "partial", "evidence": "run-LOG-342" },
+    { "requirementId": "REQ-001", "verificationId": "TST-118", "status": "risk", "note": "试验阻塞-待更换固定夹具" },
+    { "requirementId": "REQ-002", "verificationId": "SIM-205", "status": "running", "note": "预计 2025-09-30 完成" },
+    { "requirementId": "REQ-002", "verificationId": "TST-118", "status": "risk", "note": "试验尚未恢复" },
+    { "requirementId": "REQ-003", "verificationId": "TST-121", "status": "planned" }
+  ],
+  "legend": {
+    "pass": { "label": "覆盖", "color": "#22c55e" },
+    "partial": { "label": "部分覆盖", "color": "#f97316" },
+    "running": { "label": "执行中", "color": "#0ea5e9" },
+    "risk": { "label": "存在风险", "color": "#ef4444" },
+    "planned": { "label": "计划中", "color": "#6366f1" },
+    "empty": { "label": "未关联", "color": "#e2e8f0" }
+  }
+}

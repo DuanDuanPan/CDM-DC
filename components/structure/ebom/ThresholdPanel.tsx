@@ -13,6 +13,7 @@ export default function ThresholdPanel({
   initialOverrides,
   defaultThresholds,
   presetLabel,
+  meta,
 }: {
   kpis: CockpitKpi[];
   open: boolean;
@@ -21,6 +22,7 @@ export default function ThresholdPanel({
   initialOverrides?: Overrides;
   defaultThresholds?: Record<string,{low?:number;high?:number}>;
   presetLabel?: string;
+  meta?: Record<string, { owner?: string; updatedAt?: string; allowOverride?: boolean; notes?: string }>;
 }) {
   const [ov, setOv] = useState<Overrides>(initialOverrides ?? {});
   useEffect(() => setOv(initialOverrides ?? {}), [initialOverrides, open]);
@@ -30,18 +32,47 @@ export default function ThresholdPanel({
   const rows = kpis.map((k) => {
     const cur = ov[k.id] ?? {};
     const def = (defaultThresholds?.[k.id]) ?? (k.threshold ?? {});
+    const info = meta?.[k.id];
+    const disabled = info?.allowOverride === false;
     return (
       <tr key={k.id} className="border-t">
         <td className="px-3 py-2 text-sm text-gray-700">{k.label}</td>
-        <td className="px-3 py-2 text-xs text-gray-500">默认低 {def.low ?? '-'} / 高 {def.high ?? '-'}</td>
-        <td className="px-3 py-2">
-          <input type="number" className="w-24 rounded border border-gray-300 px-2 py-1 text-sm" value={cur.low ?? ''} placeholder="覆盖低阈值" onChange={(e)=>setOv(v=>({ ...v, [k.id]: { ...v[k.id], low: e.target.value === '' ? undefined : Number(e.target.value) } }))} />
+        <td className="px-3 py-2 text-xs text-gray-500">
+          默认低 {def.low ?? '-'} / 高 {def.high ?? '-'}
+          {info?.notes && <div className="text-[11px] text-gray-400">{info.notes}</div>}
         </td>
         <td className="px-3 py-2">
-          <input type="number" className="w-24 rounded border border-gray-300 px-2 py-1 text-sm" value={cur.high ?? ''} placeholder="覆盖高阈值" onChange={(e)=>setOv(v=>({ ...v, [k.id]: { ...v[k.id], high: e.target.value === '' ? undefined : Number(e.target.value) } }))} />
+          <input
+            type="number"
+            className="w-24 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+            value={cur.low ?? ''}
+            placeholder="覆盖低阈值"
+            disabled={disabled}
+            onChange={(e)=>setOv(v=>({ ...v, [k.id]: { ...v[k.id], low: e.target.value === '' ? undefined : Number(e.target.value) } }))}
+          />
         </td>
         <td className="px-3 py-2">
-          <button className="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:border-blue-300" onClick={()=>setOv(v=>({ ...v, [k.id]: {} }))}>恢复默认</button>
+          <input
+            type="number"
+            className="w-24 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+            value={cur.high ?? ''}
+            placeholder="覆盖高阈值"
+            disabled={disabled}
+            onChange={(e)=>setOv(v=>({ ...v, [k.id]: { ...v[k.id], high: e.target.value === '' ? undefined : Number(e.target.value) } }))}
+          />
+        </td>
+        <td className="px-3 py-2">
+          <div className="flex flex-col gap-1 text-[11px] text-gray-500">
+            <span>责任：{info?.owner ?? '未指定'}</span>
+            <span>更新时间：{info?.updatedAt ? new Date(info.updatedAt).toLocaleString() : '—'}</span>
+            <button
+              className="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:border-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={disabled}
+              onClick={()=>setOv(v=>({ ...v, [k.id]: {} }))}
+            >
+              恢复默认
+            </button>
+          </div>
         </td>
       </tr>
     );

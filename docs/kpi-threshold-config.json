@@ -34,5 +34,29 @@
       "default": { "low": 0, "high": 40, "rule": "值越低越好" },
       "chief": { "low": 0, "high": 30, "rule": "值越低越好" }
     }
-  }
+  },
+  "thresholdMeta": {
+    "HLT-001": { "owner": "总师办张博", "updatedAt": "2025-09-28T08:00:00Z", "allowOverride": true, "notes": "下限 70% 触发红灯" },
+    "DEV-CPL-001": { "owner": "结构组王雪", "updatedAt": "2025-09-27T15:30:00Z", "allowOverride": true },
+    "SIM-COV-001": { "owner": "仿真中心李青", "updatedAt": "2025-09-27T09:10:00Z", "allowOverride": true },
+    "TST-COV-001": { "owner": "试验中心赵辰", "updatedAt": "2025-09-26T16:45:00Z", "allowOverride": false, "notes": "需试验主任审核" },
+    "RSK-CLS-001": { "owner": "质量部刘雨", "updatedAt": "2025-09-25T11:00:00Z", "allowOverride": true },
+    "BL-CHG-001": { "owner": "配置控制办陈楠", "updatedAt": "2025-09-25T10:20:00Z", "allowOverride": false }
+  },
+  "reminderTemplates": [
+    {
+      "id": "health-low",
+      "condition": "健康度 < 70%",
+      "level": "critical",
+      "channels": ["页面提醒", "消息中心"],
+      "suggestion": "联合结构/试验团队排查阻塞项"
+    },
+    {
+      "id": "sim-delay",
+      "condition": "仿真延迟 > SLA",
+      "level": "warning",
+      "channels": ["消息中心"],
+      "suggestion": "协调资源或调整优先级"
+    }
+  ]
 }

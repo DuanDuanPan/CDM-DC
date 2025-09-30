@@ -1,0 +1,106 @@
+{
+  "summary": {
+    "nodeId": "HPT-BLADE-001",
+    "source": {
+      "system": "REQSYS",
+      "updatedAt": "2025-10-19T22:15:00Z",
+      "trust": "high",
+      "freshnessSec": 3600
+    },
+    "requirement": {
+      "coverage": 0.78,
+      "items": [
+        { "id": "REQ-3210", "title": "高温性能边界验证", "status": "risk", "owner": "wang.lin" },
+        { "id": "REQ-3204", "title": "叶片冷却效率比对", "status": "open", "owner": "liu.yi" },
+        { "id": "REQ-3188", "title": "旋转疲劳预警参数", "status": "done", "owner": "he.xiang" }
+      ]
+    },
+    "simulation": {
+      "modelVer": "SIM-HPT-2025.09",
+      "cases": 24,
+      "lastRunAt": "2025-10-19T08:40:00Z",
+      "hotIssues": 2,
+      "queueLen": 4
+    },
+    "test": {
+      "plan": 18,
+      "done": 11,
+      "blockers": 2,
+      "last": "燃烧段热循环实验仍待确认",
+      "anomalies": [
+        { "type": "温度", "count": 3 },
+        { "type": "振动", "count": 1 }
+      ]
+    },
+    "links": {
+      "detailUrl": "https://reqsys.example.com/detail/REQ-3210",
+      "context": {
+        "from": "ebom-cockpit",
+        "baseline": "v36",
+        "partNumber": "HPT-BLADE-001"
+      }
+    }
+  },
+  "drawer": {
+    "requirement": {
+      "groups": [
+        {
+          "title": "性能指标",
+          "items": [
+            { "id": "REQ-3210", "description": "燃气温度 1150°C 条件下的流场稳定性" },
+            { "id": "REQ-3211", "description": "高周疲劳寿命 ≥ 2500 小时" }
+          ]
+        },
+        {
+          "title": "质量要求",
+          "items": [
+            { "id": "REQ-3204", "description": "冷却效率 ≥ 0.78" }
+          ]
+        }
+      ]
+    },
+    "simulation": {
+      "cases": [
+        {
+          "caseId": "SIM-CASE-8801",
+          "title": "不同主燃温度下的温度场",
+          "status": "complete",
+          "owner": "zhang.hao",
+          "metrics": [
+            { "name": "最高叶尖温度", "value": 1043, "unit": "℃" },
+            { "name": "平均压力比", "value": 1.26 }
+          ]
+        },
+        {
+          "caseId": "SIM-CASE-8809",
+          "title": "旋转振动与叶片应力响应",
+          "status": "running",
+          "owner": "yang.fei",
+          "metrics": [
+            { "name": "最大应力", "value": null, "unit": "MPa" }
+          ]
+        }
+      ]
+    },
+    "test": {
+      "executions": [
+        {
+          "testId": "TEST-7721",
+          "title": "热震循环试验",
+          "status": "blocked",
+          "eta": "2025-10-23",
+          "blockers": ["试验炉维护中"],
+          "owner": "sun.jia"
+        },
+        {
+          "testId": "TEST-7716",
+          "title": "转速极限试验",
+          "status": "done",
+          "completedAt": "2025-10-18",
+          "result": "通过",
+          "owner": "liu.qiang"
+        }
+      ]
+    }
+  }
+}

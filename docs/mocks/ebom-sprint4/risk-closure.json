@@ -1,0 +1,59 @@
+{
+  "updatedAt": "2025-09-29T20:05:00Z",
+  "summary": {
+    "open": 11,
+    "dueSoon": 3,
+    "overdue": 1,
+    "closedRate": 0.74,
+    "lastReview": "2025-09-27 14:00",
+    "owners": ["陈刚", "王雪", "李青"],
+    "channels": ["消息中心", "邮件", "现场看板"]
+  },
+  "heatmap": {
+    "rows": ["设计风险", "仿真风险", "试验风险", "制造风险"],
+    "cols": ["≤7天", "8-14天", "15-30天", ">30天"],
+    "values": [
+      [1, 1, 0, 0],
+      [0, 1, 1, 0],
+      [1, 0, 1, 1],
+      [0, 1, 2, 0]
+    ]
+  },
+  "risks": [
+    {
+      "id": "RSK-210",
+      "title": "叶片振动超限",
+      "owner": "陈刚",
+      "severity": "high",
+      "due": "2025-10-04",
+      "status": "open",
+      "actions": ["等待试验恢复", "补充仿真验证"],
+      "lastUpdated": "2025-09-29T09:00:00Z"
+    },
+    {
+      "id": "RSK-214",
+      "title": "材料批次追溯不足",
+      "owner": "赵辰",
+      "severity": "medium",
+      "due": "2025-10-12",
+      "status": "inProgress",
+      "actions": ["补录供应商资料"],
+      "lastUpdated": "2025-09-28T12:30:00Z"
+    },
+    {
+      "id": "RSK-205",
+      "title": "涂层剥落风险",
+      "owner": "李娜",
+      "severity": "medium",
+      "due": "2025-10-01",
+      "status": "overdue",
+      "actions": ["等待材料评审结论"],
+      "lastUpdated": "2025-09-27T16:40:00Z"
+    }
+  ],
+  "contacts": {
+    "primary": "总师办：张博",
+    "quality": "质量部：刘雨",
+    "safety": "安全办：韩松"
+  }
+}
