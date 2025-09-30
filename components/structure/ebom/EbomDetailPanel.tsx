@@ -7,26 +7,60 @@ import EbomModelViewer from './EbomModelViewer';
 import EbomDocList from './EbomDocList';
 import CockpitBar from './CockpitBar';
 import KpiGrid from './KpiGrid';
+import KpiMultiView from './KpiMultiView';
+import VersionStabilityGauge from './VersionStabilityGauge';
 import BaselineHealthCard from './BaselineHealthCard';
 import XbomSummaryCards from './XbomSummaryCards';
+import XbomSummaryDrawer, { SummarySection } from './XbomSummaryDrawer';
+import JumpLogPanel from './JumpLogPanel';
+import ValidationMatrixDrawer from './ValidationMatrixDrawer';
+import KnowledgeCatalogPanel from './KnowledgeCatalogPanel';
 import KnowledgeRail from './KnowledgeRail';
+import TimelinePanel from './TimelinePanel';
+import MessageCenterDrawer from './MessageCenterDrawer';
+import RefreshStrategyDrawer from './RefreshStrategyDrawer';
+import PageAlerts from './PageAlerts';
 import { exportDomToPng, exportDomToPdf } from './exportUtils';
 import ThresholdPanel from './ThresholdPanel';
 import PresetManager from './PresetManager';
 import DynamicThresholdDrawer from './DynamicThresholdDrawer';
 import EbomMiniTreePreview from './EbomMiniTreePreview';
 import { computeHealth } from './healthUtils';
-import type { CockpitKpi, BaselineHealth as BaselineHealthType, XbomSummary as XbomSummaryType, KnowledgeCard as KnowledgeCardType } from './cockpitTypes';
+import type {
+  CockpitKpi,
+  BaselineHealth as BaselineHealthType,
+  XbomSummary as XbomSummaryType,
+  KnowledgeCard as KnowledgeCardType,
+  KpiMultiViewData,
+  XbomSummaryDrawerData,
+  JumpLogData,
+  ValidationMatrixData,
+  RefreshStrategyData,
+  MessageCenterData,
+  KnowledgeCatalogData,
+  TimelineData,
+  PageAlert,
+} from './cockpitTypes';
 // FE-only mock imports
-import kpisMock from '../../../docs/mocks/kpis.json';
+import {
+  baselineHealth as baselineHealthMock,
+  jumpLog as jumpLogMock,
+  knowledgeCatalog as knowledgeCatalogMock,
+  knowledgeRelated as knowledgeMock,
+  kpiMultiView as kpiMultiViewMock,
+  kpis as kpisMock,
+  messages as messagesMock,
+  refreshStrategy as refreshStrategyMock,
+  summaryCombLiner as summaryCombLinerMock,
+  summaryFanBlade as summaryFanBladeMock,
+  summaryFanDisk as summaryFanDiskMock,
+  summaryFuelPump as summaryFuelPumpMock,
+  summaryHptBlade as summaryHptBladeMock,
+  timelineEvents as timelineEventsMock,
+  validationMatrix as validationMatrixMock,
+  xbomSummaryDetail as xbomSummaryDetailMock,
+} from '../../../docs/mocks';
 import kpiConfig from '../../../docs/kpi-threshold-config.json';
-import baselineHealthMock from '../../../docs/mocks/baseline-health.json';
-import summaryFanBladeMock from '../../../docs/mocks/summary-fan-blade.json';
-import summaryFanDiskMock from '../../../docs/mocks/summary-fan-disk.json';
-import summaryCombLinerMock from '../../../docs/mocks/summary-comb-liner.json';
-import summaryHptBladeMock from '../../../docs/mocks/summary-hpt-blade.json';
-import summaryFuelPumpMock from '../../../docs/mocks/summary-fuel-pump.json';
-import knowledgeMock from '../../../docs/mocks/knowledge-related.json';
 import { useEbomCompareState } from './useEbomCompareState';
 import { applyDynamicThresholds } from './dynamicThresholds';
 import KnowledgeSearchDrawer from './KnowledgeSearchDrawer';
@@ -138,7 +172,16 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
   const [presetOpen, setPresetOpen] = useState(false);
   const [dynamicOpen, setDynamicOpen] = useState(false);
   const [knowledgeSearchOpen, setKnowledgeSearchOpen] = useState(false);
+  const [refreshStrategyOpen, setRefreshStrategyOpen] = useState(false);
+  const [messageCenterOpen, setMessageCenterOpen] = useState(false);
+  const [knowledgeActiveTag, setKnowledgeActiveTag] = useState<string | null>(null);
+  const [knowledgeActiveCollection, setKnowledgeActiveCollection] = useState<string | null>(null);
   const [thresholdOverrides, setThresholdOverrides] = useState<Record<string,{low?:number;high?:number}>>({});
+  const [summaryDrawerOpen, setSummaryDrawerOpen] = useState(false);
+  const [summarySection, setSummarySection] = useState<SummarySection | null>(null);
+  const [jumpLogOpen, setJumpLogOpen] = useState(false);
+  const [jumpLogVersion, setJumpLogVersion] = useState(0);
+  const [validationOpen, setValidationOpen] = useState(false);
   const presetKeys = useMemo(()=> Object.keys((kpiConfig as any).presets ?? { default: {} }), []);
   const [compareState, setCompareState] = useEbomCompareState();
   const leftId = compareState.leftBaseline;
@@ -245,6 +288,61 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
     // 优先在右侧基线中寻找，找不到再在左侧
     return findById(right.root, selectedNodeId) || findById(left.root, selectedNodeId);
   }, [selectedNodeId, left, right]);
+
+  const multiViewData = useMemo(() => kpiMultiViewMock as unknown as KpiMultiViewData, []);
+  const summaryDetailData = useMemo(() => {
+    const detail = xbomSummaryDetailMock as unknown as XbomSummaryDrawerData;
+    if (!active?.partNumber) return null;
+    if (detail?.summary?.nodeId === active.partNumber) {
+      return detail;
+    }
+    return null;
+  }, [active?.partNumber]);
+  const jumpLogData = useMemo(() => jumpLogMock as unknown as JumpLogData, []);
+  const validationMatrixData = useMemo(
+    () => validationMatrixMock as unknown as ValidationMatrixData,
+    []
+  );
+  const refreshStrategyData = useMemo(
+    () => refreshStrategyMock as unknown as RefreshStrategyData,
+    []
+  );
+  const messageCenterData = useMemo(
+    () => messagesMock as unknown as MessageCenterData,
+    []
+  );
+  const knowledgeCatalogData = useMemo(
+    () => knowledgeCatalogMock as unknown as KnowledgeCatalogData,
+    []
+  );
+  const timelineData = useMemo(() => timelineEventsMock as unknown as TimelineData, []);
+  const pageAlerts = useMemo<PageAlert[]>(
+    () =>
+      (refreshStrategyData?.previewAlerts ?? []).map((alert) => ({
+        ...alert,
+        actionLabel: '查看策略',
+        onAction: () => setRefreshStrategyOpen(true),
+      })),
+    [refreshStrategyData]
+  );
+  const unreadMessages = useMemo(
+    () => (messageCenterData?.messages ?? []).filter((msg) => msg.status === 'unread').length,
+    [messageCenterData]
+  );
+  const filteredKnowledgeItems = useMemo(() => {
+    let items = knowledgeItems;
+    if (knowledgeActiveTag) {
+      items = items.filter((item) => item.tags.includes(knowledgeActiveTag));
+    }
+    if (knowledgeActiveCollection && knowledgeCatalogData?.collections?.length) {
+      const target = knowledgeCatalogData.collections.find((collection) => collection.id === knowledgeActiveCollection);
+      if (target) {
+        const set = new Set(target.items);
+        items = items.filter((item) => set.has(item.id));
+      }
+    }
+    return items;
+  }, [knowledgeItems, knowledgeActiveTag, knowledgeActiveCollection, knowledgeCatalogData]);
 
   return (
     <div className="space-y-6">
@@ -427,11 +525,44 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
               >
                 <i className="ri-function-line mr-1"/>动态规则
               </button>
+              <button
+                type="button"
+                onClick={() => setRefreshStrategyOpen(true)}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-amber-300 hover:text-amber-600"
+              >
+                <i className="ri-time-line mr-1" />刷新策略
+              </button>
+              <button
+                type="button"
+                onClick={() => setMessageCenterOpen(true)}
+                className="relative rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-rose-300 hover:text-rose-600"
+              >
+                <i className="ri-notification-3-line mr-1" />消息中心
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-medium text-white">
+                    {unreadMessages}
+                  </span>
+                )}
+              </button>
               <button type="button" onClick={() => exportRef.current && exportDomToPng(exportRef.current, 'EBOM-Cockpit.png')} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-emerald-300 hover:text-emerald-600">
                 <i className="ri-image-2-line mr-1"/>导出快照
               </button>
               <button type="button" onClick={() => exportRef.current && exportDomToPdf(exportRef.current, 'EBOM-Cockpit') } className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-emerald-300 hover:text-emerald-600">
                 <i className="ri-file-pdf-2-line mr-1"/>导出PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setValidationOpen(true)}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-indigo-300 hover:text-indigo-600"
+              >
+                <i className="ri-matrix-line mr-1" />验证矩阵
+              </button>
+              <button
+                type="button"
+                onClick={() => setJumpLogOpen(true)}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-slate-300 hover:text-slate-700"
+              >
+                <i className="ri-history-line mr-1" />跳转日志
               </button>
             </div>
           </div>
@@ -447,9 +578,11 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                   presetLabel={(mergedKpiConfig as any).presets?.[thresholdPreset]?.label ?? thresholdPreset}
                   healthDetail={healthDetail ?? undefined}
                 />
+                <KpiMultiView data={multiViewData} />
                 <KpiGrid kpis={kpisForDisplay} defaultThresholds={defaultThresholdsMap} overrides={thresholdOverrides} />
               </div>
               <div className="space-y-3">
+                <VersionStabilityGauge data={multiViewData} />
                 <BaselineHealthCard data={baselineHealthMock as any as BaselineHealthType} />
                 {healthDetail && (
                   <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -496,33 +629,62 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
               showReq={showReq}
               showSim={showSim}
               showTest={showTest}
+              onOpenDetail={(section) => {
+                setSummarySection(section);
+                setSummaryDrawerOpen(true);
+              }}
+              nodeId={active?.partNumber}
+              baseline={right.label}
+              onJumpLogged={() => {
+                setJumpLogVersion((v) => v + 1);
+                setJumpLogOpen(true);
+              }}
             />
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                  <i className="ri-brain-line text-indigo-500" /> 知识沉淀
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-gray-600">
-                    <i className="ri-archive-drawer-line" /> {knowledgeItems.length} 条记录
-                  </span>
-                  {active?.class && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                    <i className="ri-brain-line text-indigo-500" /> 知识沉淀
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
                     <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-gray-600">
-                      <i className="ri-bookmark-fill" /> 分类：{active.class}
+                      <i className="ri-archive-drawer-line" /> {filteredKnowledgeItems.length} 条记录
                     </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setKnowledgeSearchOpen(true)}
-                    className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 hover:border-indigo-300 hover:text-indigo-800"
-                  >
-                    <i className="ri-search-eye-line" /> 智能检索
-                  </button>
+                    {active?.class && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-gray-600">
+                        <i className="ri-bookmark-fill" /> 分类：{active.class}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setKnowledgeSearchOpen(true)}
+                      className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 hover:border-indigo-300 hover:text-indigo-800"
+                    >
+                      <i className="ri-search-eye-line" /> 智能检索
+                    </button>
+                  </div>
+                </div>
+                {!!pageAlerts.length && (
+                  <div className="mt-3">
+                    <PageAlerts alerts={pageAlerts} />
+                  </div>
+                )}
+                <div className="mt-4 grid gap-4 lg:grid-cols-5">
+                  <div className="lg:col-span-2">
+                    <KnowledgeCatalogPanel
+                      data={knowledgeCatalogData}
+                      activeTag={knowledgeActiveTag}
+                      onSelectTag={setKnowledgeActiveTag}
+                      activeCollection={knowledgeActiveCollection}
+                      onSelectCollection={setKnowledgeActiveCollection}
+                    />
+                  </div>
+                  <div className="space-y-3 lg:col-span-3">
+                    <KnowledgeRail items={filteredKnowledgeItems} />
+                  </div>
                 </div>
               </div>
-              <div className="mt-3">
-                <KnowledgeRail items={knowledgeItems} />
-              </div>
+              <TimelinePanel data={timelineData} />
             </div>
           </div>
           <ThresholdPanel
@@ -555,6 +717,36 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
               active?.partNumber,
               active?.links?.designDocId,
             ].filter(Boolean) as string[]}
+          />
+          <XbomSummaryDrawer
+            open={summaryDrawerOpen}
+            section={summarySection}
+            data={summaryDetailData}
+            onClose={() => {
+              setSummaryDrawerOpen(false);
+              setSummarySection(null);
+            }}
+          />
+          <ValidationMatrixDrawer
+            open={validationOpen}
+            onClose={() => setValidationOpen(false)}
+            data={validationMatrixData}
+          />
+          <JumpLogPanel
+            open={jumpLogOpen}
+            data={jumpLogData}
+            version={jumpLogVersion}
+            onClose={() => setJumpLogOpen(false)}
+          />
+          <RefreshStrategyDrawer
+            open={refreshStrategyOpen}
+            onClose={() => setRefreshStrategyOpen(false)}
+            data={refreshStrategyData}
+          />
+          <MessageCenterDrawer
+            open={messageCenterOpen}
+            onClose={() => setMessageCenterOpen(false)}
+            data={messageCenterData}
           />
         </>
       )}
