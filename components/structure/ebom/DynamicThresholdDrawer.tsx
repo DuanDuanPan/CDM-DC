@@ -8,20 +8,21 @@ interface Props {
   open: boolean;
   onClose: () => void;
   kpis: CockpitKpi[];
+  initialKpiId?: string | null;
 }
 
 const typeOptions: Array<{ value: "all" | DynamicThresholdRule["type"]; label: string }> = [
   { value: "all", label: "全部类型" },
   { value: "mu_sigma", label: "µ±σ" },
   { value: "percentile", label: "分位" },
-  { value: "stage", label: "阶段" }
+  { value: "stage", label: "阶段" },
 ];
 
 function RuleCard({ rule }: { rule: DynamicThresholdRule }) {
   const boundsText = [
     rule.bounds.low !== undefined ? `低：${rule.bounds.low}` : null,
     rule.bounds.high !== undefined ? `高：${rule.bounds.high}` : null,
-    rule.bounds.red !== undefined ? `红线：${rule.bounds.red}` : null
+    rule.bounds.red !== undefined ? `红线：${rule.bounds.red}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -32,9 +33,9 @@ function RuleCard({ rule }: { rule: DynamicThresholdRule }) {
     <article className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
             {rule.label}
-            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700 border border-indigo-200">
+            <span className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] text-indigo-700">
               <i className="ri-function-line" /> {formatRuleType(rule.type)}
             </span>
           </div>
@@ -80,30 +81,51 @@ function RuleCard({ rule }: { rule: DynamicThresholdRule }) {
   );
 }
 
-export default function DynamicThresholdDrawer({ open, onClose, kpis }: Props) {
+export default function DynamicThresholdDrawer({ open, onClose, kpis, initialKpiId }: Props) {
   const grouped = useMemo(() => groupRulesByKpi(), []);
   const allRules = useMemo(() => listDynamicThresholdRules(), []);
 
   const kpiWithRule = useMemo(() => {
     const ids = new Set(allRules.map((r) => r.kpiId));
-    return kpis.filter((k) => ids.has(k.id));
+    return kpis.filter((kpi) => ids.has(kpi.id));
   }, [allRules, kpis]);
 
-  const [activeKpiId, setActiveKpiId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<(typeof typeOptions)[number]['value']>('all');
+  const kpiOptions = useMemo(() => {
+    const map = new Map<string, CockpitKpi>();
+    kpiWithRule.forEach((item) => map.set(item.id, item));
+    kpis.forEach((item) => {
+      if (!map.has(item.id)) {
+        map.set(item.id, item);
+      }
+    });
+    return Array.from(map.values());
+  }, [kpiWithRule, kpis]);
+
+  const [activeKpiId, setActiveKpiId] = useState<string | null>(initialKpiId ?? null);
+  const [typeFilter, setTypeFilter] = useState<(typeof typeOptions)[number]["value"]>("all");
 
   useEffect(() => {
     if (!open) return;
-    if (activeKpiId && grouped[activeKpiId]) return;
-    const first = kpiWithRule[0]?.id ?? allRules[0]?.kpiId ?? null;
-    setActiveKpiId(first);
-  }, [open, activeKpiId, grouped, kpiWithRule, allRules]);
+    if (initialKpiId) {
+      setActiveKpiId(initialKpiId);
+      return;
+    }
+    setActiveKpiId((prev) => {
+      if (prev) return prev;
+      const first = kpiOptions[0]?.id ?? allRules[0]?.kpiId ?? null;
+      return first;
+    });
+  }, [open, initialKpiId, kpiOptions, allRules]);
 
   if (!open) return null;
 
   const rules = (activeKpiId ? grouped[activeKpiId] ?? [] : allRules).filter((rule) =>
-    typeFilter === 'all' ? true : rule.type === typeFilter
+    typeFilter === "all" ? true : rule.type === typeFilter
   );
+
+  const activeLabel = activeKpiId
+    ? kpis.find((item) => item.id === activeKpiId)?.label ?? activeKpiId
+    : "全部 KPI";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -125,11 +147,12 @@ export default function DynamicThresholdDrawer({ open, onClose, kpis }: Props) {
           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
             <span className="text-xs text-gray-500">KPI</span>
             <select
-              value={activeKpiId ?? ''}
+              value={activeKpiId ?? ""}
               onChange={(event) => setActiveKpiId(event.target.value || null)}
               className="rounded border border-gray-300 bg-white px-3 py-1 text-sm"
             >
-              {kpiWithRule.map((kpi) => (
+              <option value="">全部（{allRules.length} 条规则）</option>
+              {kpiOptions.map((kpi) => (
                 <option key={kpi.id} value={kpi.id}>
                   {kpi.label}（{kpi.id}）
                 </option>
@@ -138,7 +161,7 @@ export default function DynamicThresholdDrawer({ open, onClose, kpis }: Props) {
             <span className="text-xs text-gray-500">规则类型</span>
             <select
               value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as (typeof typeOptions)[number]['value'])}
+              onChange={(event) => setTypeFilter(event.target.value as (typeof typeOptions)[number]["value"])}
               className="rounded border border-gray-300 bg-white px-3 py-1 text-sm"
             >
               {typeOptions.map((opt) => (
@@ -152,16 +175,20 @@ export default function DynamicThresholdDrawer({ open, onClose, kpis }: Props) {
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
               <i className="ri-flashlight-line" /> Mock 数据
             </span>
-            <span>支持 µ±σ / 分位 / 阶段三类算法</span>
+            <span>当前 KPI：{activeLabel}</span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-slate-50/60">
+        <div className="flex-1 overflow-y-auto bg-slate-50/60 px-6 py-4">
           {rules.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
               当前筛选无匹配规则，请调整 KPI 或规则类型。
             </div>
           ) : (
-            rules.map((rule) => <RuleCard key={rule.id} rule={rule} />)
+            <div className="grid gap-4 md:grid-cols-2">
+              {rules.map((rule) => (
+                <RuleCard key={rule.id} rule={rule} />
+              ))}
+            </div>
           )}
         </div>
       </div>
