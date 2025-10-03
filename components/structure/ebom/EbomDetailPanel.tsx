@@ -755,8 +755,8 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
         </div>
       </section>
 
-      <div className="sticky top-20 z-10">
-        <div className="rounded-2xl border border-gray-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur">
+      <div className="sticky top-0 z-40 md:top-4">
+        <div className="rounded-2xl border border-gray-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
             <button
               type="button"
