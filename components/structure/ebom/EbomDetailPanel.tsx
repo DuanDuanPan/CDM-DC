@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import type {
   EbomBaseline,
   EbomDiffChange,
@@ -10,6 +10,7 @@ import type {
   EbomParameterDetail,
   EbomParameterStatus,
   EbomParameterDimension,
+  EbomApprovalStatus,
 } from './types';
 import { EBOM_BASELINES } from './data';
 import EbomModelViewer from './EbomModelViewer';
@@ -41,6 +42,7 @@ import type {
   BaselineHealth as BaselineHealthType,
   XbomSummary as XbomSummaryType,
   KnowledgeCard as KnowledgeCardType,
+  ReviewKnowledgeCard,
   KpiMultiViewData,
   XbomSummaryDrawerData,
   JumpLogData,
@@ -124,23 +126,10 @@ const dimensionLabels: Record<EbomParameterDimension, string> = {
 
 const parameterStatusBadge = (status?: EbomParameterStatus) => {
   if (!status) return null;
-  if (status === 'ok') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
-        <i className="ri-checkbox-circle-line" /> 达标
-      </span>
-    );
-  }
-  if (status === 'watch') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
-        <i className="ri-error-warning-line" /> 关注
-      </span>
-    );
-  }
+  const token = PARAMETER_STATUS_TOKENS[status];
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700">
-      <i className="ri-alert-line" /> 预警
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${token.className}`}>
+      <i className={token.icon}></i> {token.label}
     </span>
   );
 };
@@ -167,6 +156,95 @@ const parameterTrendBadge = (trend?: 'up' | 'down' | 'flat') => {
     </span>
   );
 };
+
+const approvalStatusTokens: Record<EbomApprovalStatus, { label: string; className: string; icon: string }> = {
+  pending: {
+    label: '待审批',
+    className: 'border-amber-200 bg-amber-50 text-amber-700',
+    icon: 'ri-time-line',
+  },
+  approved: {
+    label: '已通过',
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    icon: 'ri-checkbox-circle-line',
+  },
+  rejected: {
+    label: '驳回',
+    className: 'border-rose-200 bg-rose-50 text-rose-700',
+    icon: 'ri-close-circle-line',
+  },
+  delegated: {
+    label: '转签',
+    className: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+    icon: 'ri-repeat-line',
+  },
+};
+
+type StatusToken = {
+  label: string;
+  icon: string;
+  className: string;
+  description?: string;
+};
+
+const PARAMETER_STATUS_TOKENS: Record<EbomParameterStatus, StatusToken> = {
+  ok: { label: '达标', icon: 'ri-checkbox-circle-line', className: 'bg-emerald-50 text-emerald-700' },
+  watch: { label: '关注', icon: 'ri-error-warning-line', className: 'bg-amber-50 text-amber-700' },
+  risk: { label: '预警', icon: 'ri-alarm-warning-line', className: 'bg-rose-50 text-rose-700' },
+};
+
+const DOCUMENT_STATUS_TOKENS: Record<'approved' | 'in-review' | 'pending' | 'missing', StatusToken> = {
+  approved: {
+    label: '已批准',
+    icon: 'ri-checkbox-circle-line',
+    className: 'bg-emerald-50 text-emerald-700',
+    description: '审批完成并归档',
+  },
+  'in-review': {
+    label: '评审中',
+    icon: 'ri-timer-line',
+    className: 'bg-amber-50 text-amber-700',
+    description: '等待评审或签批',
+  },
+  pending: {
+    label: '待上传',
+    icon: 'ri-time-line',
+    className: 'bg-slate-100 text-slate-600',
+    description: '尚未补齐或需整理',
+  },
+  missing: {
+    label: '缺失',
+    icon: 'ri-alert-line',
+    className: 'bg-rose-50 text-rose-700',
+    description: '流程阻塞或未提交',
+  },
+};
+
+const sourceTypeIcon: Record<string, string> = {
+  仿真: 'ri-computer-line',
+  试验: 'ri-test-tube-line',
+  文档: 'ri-book-2-line',
+  推导: 'ri-function-line',
+  供应商: 'ri-building-4-line',
+  运行数据: 'ri-bar-chart-line',
+};
+
+const sourceTypeToBom: Record<string, 'simulation' | 'test' | null> = {
+  仿真: 'simulation',
+  试验: 'test',
+  文档: null,
+  推导: null,
+  供应商: null,
+  运行数据: null,
+};
+
+type ParameterWithGroup = {
+  groupId: string;
+  groupTitle: string;
+  detail: EbomParameterDetail;
+};
+
+type ParameterAlertEntry = ParameterWithGroup & { severity: 'risk' | 'watch' };
 
 const flatten = (root: EbomTreeNode): Array<{ id: string; node: EbomTreeNode; path: string[] }> => {
   const out: Array<{ id: string; node: EbomTreeNode; path: string[] }> = [];
@@ -233,6 +311,7 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
   const [showSim, setShowSim] = useState(true);
   const [showTest, setShowTest] = useState(true);
   const exportRef = useRef<HTMLDivElement | null>(null);
+  const sourcesListRef = useRef<HTMLDivElement | null>(null);
   const [thresholdOpen, setThresholdOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
   const [dynamicOpen, setDynamicOpen] = useState(false);
@@ -454,6 +533,92 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
     return parameterDeck.groups.reduce((acc, group) => acc + group.parameters.length, 0);
   }, [parameterDeck]);
 
+  const parameterFlatList = useMemo<ParameterWithGroup[]>(() => {
+    if (!parameterDeck) return [];
+    return parameterDeck.groups.flatMap((group) =>
+      group.parameters.map((detail) => ({ groupId: group.id, groupTitle: group.title, detail }))
+    );
+  }, [parameterDeck]);
+
+  const parameterStatusSummary = useMemo(() => {
+    const summary = {
+      total: parameterFlatList.length,
+      risk: 0,
+      watch: 0,
+      ok: 0,
+      neutral: 0,
+      alerts: [] as ParameterAlertEntry[],
+    };
+    parameterFlatList.forEach((entry) => {
+      const status = entry.detail.status;
+      if (status === 'risk') {
+        summary.risk += 1;
+        summary.alerts.push({ ...entry, severity: 'risk' });
+      } else if (status === 'watch') {
+        summary.watch += 1;
+        summary.alerts.push({ ...entry, severity: 'watch' });
+      } else if (status === 'ok') {
+        summary.ok += 1;
+      } else {
+        summary.neutral += 1;
+      }
+    });
+    summary.alerts.sort((a, b) => {
+      if (a.severity !== b.severity) {
+        return a.severity === 'risk' ? -1 : 1;
+      }
+      const aTime = a.detail.lastUpdated ? new Date(a.detail.lastUpdated).getTime() : 0;
+      const bTime = b.detail.lastUpdated ? new Date(b.detail.lastUpdated).getTime() : 0;
+      return bTime - aTime;
+    });
+    return summary;
+  }, [parameterFlatList]);
+
+  const reviewMemoItems = useMemo(() =>
+    (knowledgeItems.filter((item) => item.type === 'review').slice(0, 3) as ReviewKnowledgeCard[]),
+  [knowledgeItems]);
+
+  const riskExperience = useMemo(() => knowledgeItems.find((item) => item.type === 'experience'), [knowledgeItems]);
+
+  const scrollToSources = useCallback(() => {
+    if (!sourcesListRef.current) return;
+    sourcesListRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [sourcesListRef]);
+
+  const handleNavigateFromSource = useCallback(
+    (target: 'simulation' | 'test') => {
+      onNavigateBomType?.(target);
+    },
+    [onNavigateBomType]
+  );
+
+  const handleFocusParameter = useCallback(
+    (entry: ParameterAlertEntry) => {
+      setSelectedParameterGroupId(entry.groupId);
+      setSelectedParameterId(entry.detail.id);
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          const el = document.getElementById(`param-card-${entry.detail.id}`);
+          if (el instanceof HTMLElement) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.focus({ preventScroll: true });
+          }
+        });
+      }
+    },
+    [setSelectedParameterGroupId, setSelectedParameterId]
+  );
+
+  const parameterSourceStats = useMemo(() => {
+    if (!selectedParameter?.sources?.length) return null;
+    const byType: Record<string, number> = {};
+    selectedParameter.sources.forEach((source) => {
+      byType[source.type] = (byType[source.type] ?? 0) + 1;
+    });
+    const total = selectedParameter.sources.length;
+    return { total, byType };
+  }, [selectedParameter]);
+
   const multiViewData = useMemo(() => kpiMultiViewMock as unknown as KpiMultiViewData, []);
   const summaryDetailData = useMemo(() => {
     const detail = xbomSummaryDetailMock as unknown as XbomSummaryDrawerData;
@@ -520,6 +685,7 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
       })),
     [refreshStrategyData]
   );
+  const memoAlerts = useMemo(() => pageAlerts.slice(0, 2), [pageAlerts]);
   const unreadMessages = useMemo(
     () => (messageCenterData?.messages ?? []).filter((msg) => msg.status === 'unread').length,
     [messageCenterData]
@@ -589,8 +755,63 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
         </div>
       </section>
 
+      <div className="sticky top-20 z-10">
+        <div className="rounded-2xl border border-gray-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            <button
+              type="button"
+              onClick={() => setThresholdOpen(true)}
+              className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700 hover:border-indigo-300"
+            >
+              <i className="ri-sliders-line"></i> 阈值面板
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveDynamicKpiId(null); setDynamicOpen(true); }}
+              className="inline-flex items-center gap-1 rounded border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs text-purple-700 hover:border-purple-300"
+            >
+              <i className="ri-function-line"></i> 动态规则
+            </button>
+            <button
+              type="button"
+              onClick={() => setRefreshStrategyOpen(true)}
+              className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 hover:border-amber-300"
+            >
+              <i className="ri-time-line"></i> 刷新策略
+            </button>
+            <button
+              type="button"
+              onClick={() => setMessageCenterOpen(true)}
+              className="relative inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:border-rose-300"
+            >
+              <i className="ri-notification-3-line"></i> 消息中心
+              {unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-medium text-white">
+                  {unreadMessages}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setValidationOpen(true)}
+              className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:border-indigo-200 hover:text-indigo-600"
+            >
+              <i className="ri-matrix-line"></i> 验证矩阵
+            </button>
+            <button
+              type="button"
+              onClick={() => setJumpLogOpen(true)}
+              className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:border-slate-300 hover:text-slate-700"
+            >
+              <i className="ri-history-line"></i> 跳转日志
+            </button>
+          </div>
+        </div>
+      </div>
+
       {viewMode === 'structure' && (
-        <>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-6">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2 text-sm">
@@ -726,6 +947,54 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
               </div>
             </div>
 
+            {active.responsibility && (
+              <div className="rounded-xl border border-gray-100 bg-slate-50/70 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-medium text-gray-800">
+                      <i className="ri-team-line text-indigo-500"></i> {active.responsibility.team}
+                    </span>
+                    {active.responsibility.owner && (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-gray-700">
+                        <i className="ri-user-star-line text-indigo-500"></i> 责任人 {active.responsibility.owner}
+                      </span>
+                    )}
+                    {active.responsibility.contact && (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 text-gray-700">
+                        <i className="ri-mail-line text-indigo-500"></i> {active.responsibility.contact}
+                      </span>
+                    )}
+                  </div>
+                  {active.responsibility.decision && (
+                    <div className="max-w-md text-xs text-gray-500">
+                      <div className="font-medium text-gray-700">
+                        <i className="ri-chat-4-line text-indigo-500"></i> 最新决策：{active.responsibility.decision.summary}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                        <span><i className="ri-user-line"></i> {active.responsibility.decision.by}</span>
+                        <span><i className="ri-time-line"></i> {active.responsibility.decision.updatedAt}</span>
+                        {active.responsibility.decision.nextStep && (
+                          <span><i className="ri-compass-3-line"></i> 下一步：{active.responsibility.decision.nextStep}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  {active.responsibility.chain.map((step) => (
+                    <span
+                      key={step.id}
+                      className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1 font-medium ${approvalStatusTokens[step.status].className}`}
+                    >
+                      <i className={approvalStatusTokens[step.status].icon}></i>
+                      {step.name} · {step.role}
+                      {step.updatedAt && <span className="ml-1 text-[11px] text-gray-600/80">{step.updatedAt}</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-xl border border-gray-100 bg-slate-50/70 p-4">
                 <div className="text-xs font-medium text-gray-500 mb-2">配置 / 效期</div>
@@ -810,6 +1079,70 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                     })}
                   </div>
                 )}
+                {parameterStatusSummary.total > 0 && (
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-rose-100 bg-white shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                      <div className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <i className="ri-alarm-warning-line text-rose-500" /> 参数告警总览
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-rose-700">
+                          <i className="ri-error-warning-line" /> 红灯 {parameterStatusSummary.risk}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
+                          <i className="ri-alert-line" /> 黄灯 {parameterStatusSummary.watch}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                          <i className="ri-shield-check-line" /> 稳定 {Math.max(parameterStatusSummary.total - parameterStatusSummary.risk - parameterStatusSummary.watch, 0)}
+                        </span>
+                        {parameterStatusSummary.alerts.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleFocusParameter(parameterStatusSummary.alerts[0])}
+                            className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700 hover:border-rose-300"
+                          >
+                            <i className="ri-focus-2-line" /> 定位首个风险
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                      {parameterStatusSummary.risk > 0 && (
+                        <div
+                          className="bg-rose-500/80"
+                          style={{ width: `${Math.min((parameterStatusSummary.risk / parameterStatusSummary.total) * 100, 100)}%` }}
+                        />
+                      )}
+                      {parameterStatusSummary.watch > 0 && (
+                        <div
+                          className="bg-amber-400/80"
+                          style={{ width: `${Math.min((parameterStatusSummary.watch / parameterStatusSummary.total) * 100, 100)}%` }}
+                        />
+                      )}
+                      <div className="flex-1 bg-emerald-400/60" style={{ minWidth: '5%' }} />
+                    </div>
+                    {parameterStatusSummary.alerts.length > 0 && (
+                      <div className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-rose-700">
+                          {parameterStatusSummary.alerts.slice(0, 3).map((entry) => (
+                            <button
+                              key={entry.detail.id}
+                              type="button"
+                              onClick={() => handleFocusParameter(entry)}
+                              className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 transition hover:border-rose-300"
+                            >
+                              <i className="ri-alert-line" /> {entry.detail.name}
+                            </button>
+                          ))}
+                          {parameterStatusSummary.alerts.length > 3 && (
+                            <span className="text-rose-600/70">+{parameterStatusSummary.alerts.length - 3}</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {selectedParameterGroup ? (
                   <>
                     {selectedParameterGroup.caption && (
@@ -820,21 +1153,26 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                         <i className="ri-focus-2-line" /> {selectedParameterGroup.focus}
                       </p>
                     )}
+                    <div className="mt-4 flex items-center gap-2 text-xs font-medium text-gray-500">
+                      <i className="ri-list-check"></i> 参数清单
+                    </div>
                     {selectedParameterGroup.parameters.length > 0 ? (
-                      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         {selectedParameterGroup.parameters.map((param) => {
                           const isActiveParameter = selectedParameter?.id === param.id;
                           return (
                             <button
                               key={param.id}
+                              id={`param-card-${param.id}`}
                               type="button"
                               onClick={() => setSelectedParameterId(param.id)}
-                              className={`flex h-full flex-col rounded-xl border p-3 text-left transition ${
+                              className={`flex h-full flex-col rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
                                 isActiveParameter
                                   ? 'border-indigo-300 bg-indigo-50/70 shadow-sm'
                                   : 'border-gray-100 bg-slate-50/70 hover:border-indigo-200 hover:bg-white'
                               }`}
                               aria-pressed={isActiveParameter}
+                              data-status={param.status ?? 'none'}
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="flex-1 text-sm font-semibold text-gray-800">{param.name}</span>
@@ -917,6 +1255,42 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                             </div>
                           </div>
                         </div>
+                        {parameterSourceStats && (
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-medium text-gray-700">
+                              <i className="ri-database-2-line" /> 来源 {parameterSourceStats.total}
+                            </span>
+                            {Object.entries(parameterSourceStats.byType).map(([type, count]) => {
+                              const target = sourceTypeToBom[type];
+                              const icon = sourceTypeIcon[type] ?? 'ri-file-list-2-line';
+                              if (!target) {
+                                return (
+                                  <span key={type} className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 shadow-sm">
+                                    <i className={icon}></i> {type} {count}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  onClick={() => handleNavigateFromSource(target)}
+                                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-indigo-700 hover:border-indigo-300"
+                                >
+                                  <i className={icon}></i> {type} {count}
+                                  <i className="ri-arrow-right-line"></i>
+                                </button>
+                              );
+                            })}
+                            <button
+                              type="button"
+                              onClick={scrollToSources}
+                              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-gray-600 hover:border-indigo-200 hover:text-indigo-600"
+                            >
+                              <i className="ri-arrow-down-line" /> 查看来源列表
+                            </button>
+                          </div>
+                        )}
                         {selectedParameter.tags && selectedParameter.tags.length > 0 && (
                           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                             {selectedParameter.tags.map((tag) => (
@@ -958,7 +1332,7 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                             </div>
                           </div>
                         )}
-                        <div className="mt-4">
+                        <div className="mt-4" ref={sourcesListRef}>
                           <div className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-500">
                             <i className="ri-database-2-line" /> 参数来源
                           </div>
@@ -1041,11 +1415,152 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
             </div>
 
             {/* 设计文档清单 */}
-            <EbomDocList node={active} />
+            <EbomDocList node={active} statusTokens={DOCUMENT_STATUS_TOKENS} />
           </div>
         )}
       </section>
-        </>
+          </div>
+          <aside className="space-y-4 lg:sticky lg:top-6 lg:h-fit">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <i className="ri-auction-line text-indigo-500" /> 审批事项
+              </div>
+              <ul className="mt-3 space-y-2 text-xs text-gray-600">
+                {reviewMemoItems.length ? (
+                  reviewMemoItems.map((item) => (
+                    <li key={item.id} className="rounded-lg border border-gray-100 bg-slate-50/70 p-3">
+                      <div className="text-sm font-medium text-gray-800">{item.meeting}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                        <span><i className="ri-time-line" /> {item.date}</span>
+                        {item.owner && <span><i className="ri-user-line" /> {item.owner}</span>}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-600">{item.conclusion}</p>
+                    </li>
+                  ))
+                ) : (
+                  <li className="rounded-lg border border-dashed border-gray-200 px-3 py-6 text-center text-xs text-gray-400">
+                    暂无审批纪要
+                  </li>
+                )}
+              </ul>
+              <button
+                type="button"
+                onClick={() => setKnowledgeSearchOpen(true)}
+                className="mt-3 inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700 hover:border-indigo-300 hover:text-indigo-800"
+              >
+                <i className="ri-search-eye-line" /> 知识库检索
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-semibold text-rose-700">
+                <i className="ri-alert-line" /> 风险缓冲期
+              </div>
+              {parameterStatusSummary.total ? (
+                <div className="mt-3 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-rose-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 font-medium">
+                      <i className="ri-alarm-warning-line" /> 红灯 {parameterStatusSummary.risk}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700">
+                      <i className="ri-alert-line" /> 黄灯 {parameterStatusSummary.watch}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700">
+                      <i className="ri-shield-check-line" /> 稳定 {Math.max(parameterStatusSummary.total - parameterStatusSummary.risk - parameterStatusSummary.watch, 0)}
+                    </span>
+                    <span className="ml-auto text-rose-600/80">合计 {parameterStatusSummary.total}</span>
+                  </div>
+                  <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/70 shadow-inner">
+                    {parameterStatusSummary.risk > 0 && (
+                      <div
+                        className="bg-rose-500/80"
+                        style={{ width: `${Math.min((parameterStatusSummary.risk / parameterStatusSummary.total) * 100, 100)}%` }}
+                      />
+                    )}
+                    {parameterStatusSummary.watch > 0 && (
+                      <div
+                        className="bg-amber-400/80"
+                        style={{ width: `${Math.min((parameterStatusSummary.watch / parameterStatusSummary.total) * 100, 100)}%` }}
+                      />
+                    )}
+                    <div
+                      className="flex-1 bg-emerald-400/60"
+                      style={{ minWidth: '4%' }}
+                    />
+                  </div>
+                  <ul className="space-y-2 text-xs text-rose-700">
+                    {parameterStatusSummary.alerts.slice(0, 4).map((entry) => (
+                      <li key={entry.detail.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleFocusParameter(entry)}
+                          className="w-full rounded-lg border border-rose-100 bg-white px-3 py-2 text-left transition hover:border-rose-200 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                        >
+                          <div className="flex items-center justify-between gap-2 text-sm font-medium">
+                            <span>{entry.detail.name}</span>
+                            <span className="inline-flex items-center gap-1 text-[11px] text-rose-600">
+                              <i className="ri-timer-line" /> {entry.detail.lastUpdated ?? '—'}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-rose-600">
+                            <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5">
+                              <i className="ri-error-warning-line" /> {entry.severity === 'risk' ? '红灯' : '黄灯'}
+                            </span>
+                            <span>{entry.groupTitle}</span>
+                            {entry.detail.value && (
+                              <span>
+                                {entry.detail.value}
+                                {entry.detail.unit ? ` ${entry.detail.unit}` : ''}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {riskExperience && (
+                    <div className="rounded-lg border border-rose-100 bg-white/90 p-3 text-[11px] text-rose-700">
+                      <div className="inline-flex items-center gap-1 font-semibold text-rose-700">
+                        <i className="ri-lightbulb-line" /> 经验提示
+                      </div>
+                      <div className="mt-1 font-medium text-rose-700/90">{riskExperience.title}</div>
+                      <p className="mt-1 text-rose-600/80">{riskExperience.snippet}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-rose-600/70">暂未收集到需要关注的参数风险。</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-semibold text-amber-700">
+                <i className="ri-calendar-todo-line" /> 近期提醒
+              </div>
+              {memoAlerts.length ? (
+                <ul className="mt-3 space-y-2 text-xs text-amber-700">
+                  {memoAlerts.map((alert) => (
+                    <li key={alert.id} className="rounded-lg border border-amber-200 bg-white px-3 py-2">
+                      <div className="font-medium text-amber-800">{alert.title}</div>
+                      <p className="mt-1 text-amber-700/80">{alert.message}</p>
+                      {alert.actionLabel && alert.onAction && (
+                        <button
+                          type="button"
+                          onClick={alert.onAction}
+                          className="mt-2 inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700 hover:border-amber-300"
+                        >
+                          <i className="ri-external-link-line" /> {alert.actionLabel}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-xs text-amber-700/70">暂无刷新策略提醒。</p>
+              )}
+            </div>
+          </aside>
+        </div>
       )}
 
       {/* 驾驶舱视图（FE-only Mock） */}
@@ -1103,39 +1618,6 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
               </button>
               <button
                 type="button"
-                onClick={() => setThresholdOpen(true)}
-                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-indigo-300 hover:text-indigo-600"
-              >
-                <i className="ri-sliders-line" /> 阈值
-              </button>
-              <button
-                type="button"
-                onClick={() => { setActiveDynamicKpiId(null); setDynamicOpen(true); }}
-                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-purple-300 hover:text-purple-600"
-              >
-                <i className="ri-function-line" /> 动态规则
-              </button>
-              <button
-                type="button"
-                onClick={() => setRefreshStrategyOpen(true)}
-                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-amber-300 hover:text-amber-600"
-              >
-                <i className="ri-time-line" /> 刷新策略
-              </button>
-              <button
-                type="button"
-                onClick={() => setMessageCenterOpen(true)}
-                className="relative inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-rose-300 hover:text-rose-600"
-              >
-                <i className="ri-notification-3-line" /> 消息中心
-                {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-medium text-white">
-                    {unreadMessages}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
                 onClick={() => exportRef.current && exportDomToPng(exportRef.current, 'EBOM-Cockpit.png')}
                 className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
               >
@@ -1147,20 +1629,6 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                 className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-emerald-300 hover:text-emerald-600"
               >
                 <i className="ri-file-pdf-2-line" /> 导出 PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => setValidationOpen(true)}
-                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-indigo-300 hover:text-indigo-600"
-              >
-                <i className="ri-matrix-line" /> 验证矩阵
-              </button>
-              <button
-                type="button"
-                onClick={() => setJumpLogOpen(true)}
-                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 hover:border-slate-300 hover:text-slate-700"
-              >
-                <i className="ri-history-line" /> 跳转日志
               </button>
             </div>
           </section>

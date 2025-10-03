@@ -22,6 +22,33 @@ export interface EbomParameterSource {
   reviewer?: string;
 }
 
+export type EbomApprovalStatus = 'pending' | 'approved' | 'rejected' | 'delegated';
+
+export interface EbomApprovalStep {
+  id: string;
+  name: string;
+  role: string;
+  status: EbomApprovalStatus;
+  updatedAt?: string;
+  comment?: string;
+}
+
+export interface EbomDecisionSnapshot {
+  summary: string;
+  by: string;
+  updatedAt: string;
+  nextStep?: string;
+}
+
+export interface EbomResponsibility {
+  team: string;
+  owner?: string;
+  contact?: string;
+  chain: EbomApprovalStep[];
+  decision?: EbomDecisionSnapshot;
+  memo?: string;
+}
+
 export interface EbomParameterDetail {
   id: string;
   name: string;
@@ -98,11 +125,18 @@ export interface EbomPartRef {
       updatedAt?: string;
       owner?: string;
       url?: string;
+      status?: 'approved' | 'in-review' | 'pending' | 'missing';
+      classification?: Confidentiality;
+      approver?: string;
+      approvalAt?: string;
+      reviewDue?: string;
     }>;
   };
   designParams?: Array<{ name: string; value: string; unit?: string; status?: 'ok' | 'risk' | 'watch' }>;
   parameterDeckId?: string;
   parameterGroups?: EbomParameterGroup[];
+  ownerDiscipline?: string;
+  responsibility?: EbomResponsibility;
 }
 
 export interface EbomTreeNode extends EbomPartRef {

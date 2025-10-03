@@ -85,6 +85,24 @@ export default function EbomMiniTreePreview({
     return { added, removed, modified, total: rows.length };
   }, [rows]);
 
+  const configHighlights = useMemo(() => {
+    let effectivity = 0;
+    let substitutes = 0;
+    let qty = 0;
+    let lifecycle = 0;
+    rows.forEach((row) => {
+      if (row.type !== "modified" || !row.diffs) return;
+      row.diffs.forEach((diff) => {
+        if (diff.key === "effectivity") effectivity += 1;
+        if (diff.key === "substitutes") substitutes += 1;
+        if (diff.key === "qty") qty += 1;
+        if (diff.key === "lifecycle") lifecycle += 1;
+      });
+    });
+    const total = effectivity + substitutes + qty + lifecycle;
+    return { effectivity, substitutes, qty, lifecycle, total };
+  }, [rows]);
+
   const filtered = rows.filter((row) => {
     if (onlyDiff && row.type === "same") return false;
     if (filter !== "all" && row.type !== filter) return false;
@@ -192,9 +210,43 @@ export default function EbomMiniTreePreview({
         </div>
       </div>
 
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+      {configHighlights.total > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
+            <i className="ri-slideshow-line" /> 配置差异 {configHighlights.total}
+          </span>
+          {configHighlights.effectivity > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-700">
+              <i className="ri-calendar-event-line" /> 效期 {configHighlights.effectivity}
+            </span>
+          )}
+          {configHighlights.substitutes > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-purple-700">
+              <i className="ri-git-merge-line" /> 替代件 {configHighlights.substitutes}
+            </span>
+          )}
+          {configHighlights.qty > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
+              <i className="ri-stack-line" /> 数量 {configHighlights.qty}
+            </span>
+          )}
+          {configHighlights.lifecycle > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+              <i className="ri-refresh-line" /> 生命周期 {configHighlights.lifecycle}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="relative mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+        {configHighlights.total > 0 && filtered.length > 0 && (
+          <div
+            className="absolute inset-y-0 left-0 bg-amber-400/60"
+            style={{ width: `${Math.min((configHighlights.total / filtered.length) * 100, 100)}%` }}
+          />
+        )}
         <div
-          className="h-full rounded-full bg-blue-500 transition-all"
+          className="absolute inset-y-0 left-0 h-full rounded-full bg-blue-500 transition-all"
           style={{ width: `${filtered.length ? Math.min((visibleRows.length / filtered.length) * 100, 100) : 0}%` }}
         />
       </div>
