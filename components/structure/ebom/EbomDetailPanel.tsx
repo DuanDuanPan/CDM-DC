@@ -588,27 +588,29 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                   )) : <div className="text-gray-400">—</div>}
                 </div>
               </div>
-              <div className="rounded-xl border border-gray-100 bg-slate-50/70 p-4">
-                <div className="text-xs font-medium text-gray-500 mb-2">关联链接</div>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <i className="ri-draft-line"></i>
-                    设计文档：{active.links?.designDocId ?? '—'}
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <i className="ri-cube-line"></i>
-                    CAD：{active.links?.cadId ?? '—'}
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <i className="ri-computer-line"></i>
-                    仿真：{active.links?.simBomRef?.label ?? '—'}
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <i className="ri-test-tube-line"></i>
-                    试验：{active.links?.testBomRef?.label ?? '—'}
+              {activeView !== 'structure' && (
+                <div className="rounded-xl border border-gray-100 bg-slate-50/70 p-4">
+                  <div className="text-xs font-medium text-gray-500 mb-2">关联链接</div>
+                  <div className="space-y-2 text-sm text-gray-700">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <i className="ri-draft-line"></i>
+                      设计文档：{active.links?.designDocId ?? '—'}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <i className="ri-cube-line"></i>
+                      CAD：{active.links?.cadId ?? '—'}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <i className="ri-computer-line"></i>
+                      仿真：{active.links?.simBomRef?.label ?? '—'}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <i className="ri-test-tube-line"></i>
+                      试验：{active.links?.testBomRef?.label ?? '—'}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* 设计参数（按零部件类别可变） */}
