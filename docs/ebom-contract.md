@@ -84,6 +84,8 @@ interface EbomPartRef {
     updatedBy: string;
     source: 'manual' | 'system' | 'simulation' | 'test';
   };
+  parameterDeckId?: string;
+  parameterGroups?: EbomParameterGroup[];
 }
 ```
 - `effectivityTimeline`/`effectivityCoverage` 驱动冲刺5 时间轴 + 覆盖率展示。
@@ -160,6 +162,61 @@ interface EbomDocumentLink {
 ```
 - `status` + `reviewDue` 驱动文档责任提醒与“待上传”提示。
 
+### EbomParameterDeck / Group / Detail / Source
+```ts
+type EbomParameterDimension = '0D' | '1D' | '2D' | 'matrix';
+type EbomParameterStatus = 'ok' | 'watch' | 'risk';
+
+interface EbomParameterSource {
+  id: string;
+  type: '仿真' | '试验' | '文档' | '推导' | '供应商' | '运行数据';
+  reference: string;
+  summary?: string;
+  owner?: string;
+  updatedAt?: string;
+  confidence?: number; // 0-1
+  link?: string;
+  reviewer?: string;
+}
+
+interface EbomParameterDetail {
+  id: string;
+  name: string;
+  value: string;
+  unit?: string;
+  dimension: EbomParameterDimension;
+  status?: EbomParameterStatus;
+  trend?: 'up' | 'down' | 'flat';
+  target?: string;
+  limit?: string;
+  description?: string;
+  lastUpdated?: string;
+  owner?: string;
+  tags?: string[];
+  assumption?: string;
+  verification?: string[];
+  baselineContribution?: string;
+  sparkline?: Array<{ label: string; value: number }>;
+  sources?: EbomParameterSource[];
+}
+
+interface EbomParameterGroup {
+  id: string;
+  title: string;
+  caption?: string;
+  focus?: string;
+  parameters: EbomParameterDetail[];
+}
+
+interface EbomParameterDeck {
+  summary?: string;
+  groups: EbomParameterGroup[];
+}
+```
+- `parameterDeckId` 用于映射节点→参数分组 mock (`docs/mocks/ebom-parameter-groups.ts`)，BFF 期望返回相同结构。
+- `parameterGroups` 提供后端直出能力，若存在则覆盖 `parameterDeckId` 对应的 mock。
+- 每个参数带 `sources`，在 UI 中展示来源列表、可信度与跳转链接，满足“查看参数详情/来源”的交互需求。
+
 ### EbomDiffChange（差异表）
 ```ts
 interface EbomDiffChange {
@@ -197,9 +254,9 @@ interface EbomDiffChange {
 - 面板：`components/structure/ebom/EbomDetailPanel.tsx`
 - 迷你树：`components/structure/ebom/EbomMiniTreePreview.tsx`
 - 状态共享：`components/structure/ebom/useEbomCompareState.ts`
+- 参数脊梁 Mock：`docs/mocks/ebom-parameter-groups.ts`
 
 ## Mock 策略（冲刺5）
 - 所有扩展字段在前端 Mock 填充，真实接口对接计划在冲刺6 启动。
 - 性能测试使用 10k+ 节点生成脚本（待补充于 `docs/mocks`）。
 - 收藏/最近基线暂存 `localStorage`，生产实现交由 BFF。
-

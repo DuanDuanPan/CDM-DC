@@ -27,6 +27,9 @@
 6. **文档责任与提醒**（Owner：资料管理 · 陈工）
    - `components/structure/ebom/EbomDocList.tsx:12` 打通密级、审批人、复审时间字段，缺失链接时生成“待上传”提醒并可一键发起协同。
    - 支持批量导出会议资料包与责任追踪。
+7. **参数脊梁视图**（Owner：总体性能 · 王总师）
+   - `components/structure/ebom/EbomDetailPanel.tsx:760` 引入分组化参数（性能/材料/0D/1D/接口/可靠性）与详情抽屉。
+   - 支持展示参数来源、可信度、假设/验证记录，Mock 数据位于 `docs/mocks/ebom-parameter-groups.ts`。
 
 ## 3. 交付物清单
 - 交互稿与动效说明：Figma 链接（10-06 前）

@@ -9,6 +9,7 @@ import summaryFanBlade from './summary-fan-blade.json';
 import summaryFanDisk from './summary-fan-disk.json';
 import summaryFuelPump from './summary-fuel-pump.json';
 import summaryHptBlade from './summary-hpt-blade.json';
+import parameterGroups from './ebom-parameter-groups';
 
 import kpiMultiView from './ebom-sprint4/kpi-multi-view.json';
 import xbomSummaryDetail from './ebom-sprint4/xbom-summary-detail.json';
@@ -34,6 +35,7 @@ export {
   summaryFanDisk,
   summaryFuelPump,
   summaryHptBlade,
+  parameterGroups,
   kpiMultiView,
   xbomSummaryDetail,
   jumpLog,

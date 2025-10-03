@@ -20,11 +20,12 @@ const BL_A_ROOT: EbomTreeNode = node({
     node({ id: 'EBOM-ROOT/FAN', partNumber: 'MOD-1100', name: '风扇模块', children: [
       node({ id: 'EBOM-ROOT/FAN/BLD-GRP', partNumber: 'ASM-1110', name: '风扇叶片成组', phantom: true, children: [
         node({
-          id: 'EBOM-ROOT/FAN/BLD-GRP/BLD-01',
-          partNumber: 'BLD-001',
-          name: '风扇叶片',
-          class: 'fan-blade',
-          qty: 18,
+        id: 'EBOM-ROOT/FAN/BLD-GRP/BLD-01',
+        partNumber: 'BLD-001',
+        name: '风扇叶片',
+        class: 'fan-blade',
+        parameterDeckId: 'EBOM-ROOT/FAN/BLD-GRP/BLD-01',
+        qty: 18,
           uom: 'EA',
           findNo: '11A',
           safetyCritical: true,
@@ -54,7 +55,7 @@ const BL_A_ROOT: EbomTreeNode = node({
       node({ id: 'EBOM-ROOT/COMB/NOZ', partNumber: 'NOZ-131', name: '喷嘴组件', qty: 20 }),
     ]}),
     node({ id: 'EBOM-ROOT/HPT', partNumber: 'MOD-1400', name: '高压涡轮模块', children: [
-      node({ id: 'EBOM-ROOT/HPT/DISK', partNumber: 'DSK-141', name: '高压涡轮盘', class: 'turbine-disk', safetyCritical: true, llp: true, designParams: [ { name: '盘腹厚度', value: '22', unit: 'mm' }, { name: '材料', value: 'DS Rene 104' } ] }),
+      node({ id: 'EBOM-ROOT/HPT/DISK', partNumber: 'DSK-141', name: '高压涡轮盘', class: 'turbine-disk', safetyCritical: true, llp: true, parameterDeckId: 'EBOM-ROOT/HPT/DISK', designParams: [ { name: '盘腹厚度', value: '22', unit: 'mm' }, { name: '材料', value: 'DS Rene 104' } ] }),
       node({ id: 'EBOM-ROOT/HPT/BLADE', partNumber: 'HTB-142', name: '高压涡轮叶片', class: 'turbine-blade', qty: 72, safetyCritical: true, links: { gltfUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' } }),
       node({ id: 'EBOM-ROOT/HPT/VANE', partNumber: 'HTV-143', name: '导向叶片', qty: 36 }),
     ]}),
@@ -85,11 +86,12 @@ const BL_B_ROOT: EbomTreeNode = node({
     node({ id: 'EBOM-ROOT/FAN', partNumber: 'MOD-1100', name: '风扇模块', children: [
       node({ id: 'EBOM-ROOT/FAN/BLD-GRP', partNumber: 'ASM-1110', name: '风扇叶片成组', phantom: true, children: [
         node({
-          id: 'EBOM-ROOT/FAN/BLD-GRP/BLD-01',
-          partNumber: 'BLD-001',
-          name: '风扇叶片',
-          class: 'fan-blade',
-          qty: 20,
+        id: 'EBOM-ROOT/FAN/BLD-GRP/BLD-01',
+        partNumber: 'BLD-001',
+        name: '风扇叶片',
+        class: 'fan-blade',
+        parameterDeckId: 'EBOM-ROOT/FAN/BLD-GRP/BLD-01',
+        qty: 20,
           uom: 'PCS',
           findNo: '11B',
           safetyCritical: true,
@@ -114,7 +116,7 @@ const BL_B_ROOT: EbomTreeNode = node({
       node({ id: 'EBOM-ROOT/COMB/NOZ', partNumber: 'NOZ-131', name: '喷嘴组件', qty: 20 }),
     ]}),
     node({ id: 'EBOM-ROOT/HPT', partNumber: 'MOD-1400', name: '高压涡轮模块', children: [
-      node({ id: 'EBOM-ROOT/HPT/DISK', partNumber: 'DSK-141', name: '高压涡轮盘', class: 'turbine-disk', safetyCritical: true, llp: true }),
+      node({ id: 'EBOM-ROOT/HPT/DISK', partNumber: 'DSK-141', name: '高压涡轮盘', class: 'turbine-disk', safetyCritical: true, llp: true, parameterDeckId: 'EBOM-ROOT/HPT/DISK' }),
       node({ id: 'EBOM-ROOT/HPT/BLADE', partNumber: 'HTB-142', name: '高压涡轮叶片', class: 'turbine-blade', qty: 72, safetyCritical: true }),
       node({ id: 'EBOM-ROOT/HPT/VANE', partNumber: 'HTV-143', name: '导向叶片', qty: 40 }),
     ]}),

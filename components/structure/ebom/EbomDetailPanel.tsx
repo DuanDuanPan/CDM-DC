@@ -1,7 +1,16 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from 'react';
-import type { EbomBaseline, EbomDiffChange, EbomTreeNode } from './types';
+import type {
+  EbomBaseline,
+  EbomDiffChange,
+  EbomTreeNode,
+  EbomParameterDeck,
+  EbomParameterGroup,
+  EbomParameterDetail,
+  EbomParameterStatus,
+  EbomParameterDimension,
+} from './types';
 import { EBOM_BASELINES } from './data';
 import EbomModelViewer from './EbomModelViewer';
 import EbomDocList from './EbomDocList';
@@ -60,6 +69,7 @@ import {
   timelineEvents as timelineEventsMock,
   validationMatrix as validationMatrixMock,
   xbomSummaryDetail as xbomSummaryDetailMock,
+  parameterGroups as parameterGroupsMock,
 } from '../../../docs/mocks';
 import kpiConfig from '../../../docs/kpi-threshold-config.json';
 import { useEbomCompareState } from './useEbomCompareState';
@@ -103,6 +113,59 @@ const formatSubstitutesText = (
         .join("·")
     )
     .join("，");
+};
+
+const dimensionLabels: Record<EbomParameterDimension, string> = {
+  '0D': '标量',
+  '1D': '曲线',
+  '2D': '二维',
+  matrix: '矩阵',
+};
+
+const parameterStatusBadge = (status?: EbomParameterStatus) => {
+  if (!status) return null;
+  if (status === 'ok') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
+        <i className="ri-checkbox-circle-line" /> 达标
+      </span>
+    );
+  }
+  if (status === 'watch') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+        <i className="ri-error-warning-line" /> 关注
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700">
+      <i className="ri-alert-line" /> 预警
+    </span>
+  );
+};
+
+const parameterTrendBadge = (trend?: 'up' | 'down' | 'flat') => {
+  if (!trend) return null;
+  if (trend === 'up') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700">
+        <i className="ri-arrow-up-line" /> 上升
+      </span>
+    );
+  }
+  if (trend === 'down') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
+        <i className="ri-arrow-down-line" /> 下降
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+      <i className="ri-arrow-right-line" /> 持平
+    </span>
+  );
 };
 
 const flatten = (root: EbomTreeNode): Array<{ id: string; node: EbomTreeNode; path: string[] }> => {
@@ -187,6 +250,8 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
   const [jumpLogOpen, setJumpLogOpen] = useState(false);
   const [jumpLogVersion, setJumpLogVersion] = useState(0);
   const [validationOpen, setValidationOpen] = useState(false);
+  const [selectedParameterGroupId, setSelectedParameterGroupId] = useState<string | null>(null);
+  const [selectedParameterId, setSelectedParameterId] = useState<string | null>(null);
   const presetKeys = useMemo(()=> Object.keys((kpiConfig as any).presets ?? { default: {} }), []);
   const [compareState, setCompareState] = useEbomCompareState();
   const leftId = compareState.leftBaseline;
@@ -295,6 +360,99 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
   }, [selectedNodeId, left, right]);
 
   const viewMode = activeView;
+
+  const parameterDeck = useMemo<EbomParameterDeck | null>(() => {
+    if (!active) return null;
+    const key = active.parameterDeckId ?? active.id;
+    const mockDeck = (parameterGroupsMock as Record<string, EbomParameterDeck>)[key];
+    if (mockDeck) {
+      return mockDeck;
+    }
+    if (active.parameterGroups?.length) {
+      return {
+        summary: active.parameterGroups.length > 1 ? '节点自带参数分组' : undefined,
+        groups: active.parameterGroups,
+      };
+    }
+    if (active.designParams?.length) {
+      return {
+        summary: '节点内置设计参数（基础 Mock）',
+        groups: [
+          {
+            id: `${active.id}-legacy`,
+            title: '设计参数',
+            caption: '缺少分组配置时的默认视图',
+            parameters: active.designParams.map((item, index) => ({
+              id: `${active.id}-legacy-${index}`,
+              name: item.name,
+              value: item.value,
+              unit: item.unit,
+              status: item.status,
+              dimension: '0D' as EbomParameterDimension,
+            })),
+          } satisfies EbomParameterGroup,
+        ],
+      } satisfies EbomParameterDeck;
+    }
+    return null;
+  }, [active]);
+
+  useEffect(() => {
+    if (!parameterDeck || parameterDeck.groups.length === 0) {
+      setSelectedParameterGroupId((prev) => (prev === null ? prev : null));
+      setSelectedParameterId((prev) => (prev === null ? prev : null));
+      return;
+    }
+    setSelectedParameterGroupId((prev) => {
+      if (prev && parameterDeck.groups.some((group) => group.id === prev)) {
+        return prev;
+      }
+      return parameterDeck.groups[0].id;
+    });
+  }, [parameterDeck]);
+
+  useEffect(() => {
+    if (!parameterDeck || parameterDeck.groups.length === 0) {
+      setSelectedParameterId((prev) => (prev === null ? prev : null));
+      return;
+    }
+    const fallbackGroup = (selectedParameterGroupId
+      ? parameterDeck.groups.find((group) => group.id === selectedParameterGroupId)
+      : null) ?? parameterDeck.groups[0];
+    if (!fallbackGroup) {
+      setSelectedParameterId((prev) => (prev === null ? prev : null));
+      return;
+    }
+    setSelectedParameterId((prev) => {
+      if (prev && fallbackGroup.parameters.some((param) => param.id === prev)) {
+        return prev;
+      }
+      return fallbackGroup.parameters[0]?.id ?? null;
+    });
+  }, [parameterDeck, selectedParameterGroupId]);
+
+  const selectedParameterGroup = useMemo<EbomParameterGroup | null>(() => {
+    if (!parameterDeck || parameterDeck.groups.length === 0) return null;
+    if (selectedParameterGroupId) {
+      const found = parameterDeck.groups.find((group) => group.id === selectedParameterGroupId);
+      if (found) return found;
+    }
+    return parameterDeck.groups[0] ?? null;
+  }, [parameterDeck, selectedParameterGroupId]);
+
+  const selectedParameter = useMemo<EbomParameterDetail | null>(() => {
+    if (!selectedParameterGroup || selectedParameterGroup.parameters.length === 0) return null;
+    if (selectedParameterId) {
+      const found = selectedParameterGroup.parameters.find((param) => param.id === selectedParameterId);
+      if (found) return found;
+    }
+    return selectedParameterGroup.parameters[0] ?? null;
+  }, [selectedParameterGroup, selectedParameterId]);
+
+  const totalParameterCount = useMemo(() => {
+    if (!parameterDeck) return 0;
+    return parameterDeck.groups.reduce((acc, group) => acc + group.parameters.length, 0);
+  }, [parameterDeck]);
 
   const multiViewData = useMemo(() => kpiMultiViewMock as unknown as KpiMultiViewData, []);
   const summaryDetailData = useMemo(() => {
@@ -613,37 +771,266 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
               )}
             </div>
 
-            {/* 设计参数（按零部件类别可变） */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-4">
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-500">
-                <i className="ri-equalizer-line" /> 设计参数
-                {active.class && <span className="ml-2 rounded bg-purple-50 px-2 py-0.5 text-purple-700">{active.class}</span>}
-              </div>
-              {active.designParams?.length ? (
-                <div className="overflow-hidden rounded-lg border border-gray-100">
-                  <table className="min-w-full divide-y divide-gray-100 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-medium text-gray-600">参数</th>
-                        <th className="px-3 py-2 text-left font-medium text-gray-600">值</th>
-                        <th className="px-3 py-2 text-left font-medium text-gray-600">单位</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {active.designParams.map((p, i) => (
-                        <tr key={i}>
-                          <td className="px-3 py-2 text-gray-700">{p.name}</td>
-                          <td className="px-3 py-2 text-gray-900">{p.value}</td>
-                          <td className="px-3 py-2 text-gray-500">{p.unit ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {parameterDeck ? (
+              <section className="rounded-2xl border border-gray-200 bg-white p-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                    <i className="ri-equalizer-line" /> 设计参数脊梁
+                    {active.class && (
+                      <span className="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-[11px] text-purple-700">
+                        <i className="ri-stackshare-line" /> {active.class}
+                      </span>
+                    )}
+                    {totalParameterCount > 0 && (
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">共 {totalParameterCount} 项</span>
+                    )}
+                  </div>
+                  {parameterDeck.summary && <p className="text-sm text-gray-600">{parameterDeck.summary}</p>}
                 </div>
-              ) : (
-                <div className="text-sm text-gray-400">无参数数据</div>
-              )}
-            </div>
+                {parameterDeck.groups.length > 1 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {parameterDeck.groups.map((group) => {
+                      const isActiveGroup = selectedParameterGroup?.id === group.id;
+                      return (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => setSelectedParameterGroupId(group.id)}
+                          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm transition ${
+                            isActiveGroup
+                              ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-sm'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
+                          }`}
+                          aria-pressed={isActiveGroup}
+                        >
+                          <span className="font-medium">{group.title}</span>
+                          <span className="text-[11px] text-gray-500">{group.parameters.length}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {selectedParameterGroup ? (
+                  <>
+                    {selectedParameterGroup.caption && (
+                      <p className="mt-3 text-sm text-gray-600">{selectedParameterGroup.caption}</p>
+                    )}
+                    {selectedParameterGroup.focus && (
+                      <p className="mt-1 text-xs text-indigo-600">
+                        <i className="ri-focus-2-line" /> {selectedParameterGroup.focus}
+                      </p>
+                    )}
+                    {selectedParameterGroup.parameters.length > 0 ? (
+                      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {selectedParameterGroup.parameters.map((param) => {
+                          const isActiveParameter = selectedParameter?.id === param.id;
+                          return (
+                            <button
+                              key={param.id}
+                              type="button"
+                              onClick={() => setSelectedParameterId(param.id)}
+                              className={`flex h-full flex-col rounded-xl border p-3 text-left transition ${
+                                isActiveParameter
+                                  ? 'border-indigo-300 bg-indigo-50/70 shadow-sm'
+                                  : 'border-gray-100 bg-slate-50/70 hover:border-indigo-200 hover:bg-white'
+                              }`}
+                              aria-pressed={isActiveParameter}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="flex-1 text-sm font-semibold text-gray-800">{param.name}</span>
+                                {parameterStatusBadge(param.status)}
+                              </div>
+                              <div className="mt-1 text-lg font-semibold text-gray-900">
+                                {param.value}
+                                {param.unit && <span className="ml-1 text-sm text-gray-500">{param.unit}</span>}
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 shadow-sm">
+                                  <i className="ri-shape-line" /> {dimensionLabels[param.dimension] ?? param.dimension}
+                                </span>
+                                {parameterTrendBadge(param.trend)}
+                                {param.owner && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <i className="ri-user-line" /> {param.owner}
+                                  </span>
+                                )}
+                                {param.tags?.slice(0, 2).map((tag) => (
+                                  <span key={tag} className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5">
+                                    <i className="ri-price-tag-3-line" /> {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500">
+                        此分组暂无参数数据。
+                      </div>
+                    )}
+                    {selectedParameter && (
+                      <div className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700">
+                              <i className="ri-information-line" /> 参数详情
+                            </div>
+                            <h5 className="mt-1 text-lg font-semibold text-gray-900">{selectedParameter.name}</h5>
+                            {selectedParameter.description && (
+                              <p className="mt-2 text-sm text-gray-700">{selectedParameter.description}</p>
+                            )}
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                              {selectedParameter.target && (
+                                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5">
+                                  <i className="ri-flag-line" /> 目标 {selectedParameter.target}
+                                </span>
+                              )}
+                              {selectedParameter.limit && (
+                                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5">
+                                  <i className="ri-error-warning-line" /> 限值 {selectedParameter.limit}
+                                </span>
+                              )}
+                              {selectedParameter.baselineContribution && (
+                                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5">
+                                  <i className="ri-line-chart-line" /> {selectedParameter.baselineContribution}
+                                </span>
+                              )}
+                              {selectedParameter.lastUpdated && (
+                                <span className="inline-flex items-center gap-1">
+                                  <i className="ri-time-line" /> 更新 {selectedParameter.lastUpdated}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 text-right text-sm text-gray-600">
+                            <div className="text-2xl font-semibold text-gray-900">
+                              {selectedParameter.value}
+                              {selectedParameter.unit && <span className="ml-1 text-base text-gray-500">{selectedParameter.unit}</span>}
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-2 text-xs text-gray-500">
+                              <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 shadow-sm">
+                                <i className="ri-shape-line" /> {dimensionLabels[selectedParameter.dimension] ?? selectedParameter.dimension}
+                              </span>
+                              {parameterStatusBadge(selectedParameter.status)}
+                              {parameterTrendBadge(selectedParameter.trend)}
+                            </div>
+                          </div>
+                        </div>
+                        {selectedParameter.tags && selectedParameter.tags.length > 0 && (
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                            {selectedParameter.tags.map((tag) => (
+                              <span key={tag} className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 shadow-sm">
+                                <i className="ri-price-tag-3-line" /> {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {selectedParameter.assumption && (
+                          <div className="mt-3 rounded-lg border border-indigo-200 bg-white/70 p-3 text-sm text-gray-700">
+                            <div className="mb-1 text-xs font-medium text-indigo-600">
+                              <i className="ri-mind-map"></i> 设计假设
+                            </div>
+                            {selectedParameter.assumption}
+                          </div>
+                        )}
+                        {selectedParameter.verification && selectedParameter.verification.length > 0 && (
+                          <div className="mt-3 rounded-lg border border-indigo-200 bg-white/70 p-3 text-sm text-gray-700">
+                            <div className="mb-1 text-xs font-medium text-indigo-600">
+                              <i className="ri-shield-check-line"></i> 验证与行动
+                            </div>
+                            <ul className="list-disc pl-5">
+                              {selectedParameter.verification.map((item) => (
+                                <li key={item} className="text-sm text-gray-700">{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {selectedParameter.sparkline && selectedParameter.sparkline.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-xs font-medium text-gray-500">样点（Mock）</div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-600">
+                              {selectedParameter.sparkline.map((point) => (
+                                <span key={point.label} className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 shadow-sm">
+                                  {point.label}: {point.value}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="mt-4">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-500">
+                            <i className="ri-database-2-line" /> 参数来源
+                          </div>
+                          {selectedParameter.sources && selectedParameter.sources.length > 0 ? (
+                            <ul className="space-y-2">
+                              {selectedParameter.sources.map((source) => (
+                                <li key={source.id} className="rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-700">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="inline-flex items-center gap-1 text-sm font-semibold text-gray-800">
+                                      <i className="ri-folder-chart-line" /> {source.type}
+                                    </span>
+                                    <span className="flex items-center gap-2 text-xs text-gray-500">
+                                      {source.updatedAt && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <i className="ri-time-line" /> {source.updatedAt}
+                                        </span>
+                                      )}
+                                      {source.confidence !== undefined && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <i className="ri-shield-keyhole-line" /> 可信度 {Math.round(source.confidence * 100)}%
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 text-sm text-gray-700">{source.reference}</div>
+                                  {source.summary && <div className="mt-1 text-xs text-gray-500">{source.summary}</div>}
+                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                    {source.owner && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <i className="ri-user-line" /> {source.owner}
+                                      </span>
+                                    )}
+                                    {source.reviewer && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <i className="ri-user-star-line" /> 审核 {source.reviewer}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {source.link && (
+                                    <a
+                                      href={source.link}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="mt-2 inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs text-indigo-700 hover:border-indigo-300"
+                                    >
+                                      <i className="ri-external-link-line" /> 查看来源
+                                    </a>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-gray-200 bg-white py-6 text-center text-sm text-gray-500">
+                              暂无来源记录。
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500">
+                    暂无参数数据。
+                  </div>
+                )}
+              </section>
+            ) : (
+              <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+                <i className="ri-equalizer-fill text-3xl text-gray-300"></i>
+                <p className="mt-2">此节点暂无设计参数配置。</p>
+              </section>
+            )}
 
             {/* 轻量化 3D 模型 */}
             <div className="rounded-2xl border border-gray-200 bg-white p-4">

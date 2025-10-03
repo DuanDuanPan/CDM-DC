@@ -6,6 +6,56 @@ export interface Effectivity {
   blockPoint?: string;
 }
 
+export type EbomParameterDimension = '0D' | '1D' | '2D' | 'matrix';
+
+export type EbomParameterStatus = 'ok' | 'watch' | 'risk';
+
+export interface EbomParameterSource {
+  id: string;
+  type: '仿真' | '试验' | '文档' | '推导' | '供应商' | '运行数据';
+  reference: string;
+  summary?: string;
+  owner?: string;
+  updatedAt?: string;
+  confidence?: number;
+  link?: string;
+  reviewer?: string;
+}
+
+export interface EbomParameterDetail {
+  id: string;
+  name: string;
+  value: string;
+  unit?: string;
+  dimension: EbomParameterDimension;
+  status?: EbomParameterStatus;
+  trend?: 'up' | 'down' | 'flat';
+  target?: string;
+  limit?: string;
+  description?: string;
+  lastUpdated?: string;
+  owner?: string;
+  tags?: string[];
+  assumption?: string;
+  verification?: string[];
+  baselineContribution?: string;
+  sparkline?: Array<{ label: string; value: number }>;
+  sources?: EbomParameterSource[];
+}
+
+export interface EbomParameterGroup {
+  id: string;
+  title: string;
+  caption?: string;
+  focus?: string;
+  parameters: EbomParameterDetail[];
+}
+
+export interface EbomParameterDeck {
+  summary?: string;
+  groups: EbomParameterGroup[];
+}
+
 export interface EbomPartRef {
   id: string; // unique node id in tree
   partNumber: string;
@@ -51,6 +101,8 @@ export interface EbomPartRef {
     }>;
   };
   designParams?: Array<{ name: string; value: string; unit?: string; status?: 'ok' | 'risk' | 'watch' }>;
+  parameterDeckId?: string;
+  parameterGroups?: EbomParameterGroup[];
 }
 
 export interface EbomTreeNode extends EbomPartRef {

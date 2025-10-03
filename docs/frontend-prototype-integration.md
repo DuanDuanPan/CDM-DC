@@ -1,6 +1,6 @@
 # 仅前端原型联调方案（FE-only）
 
-状态：完成（草案） · 2025-10-03（已实现刷新按钮、时间窗联动KPI、三卡显示开关、健康度公式提示、导出快照、跳转本地提示）
+状态：完成（草案） · 2025-10-03（已实现刷新按钮、时间窗联动KPI、三卡显示开关、健康度公式提示、导出快照、跳转本地提示、参数脊梁详情/来源视图）
 适用范围：在不实现后端/BFF的情况下，用 Mock 数据驱动“实时全景驾驶舱 + XBOM 摘要 + 知识卡”，用于演示与交互评审。
 
 ## 1. 数据来源与绑定
@@ -9,6 +9,7 @@
   - 基线健康：`docs/mocks/baseline-health.json`
   - XBOM 摘要（试点：风扇叶片）：`docs/mocks/summary-fan-blade.json`
   - 知识卡：`docs/mocks/knowledge-related.json`
+  - 参数分组：`docs/mocks/ebom-parameter-groups.ts`
 - 绑定策略：
   - 以 `nodeId` 为主键；当前试点覆盖 `EBOM-ROOT/FAN/BLD-GRP/BLD-01` 等 5 个节点；
   - 暂无数据的节点显示“无摘要/数据可能过期”的温和提示；
