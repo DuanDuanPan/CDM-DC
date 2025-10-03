@@ -70,6 +70,7 @@ interface Props {
   selectedNodeId: string | null;
   onNavigateBomType?: (bomType: 'simulation' | 'test') => void;
   onSelectNode?: (nodeId: string) => void;
+  activeView?: 'structure' | 'cockpit';
 }
 
 const badge = (cls: string, icon: string, text: string) => (
@@ -162,10 +163,9 @@ const findById = (root: EbomTreeNode, id: string): EbomTreeNode | null => {
   return null;
 };
 
-export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onSelectNode }: Props) {
+export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onSelectNode, activeView = 'structure' }: Props) {
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [windowLabel, setWindowLabel] = useState<'24h'|'7d'|'30d'>('24h');
-  const [activeTab, setActiveTab] = useState<'structure' | 'cockpit'>('structure');
   const [showReq, setShowReq] = useState(true);
   const [showSim, setShowSim] = useState(true);
   const [showTest, setShowTest] = useState(true);
@@ -293,6 +293,8 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
     // 优先在右侧基线中寻找，找不到再在左侧
     return findById(right.root, selectedNodeId) || findById(left.root, selectedNodeId);
   }, [selectedNodeId, left, right]);
+
+  const viewMode = activeView;
 
   const multiViewData = useMemo(() => kpiMultiViewMock as unknown as KpiMultiViewData, []);
   const summaryDetailData = useMemo(() => {
@@ -429,24 +431,7 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
         </div>
       </section>
 
-      <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
-        <button
-          type="button"
-          onClick={() => setActiveTab('structure')}
-          className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${activeTab === 'structure' ? 'border border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm' : 'border border-transparent text-gray-600 hover:border-indigo-200 hover:text-indigo-600'}`}
-        >
-          <i className="ri-stack-line" /> 结构视图
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('cockpit')}
-          className={`rounded-xl px-3 py-1.5 text-sm font-medium transition ${activeTab === 'cockpit' ? 'border border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm' : 'border border-transparent text-gray-600 hover:border-indigo-200 hover:text-indigo-600'}`}
-        >
-          <i className="ri-dashboard-2-line" /> 驾驶舱
-        </button>
-      </div>
-
-      {activeTab === 'structure' && (
+      {viewMode === 'structure' && (
         <>
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -675,7 +660,7 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
       )}
 
       {/* 驾驶舱视图（FE-only Mock） */}
-      {activeTab === 'cockpit' && active && (
+      {viewMode === 'cockpit' && active && (
         <>
           <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700">

@@ -5,12 +5,16 @@ import { EBOM_BASELINES } from "./data";
 
 export type EbomCompareFilter = "all" | "added" | "removed" | "modified";
 export type EbomCompareDepth = number | "all";
+export type EbomOwnerFilter = "all" | string;
 
 interface EbomCompareState {
   leftBaseline: string;
   rightBaseline: string;
   filter: EbomCompareFilter;
   depth: EbomCompareDepth;
+  ownerFilter: EbomOwnerFilter;
+  favorites: string[];
+  recent: string[];
 }
 
 const STORAGE_KEY = "ebomCompareState";
@@ -18,12 +22,16 @@ const PARAM_LEFT = "ebomLeft";
 const PARAM_RIGHT = "ebomRight";
 const PARAM_FILTER = "ebomFilter";
 const PARAM_DEPTH = "ebomDepth";
+const PARAM_OWNER = "ebomOwner";
 
 const DEFAULT_STATE: EbomCompareState = {
   leftBaseline: EBOM_BASELINES[0]?.id ?? "",
   rightBaseline: EBOM_BASELINES[1]?.id ?? EBOM_BASELINES[0]?.id ?? "",
   filter: "all",
   depth: "all",
+  ownerFilter: "all",
+  favorites: [],
+  recent: [],
 };
 
 type Listener = (state: EbomCompareState) => void;
@@ -56,7 +64,11 @@ const loadFromStorage = (): Partial<EbomCompareState> => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as Partial<EbomCompareState>;
-    return parsed ?? {};
+    if (!parsed) return {};
+    if (!Array.isArray(parsed.favorites)) parsed.favorites = [];
+    if (!Array.isArray(parsed.recent)) parsed.recent = [];
+    if (parsed.ownerFilter && typeof parsed.ownerFilter !== "string") parsed.ownerFilter = "all";
+    return parsed;
   } catch {
     return {};
   }
@@ -69,11 +81,13 @@ const loadFromSearch = (): Partial<EbomCompareState> => {
   const right = search.get(PARAM_RIGHT) ?? undefined;
   const filter = parseFilter(search.get(PARAM_FILTER));
   const depth = parseDepth(search.get(PARAM_DEPTH));
+  const owner = search.get(PARAM_OWNER) ?? undefined;
   const next: Partial<EbomCompareState> = {};
   if (left) next.leftBaseline = left;
   if (right) next.rightBaseline = right;
   if (filter) next.filter = filter;
   if (depth !== undefined) next.depth = depth;
+  if (owner) next.ownerFilter = owner;
   return next;
 };
 
@@ -92,7 +106,28 @@ const syncSearchParams = (next: EbomCompareState) => {
   url.searchParams.set(PARAM_FILTER, next.filter);
   if (next.depth === "all") url.searchParams.delete(PARAM_DEPTH);
   else url.searchParams.set(PARAM_DEPTH, String(next.depth));
+  if (!next.ownerFilter || next.ownerFilter === "all") url.searchParams.delete(PARAM_OWNER);
+  else url.searchParams.set(PARAM_OWNER, next.ownerFilter);
   window.history.replaceState(window.history.state, "", url.toString());
+};
+
+const sanitizeBaselines = (ids: string[]) => {
+  const allowed = new Set(EBOM_BASELINES.map((b) => b.id));
+  return ids.filter((id) => allowed.has(id));
+};
+
+const updateRecent = (current: string[], nextCandidates: string[]): string[] => {
+  const allowed = new Set(EBOM_BASELINES.map((b) => b.id));
+  const merged = [...nextCandidates, ...current];
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const id of merged) {
+    if (!id || !allowed.has(id) || seen.has(id)) continue;
+    unique.push(id);
+    seen.add(id);
+    if (unique.length >= 6) break;
+  }
+  return unique;
 };
 
 const notify = () => {
@@ -111,6 +146,8 @@ const initialise = () => {
     ...fromStorage,
     ...fromSearch,
   };
+  state.favorites = sanitizeBaselines(state.favorites ?? []);
+  state.recent = sanitizeBaselines(state.recent ?? []);
   window.addEventListener("storage", (event) => {
     if (event.key !== STORAGE_KEY || !event.newValue) return;
     try {
@@ -128,7 +165,20 @@ export function getEbomCompareState(): EbomCompareState {
 
 export function setEbomCompareState(partial: Partial<EbomCompareState>) {
   initialise();
-  state = { ...state, ...partial };
+  const previous = state;
+  const nextLeft = partial.leftBaseline ?? previous.leftBaseline;
+  const nextRight = partial.rightBaseline ?? previous.rightBaseline;
+  let recent = previous.recent;
+  if (nextLeft !== previous.leftBaseline || nextRight !== previous.rightBaseline) {
+    recent = updateRecent(previous.recent, [nextLeft, nextRight]);
+  }
+  state = {
+    ...previous,
+    ...partial,
+    recent,
+  };
+  state.favorites = sanitizeBaselines(state.favorites ?? []);
+  state.recent = sanitizeBaselines(state.recent ?? []);
   writeToStorage(state);
   syncSearchParams(state);
   notify();
@@ -145,4 +195,23 @@ export function useEbomCompareState(): [EbomCompareState, typeof setEbomCompareS
     };
   }, []);
   return [value, setEbomCompareState];
+}
+
+export function toggleFavoriteBaseline(id: string) {
+  initialise();
+  const allowed = new Set(EBOM_BASELINES.map((b) => b.id));
+  if (!allowed.has(id)) return;
+  const favorites = new Set(state.favorites ?? []);
+  if (favorites.has(id)) favorites.delete(id);
+  else favorites.add(id);
+  state = { ...state, favorites: Array.from(favorites) };
+  writeToStorage(state);
+  notify();
+}
+
+export function clearRecentBaselines() {
+  initialise();
+  state = { ...state, recent: [] };
+  writeToStorage(state);
+  notify();
 }

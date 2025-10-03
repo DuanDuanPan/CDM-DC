@@ -15,6 +15,11 @@ export interface MiniTreeFlatNode {
   lifecycle?: string;
   effectivity?: EbomTreeNode["effectivity"];
   substitutes?: EbomTreeNode["substitutes"];
+  ownerDiscipline?: string;
+  safetyCritical?: boolean;
+  llp?: boolean;
+  effectivityCoverage?: number;
+  changeTrace?: EbomTreeNode["changeTrace"];
 }
 
 export interface MiniTreeDiffDetail {
@@ -30,6 +35,11 @@ export interface MiniTreeDiffRow {
   left?: MiniTreeFlatNode;
   right?: MiniTreeFlatNode;
   diffs?: MiniTreeDiffDetail[];
+  ownerDiscipline?: string;
+  safetyCritical?: boolean;
+  llp?: boolean;
+  ecoId?: string;
+  ccbStatus?: string;
 }
 
 const valueOrDash = (v?: string | number | null) =>
@@ -132,6 +142,11 @@ export const flattenEbomTree = (root: EbomTreeNode): MiniTreeFlatNode[] => {
       lifecycle: node.lifecycle,
       effectivity: node.effectivity,
       substitutes: node.substitutes,
+      ownerDiscipline: node.ownerDiscipline,
+      safetyCritical: node.safetyCritical,
+      llp: node.llp,
+      effectivityCoverage: node.effectivityCoverage,
+      changeTrace: node.changeTrace,
     });
     (node.children ?? []).forEach((child) => walk(child, depth + 1, [...path, child.name]));
   };
@@ -162,11 +177,34 @@ export const diffEbomTrees = (
         left,
         right,
         diffs,
+        ownerDiscipline: left.ownerDiscipline ?? right.ownerDiscipline,
+        safetyCritical: left.safetyCritical ?? right.safetyCritical,
+        llp: left.llp ?? right.llp,
+        ecoId: left.changeTrace?.ecoId ?? right.changeTrace?.ecoId,
+        ccbStatus: left.changeTrace?.ccbStatus ?? right.changeTrace?.ccbStatus,
       });
     } else if (left && !right) {
-      rows.push({ id, type: "removed", left });
+      rows.push({
+        id,
+        type: "removed",
+        left,
+        ownerDiscipline: left.ownerDiscipline,
+        safetyCritical: left.safetyCritical,
+        llp: left.llp,
+        ecoId: left.changeTrace?.ecoId,
+        ccbStatus: left.changeTrace?.ccbStatus,
+      });
     } else if (!left && right) {
-      rows.push({ id, type: "added", right });
+      rows.push({
+        id,
+        type: "added",
+        right,
+        ownerDiscipline: right.ownerDiscipline,
+        safetyCritical: right.safetyCritical,
+        llp: right.llp,
+        ecoId: right.changeTrace?.ecoId,
+        ccbStatus: right.changeTrace?.ccbStatus,
+      });
     }
   });
 

@@ -18,9 +18,9 @@ const DiffBadge = ({ type }: { type: MiniTreeDiffType }) => {
   return <span className="rounded bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-500">一致</span>;
 };
 
-const DiffChip = ({ label }: { label: string }) => (
-  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-700">
-    <i className="ri-edit-line" /> {label}
+const DiffChip = ({ label, icon }: { label: string; icon: string }) => (
+  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700">
+    <i className={icon} /> {label}
   </span>
 );
 
@@ -47,6 +47,7 @@ export default function EbomMiniTreePreview({
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [localDepth, setLocalDepth] = useState<EbomCompareDepth>(depth ?? "all");
   const [visibleCount, setVisibleCount] = useState(maxItems);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -72,6 +73,18 @@ export default function EbomMiniTreePreview({
 
   const rows = useMemo(() => diffEbomTrees(leftRoot, rightRoot), [leftRoot, rightRoot]);
 
+  const totals = useMemo(() => {
+    let added = 0;
+    let removed = 0;
+    let modified = 0;
+    rows.forEach((row) => {
+      if (row.type === "added") added += 1;
+      else if (row.type === "removed") removed += 1;
+      else if (row.type === "modified") modified += 1;
+    });
+    return { added, removed, modified, total: rows.length };
+  }, [rows]);
+
   const filtered = rows.filter((row) => {
     if (onlyDiff && row.type === "same") return false;
     if (filter !== "all" && row.type !== filter) return false;
@@ -83,6 +96,7 @@ export default function EbomMiniTreePreview({
   });
   const visibleRows = filtered.slice(0, visibleCount);
   const highlightId = hoverId ?? selectedId ?? null;
+  const remainingCount = Math.max(filtered.length - visibleRows.length, 0);
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -103,11 +117,31 @@ export default function EbomMiniTreePreview({
     return () => observer.disconnect();
   }, [filtered.length, visibleCount, maxItems]);
 
+  useEffect(() => {
+    if (!onSelectId) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (!event.altKey) return;
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const ids = filtered.map((row) => row.id);
+      if (!ids.length) return;
+      event.preventDefault();
+      const currentId = selectedId ?? focusedId ?? ids[0];
+      const currentIndex = ids.indexOf(currentId);
+      const delta = event.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = currentIndex === -1 ? (delta > 0 ? 0 : ids.length - 1) : Math.min(Math.max(currentIndex + delta, 0), ids.length - 1);
+      const nextId = ids[nextIndex];
+      setFocusedId(nextId);
+      onSelectId(nextId);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [filtered, focusedId, onSelectId, selectedId]);
+
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-800 flex items-center gap-1">
+          <span className="flex items-center gap-1 text-sm font-medium text-gray-800">
             <i className="ri-layout-column-line" /> 并排迷你树（预览）
           </span>
           <label className="inline-flex items-center gap-1">
@@ -120,12 +154,27 @@ export default function EbomMiniTreePreview({
             仅显示差异
           </label>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
+            <i className="ri-add-line" /> 新增 {totals.added}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700">
+            <i className="ri-subtract-line" /> 移除 {totals.removed}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+            <i className="ri-edit-line" /> 修改 {totals.modified}
+          </span>
+          <span className="text-[11px] text-gray-500">显示 {visibleRows.length}/{filtered.length} · 全量 {totals.total}</span>
+          {remainingCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+              <i className="ri-time-line" /> 剩余 {remainingCount}
+            </span>
+          )}
           <span>深度</span>
           <select
             value={String(effectiveDepth)}
             onChange={(event) => {
-              const next = event.target.value === "all" ? "all" : Number(event.target.value) as EbomCompareDepth;
+              const next = event.target.value === "all" ? "all" : (Number(event.target.value) as EbomCompareDepth);
               updateDepth(next);
             }}
             className="rounded border border-gray-300 bg-white px-2 py-1 text-[11px]"
@@ -138,9 +187,16 @@ export default function EbomMiniTreePreview({
             <option value="5">5</option>
           </select>
           <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] text-blue-600">
-            <i className="ri-link" /> 同步对比中心
+            <i className="ri-exchange-line" /> Alt + ↑/↓ 快速跳差异
           </span>
         </div>
+      </div>
+
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+        <div
+          className="h-full rounded-full bg-blue-500 transition-all"
+          style={{ width: `${filtered.length ? Math.min((visibleRows.length / filtered.length) * 100, 100) : 0}%` }}
+        />
       </div>
 
       <div ref={scrollRef} className="mt-3 grid max-h-[26rem] gap-2 overflow-y-auto pr-1">
@@ -202,33 +258,34 @@ export default function EbomMiniTreePreview({
                   {rightPn && <div className="text-[11px] text-gray-500">{rightPn}</div>}
                 </button>
               </div>
-              {row.type === "modified" && diffs.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {diffs.slice(0, 4).map((detail) => (
-                    <span key={`${row.id}-${detail.key}`} title={`${detail.label}: ${detail.left} → ${detail.right}`}>
-                      <DiffChip label={`${detail.label}`} />
-                    </span>
+              {diffs.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1">
+                  {diffs.map((diff) => (
+                    <DiffChip key={diff.key} icon="ri-edit-line" label={`${diff.label}: ${diff.left} → ${diff.right}`} />
                   ))}
-                  {diffs.length > 4 && (
-                    <span className="text-[11px] text-gray-500">+{diffs.length - 4}</span>
-                  )}
                 </div>
               )}
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                {row.ownerDiscipline && <DiffChip icon="ri-user-voice-line" label={row.ownerDiscipline} />}
+                {row.safetyCritical && <DiffChip icon="ri-alert-line" label="SC" />}
+                {row.llp && <DiffChip icon="ri-timer-line" label="LLP" />}
+                {row.ecoId && <DiffChip icon="ri-git-commit-line" label={row.ecoId} />}
+                {row.ccbStatus && <DiffChip icon="ri-shield-check-line" label={row.ccbStatus} />}
+              </div>
             </div>
           );
         })}
         {visibleRows.length === 0 && (
-          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-            当前筛选范围内无差异节点。
+          <div className="rounded-xl border border-dashed border-gray-200 bg-white py-10 text-center text-sm text-gray-500">
+            当前筛选无差异，尝试放宽条件或关闭“仅差异”。
           </div>
         )}
-        <div ref={loadMoreRef} className="h-4" />
+        {visibleCount < filtered.length && (
+          <div ref={loadMoreRef} className="flex items-center justify-center py-2 text-[12px] text-gray-500">
+            正在加载更多差异…
+          </div>
+        )}
       </div>
-      {filtered.length > visibleRows.length && (
-        <div className="mt-2 text-center text-[11px] text-gray-500">
-          已加载 {visibleRows.length} / {filtered.length} 条，继续下拉以加载更多。
-        </div>
-      )}
     </section>
   );
 }

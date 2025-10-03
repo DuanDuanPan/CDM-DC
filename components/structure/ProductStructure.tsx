@@ -1817,6 +1817,8 @@ export default function ProductStructure() {
       ? ['overview', 'definition', 'design', 'simulation', 'test', 'process', 'management']
       : selectedBomType === 'requirement'
       ? ['requirement']
+      : selectedBomType === 'design'
+      ? ['structure', 'cockpit']
       : ['structure'];
 
     if (normalizedTab && availableTabs.includes(normalizedTab)) {
@@ -1828,6 +1830,8 @@ export default function ProductStructure() {
       setActiveTab('overview');
     } else if (selectedBomType === 'requirement') {
       setActiveTab('requirement');
+    } else if (selectedBomType === 'design') {
+      setActiveTab('structure');
     } else {
       setActiveTab('structure');
     }
@@ -3691,7 +3695,7 @@ export default function ProductStructure() {
           <div className={`border-b border-gray-200 bg-white px-6 py-4 transition-shadow ${contentScrolled ? 'shadow-sm' : ''}`}>
             <div className="flex space-x-8" role="tablist" aria-label="方案视图">
               {(() => {
-                const tabs = [];
+                const tabs: Array<{ id: string; name: string; icon: string }> = [];
                 if (selectedBomType === 'solution') {
                   tabs.push(
                     { id: 'overview', name: '概览', icon: 'ri-compass-3-line' },
@@ -3705,6 +3709,11 @@ export default function ProductStructure() {
                 } else if (selectedBomType === 'requirement') {
                   tabs.push(
                     { id: 'requirement', name: '需求详情', icon: 'ri-file-list-2-line' }
+                  );
+                } else if (selectedBomType === 'design') {
+                  tabs.push(
+                    { id: 'structure', name: '结构视图', icon: 'ri-stack-line' },
+                    { id: 'cockpit', name: '实时驾驶舱', icon: 'ri-dashboard-2-line' }
                   );
                 } else {
                   tabs.push(
@@ -3841,12 +3850,18 @@ export default function ProductStructure() {
                 </div>
               )}
 
-              {activeTab === 'structure' && selectedBomType === 'design' && (
-                <div role="tabpanel" id="panel-structure" aria-labelledby="tab-structure" className="space-y-6">
+              {selectedBomType === 'design' && (activeTab === 'structure' || activeTab === 'cockpit') && (
+                <div
+                  role="tabpanel"
+                  id={`panel-${activeTab}`}
+                  aria-labelledby={`tab-${activeTab}`}
+                  className="space-y-6"
+                >
                   <EbomDetailPanel
                     selectedNodeId={selectedNode}
                     onNavigateBomType={(t) => handleBomTypeChange(t)}
-                    onSelectNode={(id)=>handleNodeClick(id)}
+                    onSelectNode={(id) => handleNodeClick(id)}
+                    activeView={activeTab === 'cockpit' ? 'cockpit' : 'structure'}
                   />
                 </div>
               )}
