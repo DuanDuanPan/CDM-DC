@@ -97,14 +97,20 @@ const BL_B_ROOT: EbomTreeNode = node({
           safetyCritical: true,
           effectivity: { serialRange: ['0401', '9999'], dateRange: ['2025-04-01', '2025-12-31'], blockPoint: 'BP-25' },
           substitutes: [ { partNumber: 'BLD-002', reason: '升级方案', priority: 1 } ],
-          links: { gltfUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' },
+        links: {
+          gltfUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+          docs: [
+            { id: 'DOC-BLD-SPEC', name: '风扇叶片规格书', type: 'spec', version: 'B', updatedAt: '2025-09-12', owner: '结构组', url: 'https://mock.plm.local/docs/blade-spec-b.pdf' },
+            { id: 'DOC-BLD-TEST', name: '风扇叶片试验记录', type: 'report', version: 'B', updatedAt: '2025-09-08', owner: '试验所', url: 'https://mock.plm.local/docs/blade-test-b.pdf' }
+          ]
+        },
           designParams: [
             { name: '弦长', value: '352', unit: 'mm' },
             { name: '厚度比', value: '18.2', unit: '%' }
           ]
         }),
       ]}),
-      node({ id: 'EBOM-ROOT/FAN/DISC', partNumber: 'DSC-110', name: '风扇盘', class: 'fan-disk', safetyCritical: true, llp: true }),
+      node({ id: 'EBOM-ROOT/FAN/DISC', partNumber: 'DSC-110', name: '风扇盘', class: 'fan-disk', safetyCritical: true, llp: true, links: { docs: [ { id: 'DOC-DISK-DRW', name: '风扇盘图纸', type: 'drawing', version: 'B', updatedAt: '2025-08-30', owner: '结构组' } ] } }),
     ]}),
     node({ id: 'EBOM-ROOT/LPC', partNumber: 'MOD-1200', name: '低压压气机模块', children: [
       node({ id: 'EBOM-ROOT/LPC/STG1', partNumber: 'STG-121', name: '一级叶栅', qty: 1 }),
