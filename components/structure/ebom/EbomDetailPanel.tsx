@@ -720,6 +720,20 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
             </div>
             <h3 className="text-lg font-semibold text-gray-900">XBOM 面板 · 右侧详情</h3>
             <p className="text-sm text-gray-500">点击左侧 E‑BOM 树节点，查看关联对象的详细信息与基线差异。</p>
+            <button
+              type="button"
+              onClick={() => setValidationOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-indigo-200 hover:text-indigo-600 sm:hidden"
+            >
+              <i className="ri-matrix-line"></i> 验证矩阵
+            </button>
+            <button
+              type="button"
+              onClick={() => setJumpLogOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-slate-300 hover:text-slate-700 sm:hidden"
+            >
+              <i className="ri-history-line"></i> 跳转日志
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -755,34 +769,34 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
         </div>
       </section>
 
-      <div className="sticky top-0 z-40 md:top-4">
-        <div className="rounded-2xl border border-gray-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur">
+      <div className="sticky inset-x-0 top-16 z-40 px-3 transition-all md:top-[84px]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/90 px-4 py-2 shadow-md backdrop-blur">
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
             <button
               type="button"
               onClick={() => setThresholdOpen(true)}
-              className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700 hover:border-indigo-300"
+              className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:border-indigo-300"
             >
               <i className="ri-sliders-line"></i> 阈值面板
             </button>
             <button
               type="button"
               onClick={() => { setActiveDynamicKpiId(null); setDynamicOpen(true); }}
-              className="inline-flex items-center gap-1 rounded border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs text-purple-700 hover:border-purple-300"
+              className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 hover:border-purple-300"
             >
               <i className="ri-function-line"></i> 动态规则
             </button>
             <button
               type="button"
               onClick={() => setRefreshStrategyOpen(true)}
-              className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 hover:border-amber-300"
+              className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:border-amber-300"
             >
               <i className="ri-time-line"></i> 刷新策略
             </button>
             <button
               type="button"
               onClick={() => setMessageCenterOpen(true)}
-              className="relative inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:border-rose-300"
+              className="relative inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:border-rose-300"
             >
               <i className="ri-notification-3-line"></i> 消息中心
               {unreadMessages > 0 && (
@@ -791,28 +805,31 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                 </span>
               )}
             </button>
+          </div>
+          <div className="hidden flex-wrap items-center gap-2 text-xs text-gray-500 sm:flex">
             <button
               type="button"
               onClick={() => setValidationOpen(true)}
-              className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:border-indigo-200 hover:text-indigo-600"
+              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-indigo-200 hover:text-indigo-600"
             >
               <i className="ri-matrix-line"></i> 验证矩阵
             </button>
             <button
               type="button"
               onClick={() => setJumpLogOpen(true)}
-              className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-600 hover:border-slate-300 hover:text-slate-700"
+              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-slate-300 hover:text-slate-700"
             >
               <i className="ri-history-line"></i> 跳转日志
             </button>
           </div>
         </div>
       </div>
+      <div className="h-6"></div>
 
       {viewMode === 'structure' && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-6">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="scroll-mt-36 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2 text-sm">
             <i className="ri-git-commit-line text-purple-600"></i>
