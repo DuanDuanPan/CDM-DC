@@ -643,58 +643,6 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
     return { total, byType };
   }, [selectedParameter]);
 
-  const quickActions = [
-    {
-      id: 'threshold',
-      label: '阈值面板',
-      short: '阈值',
-      icon: 'ri-sliders-line',
-      accent: 'indigo',
-      onClick: () => setThresholdOpen(true),
-    },
-    {
-      id: 'dynamic',
-      label: '动态规则',
-      short: '规则',
-      icon: 'ri-function-line',
-      accent: 'purple',
-      onClick: () => { setActiveDynamicKpiId(null); setDynamicOpen(true); },
-    },
-    {
-      id: 'strategy',
-      label: '刷新策略',
-      short: '刷新',
-      icon: 'ri-time-line',
-      accent: 'amber',
-      onClick: () => setRefreshStrategyOpen(true),
-    },
-    {
-      id: 'messages',
-      label: '消息中心',
-      short: '消息',
-      icon: 'ri-notification-3-line',
-      accent: 'rose',
-      onClick: () => setMessageCenterOpen(true),
-      badge: unreadMessages,
-    },
-    {
-      id: 'matrix',
-      label: '验证矩阵',
-      short: '矩阵',
-      icon: 'ri-matrix-line',
-      accent: 'slate',
-      onClick: () => setValidationOpen(true),
-    },
-    {
-      id: 'logs',
-      label: '跳转日志',
-      short: '日志',
-      icon: 'ri-history-line',
-      accent: 'slate',
-      onClick: () => setJumpLogOpen(true),
-    },
-  ];
-
   const multiViewData = useMemo(() => kpiMultiViewMock as unknown as KpiMultiViewData, []);
   const summaryDetailData = useMemo(() => {
     const detail = xbomSummaryDetailMock as unknown as XbomSummaryDrawerData;
@@ -766,6 +714,58 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
     () => (messageCenterData?.messages ?? []).filter((msg) => msg.status === 'unread').length,
     [messageCenterData]
   );
+
+  const quickActions = useMemo(() => [
+    {
+      id: 'threshold',
+      label: '阈值面板',
+      short: '阈值',
+      icon: 'ri-sliders-line',
+      accent: 'indigo',
+      onClick: () => setThresholdOpen(true),
+    },
+    {
+      id: 'dynamic',
+      label: '动态规则',
+      short: '规则',
+      icon: 'ri-function-line',
+      accent: 'purple',
+      onClick: () => { setActiveDynamicKpiId(null); setDynamicOpen(true); },
+    },
+    {
+      id: 'strategy',
+      label: '刷新策略',
+      short: '刷新',
+      icon: 'ri-time-line',
+      accent: 'amber',
+      onClick: () => setRefreshStrategyOpen(true),
+    },
+    {
+      id: 'messages',
+      label: '消息中心',
+      short: '消息',
+      icon: 'ri-notification-3-line',
+      accent: 'rose',
+      onClick: () => setMessageCenterOpen(true),
+      badge: unreadMessages,
+    },
+    {
+      id: 'matrix',
+      label: '验证矩阵',
+      short: '矩阵',
+      icon: 'ri-matrix-line',
+      accent: 'slate',
+      onClick: () => setValidationOpen(true),
+    },
+    {
+      id: 'logs',
+      label: '跳转日志',
+      short: '日志',
+      icon: 'ri-history-line',
+      accent: 'slate',
+      onClick: () => setJumpLogOpen(true),
+    },
+  ], [unreadMessages, setThresholdOpen, setMessageCenterOpen]);
   const filteredKnowledgeItems = useMemo(() => {
     let items = knowledgeItems;
     if (knowledgeActiveTag) {
