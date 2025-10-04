@@ -246,6 +246,30 @@ type ParameterWithGroup = {
 
 type ParameterAlertEntry = ParameterWithGroup & { severity: 'risk' | 'watch' };
 
+const inlineAccent: Record<string, string> = {
+  indigo: 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:border-indigo-300',
+  purple: 'border-purple-200 bg-purple-50 text-purple-700 hover:border-purple-300',
+  amber: 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300',
+  rose: 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300',
+  slate: 'border-gray-200 bg-white text-gray-600 hover:border-slate-300 hover:text-slate-700',
+};
+
+const floatingAccent: Record<string, string> = {
+  indigo: 'bg-indigo-600 text-white hover:bg-indigo-500',
+  purple: 'bg-purple-600 text-white hover:bg-purple-500',
+  amber: 'bg-amber-500 text-white hover:bg-amber-400',
+  rose: 'bg-rose-500 text-white hover:bg-rose-400',
+  slate: 'bg-slate-600 text-white hover:bg-slate-500',
+};
+
+const accentText: Record<string, string> = {
+  indigo: 'text-indigo-600',
+  purple: 'text-purple-600',
+  amber: 'text-amber-500',
+  rose: 'text-rose-500',
+  slate: 'text-slate-600',
+};
+
 const flatten = (root: EbomTreeNode): Array<{ id: string; node: EbomTreeNode; path: string[] }> => {
   const out: Array<{ id: string; node: EbomTreeNode; path: string[] }> = [];
   const walk = (n: EbomTreeNode, path: string[]) => {
@@ -619,6 +643,58 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
     return { total, byType };
   }, [selectedParameter]);
 
+  const quickActions = [
+    {
+      id: 'threshold',
+      label: '阈值面板',
+      short: '阈值',
+      icon: 'ri-sliders-line',
+      accent: 'indigo',
+      onClick: () => setThresholdOpen(true),
+    },
+    {
+      id: 'dynamic',
+      label: '动态规则',
+      short: '规则',
+      icon: 'ri-function-line',
+      accent: 'purple',
+      onClick: () => { setActiveDynamicKpiId(null); setDynamicOpen(true); },
+    },
+    {
+      id: 'strategy',
+      label: '刷新策略',
+      short: '刷新',
+      icon: 'ri-time-line',
+      accent: 'amber',
+      onClick: () => setRefreshStrategyOpen(true),
+    },
+    {
+      id: 'messages',
+      label: '消息中心',
+      short: '消息',
+      icon: 'ri-notification-3-line',
+      accent: 'rose',
+      onClick: () => setMessageCenterOpen(true),
+      badge: unreadMessages,
+    },
+    {
+      id: 'matrix',
+      label: '验证矩阵',
+      short: '矩阵',
+      icon: 'ri-matrix-line',
+      accent: 'slate',
+      onClick: () => setValidationOpen(true),
+    },
+    {
+      id: 'logs',
+      label: '跳转日志',
+      short: '日志',
+      icon: 'ri-history-line',
+      accent: 'slate',
+      onClick: () => setJumpLogOpen(true),
+    },
+  ];
+
   const multiViewData = useMemo(() => kpiMultiViewMock as unknown as KpiMultiViewData, []);
   const summaryDetailData = useMemo(() => {
     const detail = xbomSummaryDetailMock as unknown as XbomSummaryDrawerData;
@@ -769,67 +845,29 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
         </div>
       </section>
 
-      <div className="sticky inset-x-0 top-16 z-40 px-3 transition-all md:top-[84px]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/90 px-4 py-2 shadow-md backdrop-blur">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-            <button
-              type="button"
-              onClick={() => setThresholdOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:border-indigo-300"
-            >
-              <i className="ri-sliders-line"></i> 阈值面板
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveDynamicKpiId(null); setDynamicOpen(true); }}
-              className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 hover:border-purple-300"
-            >
-              <i className="ri-function-line"></i> 动态规则
-            </button>
-            <button
-              type="button"
-              onClick={() => setRefreshStrategyOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:border-amber-300"
-            >
-              <i className="ri-time-line"></i> 刷新策略
-            </button>
-            <button
-              type="button"
-              onClick={() => setMessageCenterOpen(true)}
-              className="relative inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 hover:border-rose-300"
-            >
-              <i className="ri-notification-3-line"></i> 消息中心
-              {unreadMessages > 0 && (
-                <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-medium text-white">
-                  {unreadMessages}
-                </span>
-              )}
-            </button>
-          </div>
-          <div className="hidden flex-wrap items-center gap-2 text-xs text-gray-500 sm:flex">
-            <button
-              type="button"
-              onClick={() => setValidationOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-indigo-200 hover:text-indigo-600"
-            >
-              <i className="ri-matrix-line"></i> 验证矩阵
-            </button>
-            <button
-              type="button"
-              onClick={() => setJumpLogOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-slate-300 hover:text-slate-700"
-            >
-              <i className="ri-history-line"></i> 跳转日志
-            </button>
-          </div>
-        </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+        <span className="font-medium text-gray-500">常用操作</span>
+        {quickActions.map((action) => (
+          <button
+            key={action.id}
+            type="button"
+            onClick={action.onClick}
+            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${inlineAccent[action.accent]}`}
+          >
+            <i className={action.icon}></i> {action.label}
+            {action.badge ? (
+              <span className="ml-1 inline-flex min-w-[1.125rem] justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                {action.badge}
+              </span>
+            ) : null}
+          </button>
+        ))}
       </div>
-      <div className="h-6"></div>
 
       {viewMode === 'structure' && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-6">
-      <section className="scroll-mt-36 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2 text-sm">
             <i className="ri-git-commit-line text-purple-600"></i>
@@ -1952,6 +1990,50 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
           />
         </>
       )}
+
+      <div className="fixed bottom-8 right-6 z-40 hidden flex-col gap-2 md:flex">
+        {quickActions.map((action) => (
+          <button
+            key={`dock-${action.id}`}
+            type="button"
+            onClick={action.onClick}
+            className={`relative flex h-11 w-11 items-center justify-center rounded-full shadow-lg transition ${floatingAccent[action.accent]}`}
+            title={action.label}
+            aria-label={action.label}
+          >
+            <i className={`${action.icon} text-lg`}></i>
+            {action.badge ? (
+              <span className="absolute -top-1 -right-1 inline-flex min-w-[1.1rem] justify-center rounded-full bg-white px-1 text-[10px] font-semibold text-rose-500">
+                {action.badge}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      <div className="fixed bottom-4 left-0 right-0 z-40 flex justify-center px-4 md:hidden">
+        <div className="flex max-w-full items-center gap-2 overflow-x-auto rounded-3xl border border-gray-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
+          {quickActions.map((action) => (
+            <button
+              key={`dock-mobile-${action.id}`}
+              type="button"
+              onClick={action.onClick}
+              className="flex flex-col items-center justify-center gap-1 whitespace-nowrap px-2 text-[11px] text-gray-600"
+              aria-label={action.label}
+            >
+              <span className={`relative flex h-9 w-9 items-center justify-center rounded-full border border-gray-100 bg-white shadow-sm ${accentText[action.accent]}`}>
+                <i className={`${action.icon} text-base`}></i>
+                {action.badge ? (
+                  <span className="absolute -top-1 -right-1 inline-flex min-w-[0.9rem] justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                    {action.badge}
+                  </span>
+                ) : null}
+              </span>
+              <span>{action.short}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
     </div>
   );
