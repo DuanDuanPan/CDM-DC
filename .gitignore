@@ -1,3 +1,9 @@
 node_modules
 out
 .next
+
+# YoYo AI version control directory
+.yoyo/
+
+# Local editor settings
+.vscode/

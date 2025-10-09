@@ -239,7 +239,7 @@ export default function EbomDocList({ node, statusTokens }: Props) {
       </div>
 
       {selectedDoc && (
-        <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm">
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-900/30 backdrop-blur-sm sm:items-center sm:px-6">
           <button
             type="button"
             aria-label="关闭文档详情"
@@ -247,7 +247,7 @@ export default function EbomDocList({ node, statusTokens }: Props) {
             onClick={() => setSelectedDoc(null)}
           />
           <div
-            className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl"
+            className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl sm:max-w-2xl sm:rounded-3xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="doc-detail-title"

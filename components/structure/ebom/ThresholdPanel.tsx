@@ -82,7 +82,7 @@ export default function ThresholdPanel({
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
       <div className="w-full max-w-2xl rounded-2xl bg-white shadow-lg">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="text-sm font-semibold text-gray-800"><i className="ri-sliders-line mr-1"/>KPI 阈值（预设：{presetLabel ?? '—'}）</div>
+          <div className="text-sm font-semibold text-gray-800"><i className="ri-equalizer-line mr-1"/>KPI 阈值（预设：{presetLabel ?? '—'}）</div>
           <button onClick={onClose} className="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:border-gray-300"><i className="ri-close-line"/>关闭</button>
         </div>
         <div className="max-h-[60vh] overflow-auto p-4">

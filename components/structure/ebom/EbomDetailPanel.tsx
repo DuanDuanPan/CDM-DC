@@ -25,7 +25,6 @@ import XbomSummaryCards from './XbomSummaryCards';
 import XbomSummaryDrawer, { SummarySection } from './XbomSummaryDrawer';
 import JumpLogPanel from './JumpLogPanel';
 import ValidationMatrixDrawer from './ValidationMatrixDrawer';
-import KnowledgeCatalogPanel from './KnowledgeCatalogPanel';
 import KnowledgeRail from './KnowledgeRail';
 import TimelinePanel from './TimelinePanel';
 import MessageCenterDrawer from './MessageCenterDrawer';
@@ -49,7 +48,6 @@ import type {
   ValidationMatrixData,
   RefreshStrategyData,
   MessageCenterData,
-  KnowledgeCatalogData,
   TimelineData,
   PageAlert,
 } from './cockpitTypes';
@@ -57,7 +55,6 @@ import type {
 import {
   baselineHealth as baselineHealthMock,
   jumpLog as jumpLogMock,
-  knowledgeCatalog as knowledgeCatalogMock,
   knowledgeRelated as knowledgeMock,
   kpiMultiView as kpiMultiViewMock,
   kpis as kpisMock,
@@ -345,8 +342,6 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
   const [kpiViewMode, setKpiViewMode] = useState<'cards' | 'analysis'>('cards');
   const [trendKpi, setTrendKpi] = useState<CockpitKpi | null>(null);
   const [activeDynamicKpiId, setActiveDynamicKpiId] = useState<string | null>(null);
-  const [knowledgeActiveTag, setKnowledgeActiveTag] = useState<string | null>(null);
-  const [knowledgeActiveCollection, setKnowledgeActiveCollection] = useState<string | null>(null);
   const [thresholdOverrides, setThresholdOverrides] = useState<Record<string,{low?:number;high?:number}>>({});
   const [summaryDrawerOpen, setSummaryDrawerOpen] = useState(false);
   const [summarySection, setSummarySection] = useState<SummarySection | null>(null);
@@ -695,10 +690,6 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
     () => messagesMock as unknown as MessageCenterData,
     []
   );
-  const knowledgeCatalogData = useMemo(
-    () => knowledgeCatalogMock as unknown as KnowledgeCatalogData,
-    []
-  );
   const timelineData = useMemo(() => timelineEventsMock as unknown as TimelineData, []);
   const pageAlerts = useMemo<PageAlert[]>(
     () =>
@@ -720,7 +711,7 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
       id: 'threshold',
       label: '阈值面板',
       short: '阈值',
-      icon: 'ri-sliders-line',
+      icon: 'ri-equalizer-line',
       accent: 'indigo',
       onClick: () => setThresholdOpen(true),
     },
@@ -753,33 +744,12 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
       id: 'matrix',
       label: '验证矩阵',
       short: '矩阵',
-      icon: 'ri-matrix-line',
+      icon: 'ri-layout-grid-line',
       accent: 'slate',
       onClick: () => setValidationOpen(true),
     },
-    {
-      id: 'logs',
-      label: '跳转日志',
-      short: '日志',
-      icon: 'ri-history-line',
-      accent: 'slate',
-      onClick: () => setJumpLogOpen(true),
-    },
   ], [unreadMessages, setThresholdOpen, setMessageCenterOpen]);
-  const filteredKnowledgeItems = useMemo(() => {
-    let items = knowledgeItems;
-    if (knowledgeActiveTag) {
-      items = items.filter((item) => item.tags.includes(knowledgeActiveTag));
-    }
-    if (knowledgeActiveCollection && knowledgeCatalogData?.collections?.length) {
-      const target = knowledgeCatalogData.collections.find((collection) => collection.id === knowledgeActiveCollection);
-      if (target) {
-        const set = new Set(target.items);
-        items = items.filter((item) => set.has(item.id));
-      }
-    }
-    return items;
-  }, [knowledgeItems, knowledgeActiveTag, knowledgeActiveCollection, knowledgeCatalogData]);
+  const filteredKnowledgeItems = useMemo(() => knowledgeItems, [knowledgeItems]);
 
   return (
     <div className="space-y-6">
@@ -796,20 +766,33 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
             </div>
             <h3 className="text-lg font-semibold text-gray-900">XBOM 面板 · 右侧详情</h3>
             <p className="text-sm text-gray-500">点击左侧 E‑BOM 树节点，查看关联对象的详细信息与基线差异。</p>
-            <button
-              type="button"
-              onClick={() => setValidationOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-indigo-200 hover:text-indigo-600 sm:hidden"
-            >
-              <i className="ri-matrix-line"></i> 验证矩阵
-            </button>
-            <button
-              type="button"
-              onClick={() => setJumpLogOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-slate-300 hover:text-slate-700 sm:hidden"
-            >
-              <i className="ri-history-line"></i> 跳转日志
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+              <span className="font-medium text-gray-500">常用操作</span>
+              {quickActions.map((action) => (
+                <button
+                  key={`intro-action-${action.id}`}
+                  type="button"
+                  onClick={action.onClick}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${inlineAccent[action.accent]}`}
+                >
+                  <i className={action.icon}></i> {action.label}
+                  {action.badge ? (
+                    <span className="ml-1 inline-flex min-w-[1.125rem] justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                      {action.badge}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setValidationOpen(true)}
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-indigo-200 hover:text-indigo-600 sm:hidden"
+              >
+                <i className="ri-layout-grid-line"></i> 验证矩阵
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -844,25 +827,6 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
           </div>
         </div>
       </section>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-        <span className="font-medium text-gray-500">常用操作</span>
-        {quickActions.map((action) => (
-          <button
-            key={action.id}
-            type="button"
-            onClick={action.onClick}
-            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${inlineAccent[action.accent]}`}
-          >
-            <i className={action.icon}></i> {action.label}
-            {action.badge ? (
-              <span className="ml-1 inline-flex min-w-[1.125rem] justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                {action.badge}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
 
       {viewMode === 'structure' && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -1498,13 +1462,6 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                   </li>
                 )}
               </ul>
-              <button
-                type="button"
-                onClick={() => setKnowledgeSearchOpen(true)}
-                className="mt-3 inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700 hover:border-indigo-300 hover:text-indigo-800"
-              >
-                <i className="ri-search-eye-line" /> 知识库检索
-              </button>
             </div>
 
             <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-4 shadow-sm">
@@ -1517,7 +1474,7 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                     <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 font-medium">
                       <i className="ri-alarm-warning-line" /> 红灯 {parameterStatusSummary.risk}
                     </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-600 border border-amber-200">
                       <i className="ri-alert-line" /> 黄灯 {parameterStatusSummary.watch}
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700">
@@ -1549,16 +1506,20 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                         <button
                           type="button"
                           onClick={() => handleFocusParameter(entry)}
-                          className="w-full rounded-lg border border-rose-100 bg-white px-3 py-2 text-left transition hover:border-rose-200 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                          className={`w-full rounded-lg border px-3 py-2 text-left transition focus:outline-none focus:ring-2 ${
+                            entry.severity === 'risk'
+                              ? 'border-rose-100 hover:border-rose-200 hover:bg-rose-50 focus:ring-rose-200 bg-white'
+                              : 'border-amber-100 hover:border-amber-200 bg-white focus:ring-amber-200 hover:bg-amber-50/70'
+                          }`}
                         >
                           <div className="flex items-center justify-between gap-2 text-sm font-medium">
                             <span>{entry.detail.name}</span>
-                            <span className="inline-flex items-center gap-1 text-[11px] text-rose-600">
+                            <span className={`inline-flex items-center gap-1 text-[11px] ${entry.severity === 'risk' ? 'text-rose-600' : 'text-amber-600'}`}>
                               <i className="ri-timer-line" /> {entry.detail.lastUpdated ?? '—'}
                             </span>
                           </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-rose-600">
-                            <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-1.5 py-0.5">
+                          <div className={`mt-1 flex flex-wrap items-center gap-2 text-[11px] ${entry.severity === 'risk' ? 'text-rose-600' : 'text-amber-600'}`}>
+                            <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${entry.severity === 'risk' ? 'bg-rose-100' : 'bg-amber-100 border border-amber-200'}`}>
                               <i className="ri-error-warning-line" /> {entry.severity === 'risk' ? '红灯' : '黄灯'}
                             </span>
                             <span>{entry.groupTitle}</span>
@@ -1707,36 +1668,36 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                   <span className="font-medium text-gray-600">视图</span>
                   <button
                     type="button"
-                    onClick={() => setKpiViewMode('cards')}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm transition ${
-                      kpiViewMode === 'cards'
-                        ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
-                    }`}
-                  >
-                    <i className="ri-layout-grid-line" /> 指标卡片
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setKpiViewMode('analysis')}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm transition ${
-                      kpiViewMode === 'analysis'
-                        ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
-                    }`}
-                  >
-                    <i className="ri-line-chart-line" /> 趋势分析
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveDynamicKpiId(null);
-                      setDynamicOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-sm text-gray-600 transition hover:border-purple-200 hover:text-purple-600"
-                  >
-                    <i className="ri-sliders-line" /> 阈值总览
-                  </button>
+                  onClick={() => setKpiViewMode('cards')}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm transition ${
+                    kpiViewMode === 'cards'
+                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
+                  }`}
+                >
+                  <i className="ri-layout-grid-line" /> 指标卡片
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKpiViewMode('analysis')}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-sm transition ${
+                    kpiViewMode === 'analysis'
+                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700 shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
+                  }`}
+                >
+                  <i className="ri-line-chart-line" /> 趋势分析
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDynamicKpiId(null);
+                    setDynamicOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-sm text-gray-600 transition hover:border-purple-200 hover:text-purple-600"
+                >
+                  <i className="ri-equalizer-line" /> 阈值总览
+                </button>
                 </div>
               </div>
 
@@ -1886,19 +1847,8 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                   <PageAlerts alerts={pageAlerts} />
                 </div>
               )}
-              <div className="mt-4 grid gap-4 lg:grid-cols-5">
-                <div className="lg:col-span-2">
-                  <KnowledgeCatalogPanel
-                    data={knowledgeCatalogData}
-                    activeTag={knowledgeActiveTag}
-                    onSelectTag={setKnowledgeActiveTag}
-                    activeCollection={knowledgeActiveCollection}
-                    onSelectCollection={setKnowledgeActiveCollection}
-                  />
-                </div>
-                <div className="space-y-3 lg:col-span-3">
-                  <KnowledgeRail items={filteredKnowledgeItems} />
-                </div>
+              <div className="mt-4">
+                <KnowledgeRail items={filteredKnowledgeItems} />
               </div>
             </section>
 
@@ -1913,83 +1863,84 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
               </section>
             )}
           </div>
-          <ThresholdPanel
-            kpis={kpisForDisplay}
-            open={thresholdOpen}
-            onClose={()=>setThresholdOpen(false)}
-            initialOverrides={thresholdOverrides}
-            defaultThresholds={defaultThresholdsMap}
-            presetLabel={(kpiConfig as any).presets?.[thresholdPreset]?.label ?? thresholdPreset}
-            onApply={(ov)=>{ setThresholdOverrides(ov); try{ window.localStorage.setItem(`kpiThresholdOverrides:${thresholdPreset}`, JSON.stringify(ov)); }catch{}; setThresholdOpen(false); }}
-          />
-          <DynamicThresholdDrawer
-            open={dynamicOpen}
-            onClose={() => {
-              setDynamicOpen(false);
-              setActiveDynamicKpiId(null);
-            }}
-            kpis={kpisWithOverrides}
-            initialKpiId={activeDynamicKpiId}
-          />
-          <KpiTrendDrawer
-            open={!!trendKpi}
-            kpi={trendKpi}
-            onClose={() => setTrendKpi(null)}
-            onOpenThreshold={(target) => {
-              setTrendKpi(null);
-              setActiveDynamicKpiId(target.id);
-              setDynamicOpen(true);
-            }}
-          />
-          <PresetManager
-            open={presetOpen}
-            onClose={()=>setPresetOpen(false)}
-            currentPreset={thresholdPreset}
-            baseConfig={mergedKpiConfig}
-            onApply={(newPreset)=>{ if (newPreset) { setThresholdPreset(newPreset); try{ window.localStorage.setItem('kpiThresholdPreset', newPreset);}catch{} } setPresetOpen(false); }}
-          />
-          <KnowledgeSearchDrawer
-            open={knowledgeSearchOpen}
-            onClose={() => setKnowledgeSearchOpen(false)}
-            defaultQuery={active?.name ?? selectedNodeId ?? ''}
-            defaultTags={[
-              active?.class,
-              active?.partNumber,
-              active?.links?.designDocId,
-            ].filter(Boolean) as string[]}
-          />
-          <XbomSummaryDrawer
-            open={summaryDrawerOpen}
-            section={summarySection}
-            data={summaryDetailData}
-            onClose={() => {
-              setSummaryDrawerOpen(false);
-              setSummarySection(null);
-            }}
-          />
-          <ValidationMatrixDrawer
-            open={validationOpen}
-            onClose={() => setValidationOpen(false)}
-            data={validationMatrixData}
-          />
-          <JumpLogPanel
-            open={jumpLogOpen}
-            data={jumpLogData}
-            version={jumpLogVersion}
-            onClose={() => setJumpLogOpen(false)}
-          />
-          <RefreshStrategyDrawer
-            open={refreshStrategyOpen}
-            onClose={() => setRefreshStrategyOpen(false)}
-            data={refreshStrategyData}
-          />
-          <MessageCenterDrawer
-            open={messageCenterOpen}
-            onClose={() => setMessageCenterOpen(false)}
-            data={messageCenterData}
-          />
         </>
       )}
+
+      <ThresholdPanel
+        kpis={kpisForDisplay}
+        open={thresholdOpen}
+        onClose={()=>setThresholdOpen(false)}
+        initialOverrides={thresholdOverrides}
+        defaultThresholds={defaultThresholdsMap}
+        presetLabel={(kpiConfig as any).presets?.[thresholdPreset]?.label ?? thresholdPreset}
+        onApply={(ov)=>{ setThresholdOverrides(ov); try{ window.localStorage.setItem(`kpiThresholdOverrides:${thresholdPreset}`, JSON.stringify(ov)); }catch{}; setThresholdOpen(false); }}
+      />
+      <DynamicThresholdDrawer
+        open={dynamicOpen}
+        onClose={() => {
+          setDynamicOpen(false);
+          setActiveDynamicKpiId(null);
+        }}
+        kpis={kpisWithOverrides}
+        initialKpiId={activeDynamicKpiId}
+      />
+      <KpiTrendDrawer
+        open={!!trendKpi}
+        kpi={trendKpi}
+        onClose={() => setTrendKpi(null)}
+        onOpenThreshold={(target) => {
+          setTrendKpi(null);
+          setActiveDynamicKpiId(target.id);
+          setDynamicOpen(true);
+        }}
+      />
+      <PresetManager
+        open={presetOpen}
+        onClose={()=>setPresetOpen(false)}
+        currentPreset={thresholdPreset}
+        baseConfig={mergedKpiConfig}
+        onApply={(newPreset)=>{ if (newPreset) { setThresholdPreset(newPreset); try{ window.localStorage.setItem('kpiThresholdPreset', newPreset);}catch{} } setPresetOpen(false); }}
+      />
+      <KnowledgeSearchDrawer
+        open={knowledgeSearchOpen}
+        onClose={() => setKnowledgeSearchOpen(false)}
+        defaultQuery={active?.name ?? selectedNodeId ?? ''}
+        defaultTags={[
+          active?.class,
+          active?.partNumber,
+          active?.links?.designDocId,
+        ].filter(Boolean) as string[]}
+      />
+      <XbomSummaryDrawer
+        open={summaryDrawerOpen}
+        section={summarySection}
+        data={summaryDetailData}
+        onClose={() => {
+          setSummaryDrawerOpen(false);
+          setSummarySection(null);
+        }}
+      />
+      <ValidationMatrixDrawer
+        open={validationOpen}
+        onClose={() => setValidationOpen(false)}
+        data={validationMatrixData}
+      />
+      <JumpLogPanel
+        open={jumpLogOpen}
+        data={jumpLogData}
+        version={jumpLogVersion}
+        onClose={() => setJumpLogOpen(false)}
+      />
+      <RefreshStrategyDrawer
+        open={refreshStrategyOpen}
+        onClose={() => setRefreshStrategyOpen(false)}
+        data={refreshStrategyData}
+      />
+      <MessageCenterDrawer
+        open={messageCenterOpen}
+        onClose={() => setMessageCenterOpen(false)}
+        data={messageCenterData}
+      />
 
       <div className="fixed bottom-8 right-6 z-40 hidden flex-col gap-2 md:flex">
         {quickActions.map((action) => (
