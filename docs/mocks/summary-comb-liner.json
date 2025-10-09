@@ -1,7 +1,7 @@
 {
   "nodeId": "EBOM-ROOT/COMB/LINER",
   "source": { "system": "TESTSYS", "updatedAt": "2025-09-28T01:05:00Z", "trust": "high", "freshnessSec": 3600 },
-  "requirement": { "coverage": 0.72, "items": [ { "id": "REQ-THERM-031", "title": "壁温分布与压损上限", "status": "risk" } ] },
+  "requirement": { "coverage": 0.72, "items": [ { "id": "REQ-LINER-001-THERMAL", "title": "燃烧室衬套热负荷与寿命", "status": "risk" } ] },
   "simulation": { "modelVer": "THERM-COMB-221@v0.9", "cases": 5, "lastRunAt": "2025-09-26T19:20:00Z", "queueLen": 0 },
   "test": { "plan": 4, "done": 2, "blockers": 1, "last": "待复核", "anomalies": [{"type":"温度超限", "count":2}] },
   "links": { "detailUrl": "https://test.example.com/tests/comb-liner" }

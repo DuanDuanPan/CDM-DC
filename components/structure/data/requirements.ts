@@ -200,6 +200,23 @@ export const requirementsByNode: Record<string, RequirementItem[]> = {
         { type: 'table', name: '涡轮盘应力校核结果.xlsx' },
         { type: 'document', name: '裂纹监测方案.docx' }
       ]
+    },
+    {
+      id: 'REQ-HPT-001-THERMAL',
+      name: '高压涡轮叶片热安全边界',
+      type: 'performance',
+      priority: 'high',
+      status: 'pending',
+      content: '约束高压涡轮叶片在极端工况下的温度与热应力组合，确保热安全裕度并指导冷却方案调整。',
+      parameters: [
+        { name: '叶片最高工作温度', value: '1,050', unit: '°C', range: '≤1,050' },
+        { name: '热应力裕度', value: '18', unit: '%', range: '≥15%' },
+        { name: '允许热梯度', value: '320', unit: '°C', range: '≤330' }
+      ],
+      attachments: [
+        { type: 'document', name: '高压涡轮叶片热分析报告.pdf' },
+        { type: 'document', name: '叶片冷却方案评估.docx' }
+      ]
     }
   ],
   'REQ-CONTROL-001': [

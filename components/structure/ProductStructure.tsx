@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { requirementRoles, requirementRoleInsights } from './data/requirementRoles';
 import { requirementsByNode } from './data/requirements';
 import RequirementDetailPanel from './RequirementDetailPanel';
@@ -98,6 +98,146 @@ interface OutputData {
 
 const VIEW_PREFERENCE_PREFIX = 'product-structure-active-tab';
 
+const REQUIREMENT_BOM_TREE: BomNode[] = [
+  {
+    id: 'REQ-ENGINE-001',
+    name: '航空发动机产品级功能单元',
+    level: 0,
+    bomType: 'requirement',
+    unitType: 'product_functional_unit',
+    nodeCategory: 'product',
+    children: [
+      {
+        id: 'REQ-PROPULSION-001',
+        name: '推进子系统功能单元',
+        level: 1,
+        bomType: 'requirement',
+        unitType: 'subsystem_functional_unit',
+        nodeCategory: 'subsystem',
+        children: [
+          {
+            id: 'REQ-COMPRESSOR-BLADE',
+            name: '压气机叶片 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component'
+          },
+          {
+            id: 'REQ-COMPRESSOR-ROTOR',
+            name: '压气机转子 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component'
+          },
+          {
+            id: 'REQ-COMBUSTOR-LINER',
+            name: '燃烧室内胆 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component'
+          },
+          {
+            id: 'REQ-TURBINE-DISK',
+            name: '涡轮盘 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component'
+          }
+        ]
+      },
+      {
+        id: 'REQ-CONTROL-001',
+        name: '控制子系统功能单元',
+        level: 1,
+        bomType: 'requirement',
+        unitType: 'subsystem_functional_unit',
+        nodeCategory: 'subsystem',
+        children: [
+          {
+            id: 'REQ-FADEC-UNIT',
+            name: 'FADEC控制器 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component'
+          },
+          {
+            id: 'REQ-SENSOR-UNIT',
+            name: '传感器组件 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component'
+          }
+        ]
+      },
+      {
+        id: 'REQ-AUXILIARY-001',
+        name: '辅助子系统功能单元',
+        level: 1,
+        bomType: 'requirement',
+        unitType: 'subsystem_functional_unit',
+        nodeCategory: 'subsystem',
+        children: [
+          {
+            id: 'REQ-LUBRICATION-UNIT',
+            name: '润滑系统组件 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component'
+          },
+          {
+            id: 'REQ-COOLING-UNIT',
+            name: '冷却系统组件 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component'
+          }
+        ]
+      }
+    ]
+  }
+];
+
+type JumpEntry = {
+  fromBomType: string;
+  fromTab: string;
+  fromNodeId: string | null;
+  fromExpandedNodes: string[];
+  requirementIds: string[];
+  sourceNodeId: string | null;
+  sourceNodeName?: string | null;
+  createdAt: number;
+};
+
+const BOM_TYPE_LABELS: Record<string, string> = {
+  requirement: '需求 BOM',
+  solution: '方案 BOM',
+  design: '设计 BOM',
+  simulation: '仿真 BOM',
+  test: '试验 BOM',
+  physical: '实物 BOM',
+  process: '工艺视图',
+  management: '管理视图',
+};
+
+function findNodeById(id: string, nodes: BomNode[]): BomNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNodeById(id, node.children);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 const getStoredTabPreference = (bomType: string) => {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(`${VIEW_PREFERENCE_PREFIX}-${bomType}`);
@@ -126,6 +266,57 @@ export default function ProductStructure() {
   const [showDetailedReport, setShowDetailedReport] = useState(false);
   const [activePhase, setActivePhase] = useState('concept');
   const [requirementsInView, setRequirementsInView] = useState(false);
+  const [jumpHistory, setJumpHistory] = useState<JumpEntry[]>([]);
+  const [pendingRequirementFocus, setPendingRequirementFocus] = useState<string | null>(null);
+  const [pendingTreeScrollTarget, setPendingTreeScrollTarget] = useState<string | null>(null);
+  const [skipNextTabPersistence, setSkipNextTabPersistence] = useState(false);
+  const autoTransitionRef = useRef(false);
+  const previousBomTypeRef = useRef(selectedBomType);
+  const previousActiveTabRef = useRef(activeTab);
+  const treeContainerRef = useRef<HTMLDivElement | null>(null);
+  const requirementIdToNodeMap = useMemo(() => {
+    const map = new Map<string, string>();
+    Object.entries(requirementsByNode).forEach(([nodeId, list]) => {
+      list.forEach((req) => {
+        map.set(req.id, nodeId);
+      });
+    });
+    return map;
+  }, []);
+  const getRequirementNodeIdForRequirement = useCallback(
+    (requirementId: string) => requirementIdToNodeMap.get(requirementId) ?? null,
+    [requirementIdToNodeMap]
+  );
+  const getRequirementNodePath = useCallback((targetId: string | null) => {
+    if (!targetId) return null;
+    const path: string[] = [];
+    const dfs = (nodes: BomNode[], trail: string[]): boolean => {
+      for (const node of nodes) {
+        const nextTrail = [...trail, node.id];
+        if (node.id === targetId) {
+          path.push(...nextTrail);
+          return true;
+        }
+        if (node.children && dfs(node.children, nextTrail)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    dfs(REQUIREMENT_BOM_TREE, []);
+    return path.length ? path : null;
+  }, []);
+  const clearJumpHistory = useCallback(() => {
+    setJumpHistory((prev) => {
+      if (!prev.length) return prev;
+      if (typeof window !== 'undefined') {
+        console.debug('[ProductStructure] jump stack length: 0');
+      }
+      return [];
+    });
+    setPendingRequirementFocus(null);
+    setPendingTreeScrollTarget(null);
+  }, []);
   
   // 添加缺失的状态变量
   const [showInputDataForm, setShowInputDataForm] = useState(false);
@@ -1475,114 +1666,8 @@ export default function ProductStructure() {
       ];
     }
 
-    // 更新需求BOM结构 - 产品级功能单元-子系统级功能单元-成附件/重要零件单元
     if (selectedBomType === 'requirement') {
-      return [
-        {
-          id: 'REQ-ENGINE-001',
-          name: '航空发动机产品级功能单元',
-          level: 0,
-          bomType: 'requirement',
-          unitType: 'product_functional_unit',
-          nodeCategory: 'product',
-          children: [
-            {
-              id: 'REQ-PROPULSION-001',
-              name: '推进子系统功能单元',
-              level: 1,
-              bomType: 'requirement',
-              unitType: 'subsystem_functional_unit',
-              nodeCategory: 'subsystem',
-              children: [
-                {
-                  id: 'REQ-COMPRESSOR-BLADE',
-                  name: '压气机叶片 (成附件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'component_assembly',
-                  nodeCategory: 'component'
-                },
-                {
-                  id: 'REQ-COMPRESSOR-ROTOR',
-                  name: '压气机转子 (重要零件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'important_part',
-                  nodeCategory: 'component'
-                },
-                {
-                  id: 'REQ-COMBUSTOR-LINER',
-                  name: '燃烧室内胆 (成附件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'component_assembly',
-                  nodeCategory: 'component'
-                },
-                {
-                  id: 'REQ-TURBINE-DISK',
-                  name: '涡轮盘 (重要零件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'important_part',
-                  nodeCategory: 'component'
-                }
-              ]
-            },
-            {
-              id: 'REQ-CONTROL-001',
-              name: '控制子系统功能单元',
-              level: 1,
-              bomType: 'requirement',
-              unitType: 'subsystem_functional_unit',
-              nodeCategory: 'subsystem',
-              children: [
-                {
-                  id: 'REQ-FADEC-UNIT',
-                  name: 'FADEC控制器 (成附件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'component_assembly',
-                  nodeCategory: 'component'
-                },
-                {
-                  id: 'REQ-SENSOR-UNIT',
-                  name: '传感器组件 (重要零件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'important_part',
-                  nodeCategory: 'component'
-                }
-              ]
-            },
-            {
-              id: 'REQ-AUXILIARY-001',
-              name: '辅助子系统功能单元',
-              level: 1,
-              bomType: 'requirement',
-              unitType: 'subsystem_functional_unit',
-              nodeCategory: 'subsystem',
-              children: [
-                {
-                  id: 'REQ-LUBRICATION-UNIT',
-                  name: '润滑系统组件 (成附件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'component_assembly',
-                  nodeCategory: 'component'
-                },
-                {
-                  id: 'REQ-COOLING-UNIT',
-                  name: '冷却系统组件 (重要零件)',
-                  level: 2,
-                  bomType: 'requirement',
-                  unitType: 'important_part',
-                  nodeCategory: 'component'
-                }
-              ]
-            }
-          ]
-        }
-      ];
+      return REQUIREMENT_BOM_TREE;
     }
 
     // 设计BOM（E-BOM）树
@@ -1605,6 +1690,10 @@ export default function ProductStructure() {
   };
 
   const handleBomTypeChange = useCallback((bomTypeId: string) => {
+    const auto = autoTransitionRef.current;
+    if (!auto && selectedBomType === 'requirement' && bomTypeId !== 'requirement') {
+      clearJumpHistory();
+    }
     setSelectedBomType(bomTypeId);
     setSelectedNode(null);
 
@@ -1624,7 +1713,7 @@ export default function ProductStructure() {
       setActiveTab('structure');
       setExpandedNodes([]);
     }
-  }, []);
+  }, [selectedBomType, clearJumpHistory]);
 
   // 读取对比中心写入的 EBOM 定位指令（一次性消费）
   useEffect(() => {
@@ -1672,6 +1761,96 @@ export default function ProductStructure() {
     inProgress: currentRequirementList.filter(item => item.status === 'in-progress').length,
     pending: currentRequirementList.filter(item => item.status === 'pending').length
   };
+
+  const handleNavigateRequirement = useCallback(
+    ({
+      requirementIds,
+      sourceNodeId,
+      sourceNodeName,
+    }: {
+      requirementIds: string[];
+      sourceNodeId?: string | null;
+      sourceNodeName?: string | null;
+    }) => {
+      if (!requirementIds?.length) return;
+      const firstRequirementId = requirementIds[0];
+      const targetRequirementNodeId = getRequirementNodeIdForRequirement(firstRequirementId);
+      const resolvedSourceNodeId = sourceNodeId ?? selectedNode ?? null;
+      let resolvedSourceName = sourceNodeName ?? null;
+      if (!resolvedSourceName && resolvedSourceNodeId) {
+        const sourceNode = findNodeById(resolvedSourceNodeId, bomStructureData);
+        resolvedSourceName = sourceNode?.name ?? null;
+      }
+
+      const entry: JumpEntry = {
+        fromBomType: selectedBomType,
+        fromTab: activeTab,
+        fromNodeId: selectedNode,
+        fromExpandedNodes: [...expandedNodes],
+        requirementIds: [...requirementIds],
+        sourceNodeId: resolvedSourceNodeId,
+        sourceNodeName: resolvedSourceName,
+        createdAt: Date.now(),
+      };
+
+      autoTransitionRef.current = true;
+      setJumpHistory((prev) => {
+        const next = [...prev, entry];
+        if (typeof window !== 'undefined') {
+          console.debug('[ProductStructure] jump stack length:', next.length);
+        }
+        return next;
+      });
+
+      const path = getRequirementNodePath(targetRequirementNodeId);
+      const expandIds = path ? path.slice(0, -1) : ['REQ-ENGINE-001'];
+      const uniqueExpandIds = Array.from(new Set(expandIds.length ? expandIds : ['REQ-ENGINE-001']));
+      setExpandedNodes(uniqueExpandIds);
+      setSkipNextTabPersistence(true);
+      setSelectedBomType('requirement');
+      setActiveTab('requirement');
+      setSelectedRequirementRole('system-team');
+      const resolvedRequirementNode = targetRequirementNodeId ?? 'REQ-ENGINE-001';
+      setSelectedNode(resolvedRequirementNode);
+      setPendingRequirementFocus(firstRequirementId);
+      setPendingTreeScrollTarget(resolvedRequirementNode);
+    },
+    [
+      selectedBomType,
+      activeTab,
+      selectedNode,
+      expandedNodes,
+      bomStructureData,
+      getRequirementNodeIdForRequirement,
+      getRequirementNodePath,
+    ]
+  );
+
+  const handleJumpBack = useCallback(() => {
+    if (!jumpHistory.length) return;
+    const entry = jumpHistory[jumpHistory.length - 1];
+    autoTransitionRef.current = true;
+    setSkipNextTabPersistence(true);
+    setJumpHistory((prev) => {
+      const next = prev.slice(0, -1);
+      if (typeof window !== 'undefined') {
+        console.debug('[ProductStructure] jump stack length:', next.length);
+      }
+      return next;
+    });
+    setSelectedBomType(entry.fromBomType);
+    setActiveTab(entry.fromTab);
+    setExpandedNodes(entry.fromExpandedNodes.length ? [...entry.fromExpandedNodes] : []);
+    setSelectedNode(entry.fromNodeId ?? null);
+    setPendingRequirementFocus(null);
+    setPendingTreeScrollTarget(entry.fromNodeId ?? null);
+  }, [jumpHistory]);
+
+  const latestJump = jumpHistory.length ? jumpHistory[jumpHistory.length - 1] : null;
+  const backButtonLabel = latestJump
+    ? `返回${BOM_TYPE_LABELS[latestJump.fromBomType] ?? '上一视图'}${latestJump.sourceNodeName ? ` · ${latestJump.sourceNodeName}` : ''}`
+    : '';
+  const hasJumpContext = Boolean(latestJump && selectedBomType === 'requirement' && activeTab === 'requirement');
 
   // 添加参数
   // 添加缺失的处理函数
@@ -1783,17 +1962,6 @@ export default function ProductStructure() {
     }
   };
 
-  function findNodeById(id: string, nodes: BomNode[]): BomNode | null {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const found = findNodeById(id, node.children);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
   const getFirstAvailableNode = (nodes: BomNode[]): BomNode | null => {
     if (!nodes || nodes.length === 0) return null;
     const [firstNode] = nodes;
@@ -1805,6 +1973,10 @@ export default function ProductStructure() {
   };
 
   useEffect(() => {
+    if (autoTransitionRef.current) {
+      autoTransitionRef.current = false;
+      return;
+    }
     if (!bomStructureData.length) return;
     const firstNode = getFirstAvailableNode(bomStructureData);
     if (firstNode) {
@@ -1839,8 +2011,44 @@ export default function ProductStructure() {
   }, [selectedBomType]);
 
   useEffect(() => {
+    if (skipNextTabPersistence) {
+      setSkipNextTabPersistence(false);
+      return;
+    }
     setStoredTabPreference(selectedBomType, activeTab);
-  }, [activeTab, selectedBomType]);
+  }, [activeTab, selectedBomType, skipNextTabPersistence]);
+
+  useEffect(() => {
+    if (previousBomTypeRef.current === 'requirement' && selectedBomType !== 'requirement' && !autoTransitionRef.current) {
+      clearJumpHistory();
+    }
+    previousBomTypeRef.current = selectedBomType;
+  }, [selectedBomType, clearJumpHistory]);
+
+  useEffect(() => {
+    if (selectedBomType === 'requirement' && activeTab !== 'requirement' && !autoTransitionRef.current) {
+      clearJumpHistory();
+    }
+    previousActiveTabRef.current = activeTab;
+  }, [activeTab, selectedBomType, clearJumpHistory]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!pendingTreeScrollTarget) return;
+    const frame = window.requestAnimationFrame(() => {
+      const container = treeContainerRef.current;
+      if (!container) {
+        setPendingTreeScrollTarget(null);
+        return;
+      }
+      const el = container.querySelector<HTMLElement>(`[data-tree-node-id="${pendingTreeScrollTarget}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      setPendingTreeScrollTarget(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pendingTreeScrollTarget, expandedNodes, selectedBomType]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1936,6 +2144,7 @@ export default function ProductStructure() {
             isSelected ? 'bg-blue-50 border border-blue-200' : ''
           }`}
           style={{ marginLeft: `${node.level * 20}px` }}
+          data-tree-node-id={node.id}
           onClick={() => handleNodeClick(node.id)}
         >
           <div className="w-5">
@@ -3655,7 +3864,7 @@ export default function ProductStructure() {
           </div>
 
           {/* BOM树结构 */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4" ref={treeContainerRef}>
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-3">
                 <div className="space-y-1">
@@ -3753,6 +3962,26 @@ export default function ProductStructure() {
             {selectedBomType === 'requirement' && (
               <div className="sticky top-0 z-10 px-6 py-2 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-gray-100">
                 <div className="flex flex-col gap-2">
+                  {hasJumpContext && latestJump && (
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={handleJumpBack}
+                        className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:border-blue-300 hover:text-blue-800"
+                      >
+                        <i className="ri-arrow-left-line"></i>
+                        {backButtonLabel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearJumpHistory}
+                        className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white p-1 text-gray-400 hover:text-gray-600"
+                        aria-label="清除跳转上下文"
+                      >
+                        <i className="ri-close-line"></i>
+                      </button>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-xs font-medium text-gray-500 mr-2">快速筛选</div>
                     {/* 状态切片 */}
@@ -3835,6 +4064,8 @@ export default function ProductStructure() {
                     currentNode={currentRequirementNode ? { id: currentRequirementNode.id, name: currentRequirementNode.name } : null}
                     filters={requirementFilters}
                     onFiltersChange={setRequirementFilters}
+                    focusRequirementId={pendingRequirementFocus}
+                    onFocusHandled={() => setPendingRequirementFocus(null)}
                   />
                 </div>
               )}
@@ -3862,6 +4093,7 @@ export default function ProductStructure() {
                     onNavigateBomType={(t) => handleBomTypeChange(t)}
                     onSelectNode={(id) => handleNodeClick(id)}
                     activeView={activeTab === 'cockpit' ? 'cockpit' : 'structure'}
+                    onNavigateRequirement={handleNavigateRequirement}
                   />
                 </div>
               )}
@@ -3923,9 +4155,11 @@ export default function ProductStructure() {
                       requirementRoleInsights={requirementRoleInsights}
                       requirementsByNode={requirementsByNode}
                       currentNode={currentRequirementNode ? { id: currentRequirementNode.id, name: currentRequirementNode.name } : null}
+                      focusRequirementId={pendingRequirementFocus}
+                      onFocusHandled={() => setPendingRequirementFocus(null)}
                     />
-                  </div>
-                </div>
+                 </div>
+               </div>
               )}
 
               {activeTab === 'overview' && selectedBomType === 'solution' && (

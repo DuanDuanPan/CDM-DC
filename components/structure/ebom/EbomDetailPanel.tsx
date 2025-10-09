@@ -80,6 +80,7 @@ interface Props {
   onNavigateBomType?: (bomType: 'simulation' | 'test') => void;
   onSelectNode?: (nodeId: string) => void;
   activeView?: 'structure' | 'cockpit';
+  onNavigateRequirement?: (payload: { requirementIds: string[]; sourceNodeId?: string | null; sourceNodeName?: string | null }) => void;
 }
 
 const badge = (cls: string, icon: string, text: string) => (
@@ -325,7 +326,7 @@ const findById = (root: EbomTreeNode, id: string): EbomTreeNode | null => {
   return null;
 };
 
-export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onSelectNode, activeView = 'structure' }: Props) {
+export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onSelectNode, activeView = 'structure', onNavigateRequirement }: Props) {
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [windowLabel, setWindowLabel] = useState<'24h'|'7d'|'30d'>('24h');
   const [showReq, setShowReq] = useState(true);
@@ -1814,12 +1815,21 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                     setSummarySection(section);
                     setSummaryDrawerOpen(true);
                   }}
-                  nodeId={active?.partNumber}
+                  nodeId={selectedNodeId ?? active?.id ?? active?.partNumber}
                   baseline={right.label}
                   onJumpLogged={() => {
                     setJumpLogVersion((v) => v + 1);
                     setJumpLogOpen(true);
                   }}
+                  onViewRequirement={({ requirementIds, sourceNodeId, sourceNodeName }) => {
+                    onNavigateRequirement?.({
+                      requirementIds,
+                      sourceNodeId: sourceNodeId ?? selectedNodeId ?? active?.id ?? null,
+                      sourceNodeName: sourceNodeName ?? active?.name ?? null,
+                    });
+                  }}
+                  sourceNodeId={selectedNodeId}
+                  sourceNodeName={active?.name}
                 />
               </div>
             </section>

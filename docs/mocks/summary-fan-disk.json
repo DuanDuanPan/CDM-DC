@@ -4,8 +4,8 @@
   "requirement": {
     "coverage": 0.78,
     "items": [
-      { "id": "REQ-STR-101", "title": "盘腹应力裕度≥15%", "status": "open" },
-      { "id": "REQ-MAT-022", "title": "材料等级与热处理符合性", "status": "done" }
+      { "id": "REQ-ROTOR-001-DYN", "title": "转子动平衡与临界转速", "status": "open" },
+      { "id": "REQ-PROP-001-PERF", "title": "推进子系统推力与响应指标", "status": "risk" }
     ]
   },
   "simulation": { "modelVer": "FEA-DISK-510@v1.6", "cases": 8, "lastRunAt": "2025-09-27T11:02:00Z", "hotIssues": 1, "queueLen": 1 },

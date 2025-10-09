@@ -1,7 +1,7 @@
 {
   "nodeId": "EBOM-ROOT/HPT/BLADE",
   "source": { "system": "SIMSYS", "updatedAt": "2025-09-28T02:45:00Z", "trust": "mid", "freshnessSec": 5400 },
-  "requirement": { "coverage": 0.81, "items": [ { "id": "REQ-THERM-090", "title": "允许温度/应力组合边界", "status": "open" } ] },
+  "requirement": { "coverage": 0.81, "items": [ { "id": "REQ-HPT-001-THERMAL", "title": "高压涡轮叶片热安全边界", "status": "open" } ] },
   "simulation": { "modelVer": "CFD-HTB-901@v3.0", "cases": 14, "lastRunAt": "2025-09-27T22:10:00Z", "hotIssues": 2, "queueLen": 5 },
   "test": { "plan": 6, "done": 2, "blockers": 2, "last": "不合格（待复测）", "anomalies": [{"type":"裂纹", "count":1},{"type":"涂层缺陷", "count":1}] },
   "links": { "detailUrl": "https://sim.example.com/models/CFD-HTB-901" }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { XbomSummary } from "./cockpitTypes";
+import type { JumpLogEntry, XbomSummary } from "./cockpitTypes";
 import JumpButton from "./JumpButton";
 import SourceTag from "./SourceTag";
 import EmptyState from "@/components/common/EmptyState";
@@ -15,6 +15,9 @@ interface Props {
   nodeId?: string;
   baseline?: string;
   onJumpLogged?: () => void;
+  onViewRequirement?: (payload: { requirementIds: string[]; sourceNodeId?: string | null; sourceNodeName?: string | null }) => void;
+  sourceNodeId?: string | null;
+  sourceNodeName?: string | null;
 }
 
 export default function XbomSummaryCards({
@@ -27,6 +30,9 @@ export default function XbomSummaryCards({
   nodeId,
   baseline,
   onJumpLogged,
+  onViewRequirement,
+  sourceNodeId,
+  sourceNodeName,
 }: Props) {
   if (!summary) {
     return <EmptyState title="暂无 XBOM 摘要数据" icon="ri-links-line" />;
@@ -102,12 +108,26 @@ export default function XbomSummaryCards({
             <div className="mt-auto">
               <JumpButton
                 label="查看需求详情"
-                url={summary.links?.detailUrl}
                 system="REQSYS"
                 nodeId={nodeId}
                 baseline={baseline}
                 context={{ scope: "requirement" }}
-                onLogged={() => onJumpLogged?.()}
+                requireConfirm={false}
+                onLogged={(entry: JumpLogEntry) => {
+                  onJumpLogged?.();
+                  if (entry.status !== "success") {
+                    return;
+                  }
+                  const ids = requirementItems.map((item) => item.id).filter((id): id is string => Boolean(id));
+                  if (!ids.length) {
+                    return;
+                  }
+                  onViewRequirement?.({
+                    requirementIds: ids,
+                    sourceNodeId: sourceNodeId ?? nodeId ?? null,
+                    sourceNodeName,
+                  });
+                }}
               />
             </div>
           </article>

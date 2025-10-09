@@ -4,9 +4,9 @@
   "requirement": {
     "coverage": 0.86,
     "items": [
-      { "id": "REQ-ENG-001", "title": "推力目标", "status": "open" },
-      { "id": "REQ-STR-017", "title": "叶片一阶频带避让", "status": "risk" },
-      { "id": "REQ-MFG-004", "title": "表面粗糙度上限", "status": "done" }
+      { "id": "REQ-BLADE-001-GEOM", "title": "叶片几何与材料规范", "status": "risk" },
+      { "id": "REQ-ENG-001-OVERVIEW", "title": "产品级性能与可靠性指标", "status": "open" },
+      { "id": "REQ-ENG-001-INTEGRITY", "title": "系统成套性与接口一致性", "status": "done" }
     ]
   },
   "simulation": { "modelVer": "CFD-MOD-889@v2.3", "cases": 12, "lastRunAt": "2025-09-27T15:02:00Z", "hotIssues": 2, "queueLen": 3 },

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RequirementRoleKey, RequirementRoleInsight, RequirementItem } from './types';
 
 interface RoleDefinition {
@@ -37,6 +37,8 @@ interface RequirementDetailPanelProps {
     type: 'all' | RequirementItem['type'];
     showOnlyLinked: boolean;
   }) => void;
+  focusRequirementId?: string | null;
+  onFocusHandled?: () => void;
 }
 
 const getTypeLabel = (type: RequirementItem['type']) => {
@@ -386,7 +388,9 @@ const RequirementDetailPanel = ({
   requirementsByNode,
   currentNode,
   filters,
-  onFiltersChange
+  onFiltersChange,
+  focusRequirementId,
+  onFocusHandled
 }: RequirementDetailPanelProps) => {
   const requirements = useMemo<RequirementItem[]>(() => {
     if (!selectedNode) return [];
@@ -400,6 +404,7 @@ const RequirementDetailPanel = ({
   const [localPriorityFilter, setLocalPriorityFilter] = useState<'all' | RequirementItem['priority']>('all');
   const [localTypeFilter, setLocalTypeFilter] = useState<'all' | RequirementItem['type']>('all');
   const [localShowOnlyLinked, setLocalShowOnlyLinked] = useState(false);
+  const [focusedRequirementId, setFocusedRequirementId] = useState<string | null>(null);
 
   const controlled = !!filters;
   const searchKeyword = controlled ? (filters!.keyword ?? '') : localSearchKeyword;
@@ -468,6 +473,34 @@ const RequirementDetailPanel = ({
     showOnlyLinked,
     linkedRequirementIds
   ]);
+
+  useEffect(() => {
+    if (!focusRequirementId) return;
+    const exists = filteredRequirements.some(req => req.id === focusRequirementId);
+    if (!exists) {
+      onFocusHandled?.();
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>(`[data-requirement-id="${focusRequirementId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    }
+    setFocusedRequirementId(focusRequirementId);
+    onFocusHandled?.();
+  }, [focusRequirementId, filteredRequirements, onFocusHandled]);
+
+  useEffect(() => {
+    if (!focusedRequirementId) return;
+    if (typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
+      setFocusedRequirementId(null);
+    }, 2400);
+    return () => window.clearTimeout(timer);
+  }, [focusedRequirementId]);
 
   const groupedRequirements = useMemo(
     () =>
@@ -893,8 +926,13 @@ const RequirementDetailPanel = ({
                 const timeline = requirementTimelineMap[req.id] ?? defaultTimeline;
                 const isLinked = linkedRequirementIds.has(req.id);
 
+                const isFocused = focusedRequirementId === req.id;
                 return (
-                  <article key={req.id} className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
+                  <article
+                    key={req.id}
+                    data-requirement-id={req.id}
+                    className={`rounded-2xl border ${isFocused ? 'border-blue-300 bg-blue-50/80 shadow-lg ring-2 ring-blue-200' : 'border-gray-200 bg-white shadow-sm'} p-6 transition-shadow duration-300`}
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex flex-wrap items-center gap-3">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getTypeColor(req.type)}`}>
