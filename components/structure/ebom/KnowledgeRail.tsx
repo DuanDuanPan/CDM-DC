@@ -444,7 +444,15 @@ export default function KnowledgeRail({ items, enableFilter = true }: { items: K
             href={k.link}
             target="_blank"
             className={`group rounded-xl border ${isSelected ? 'border-amber-300 bg-amber-50/70 hover:border-amber-400' : 'border-gray-100 bg-slate-50/70 hover:border-indigo-300'} p-3 transition-colors`}
-          >
+            onClick={(e) => {
+              if (!manageMode) return;
+              e.preventDefault();
+              e.stopPropagation();
+              if (isFav) {
+                toggleSelect(k.id);
+              }
+            }}
+            >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2 min-w-0">
                 {manageMode && (
@@ -453,8 +461,8 @@ export default function KnowledgeRail({ items, enableFilter = true }: { items: K
                     className="mt-0.5 h-4 w-4 rounded border-gray-300"
                     checked={isSelected}
                     disabled={!isFav}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (isFav) toggleSelect(k.id); }}
-                    onChange={(e) => { e.preventDefault(); e.stopPropagation(); if (isFav) toggleSelect(k.id); }}
+                    onClick={(e) => { e.stopPropagation(); }}
+                    onChange={(e) => { e.stopPropagation(); if (isFav) toggleSelect(k.id); }}
                     aria-label="选择收藏"
                     title={isFav ? '加入批量操作' : '请先收藏后再分组'}
                   />
@@ -498,10 +506,12 @@ export default function KnowledgeRail({ items, enableFilter = true }: { items: K
               {tags.map((t) => (
                 <span key={t} className="rounded bg-white px-1.5 py-0.5 text-[11px] text-gray-500 border border-gray-200">#{t}</span>
               ))}
+            </div>
+            <div className="mt-2 flex justify-end">
               <button
                 type="button"
                 onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); handleEditTags(k.id, tags); }}
-                className="ml-auto inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
+                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 hover:border-indigo-300 hover:text-indigo-600"
                 title="编辑标签"
               >
                 <i className="ri-edit-2-line"/>编辑标签
