@@ -46,9 +46,10 @@ type ExplorerAction =
   | { type: 'ADD_COMPARE'; payload: SimulationFile }
   | { type: 'REMOVE_COMPARE'; payload: string }
   | { type: 'REGISTER_COMPARE_EVENT'; payload: { type: 'file' | 'instance'; id: string; label: string } }
-  | { type: 'CLEAR_COMPARE' };
+  | { type: 'CLEAR_COMPARE' }
+  | { type: 'RESET' };
 
-const initialState: ExplorerState = {
+const createInitialState = (): ExplorerState => ({
   categories: simulationCategories,
   selectedNode: null,
   expandedNodeIds: [],
@@ -64,7 +65,9 @@ const initialState: ExplorerState = {
   },
   hasInteracted: false,
   lastCompareEvent: null
-};
+});
+
+const initialState: ExplorerState = createInitialState();
 
 function explorerReducer(state: ExplorerState, action: ExplorerAction): ExplorerState {
   switch (action.type) {
@@ -131,6 +134,8 @@ function explorerReducer(state: ExplorerState, action: ExplorerAction): Explorer
           timestamp: Date.now()
         }
       };
+    case 'RESET':
+      return createInitialState();
     default:
       return state;
   }

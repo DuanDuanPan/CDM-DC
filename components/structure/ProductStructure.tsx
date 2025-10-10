@@ -46,6 +46,14 @@ interface BomType {
 }
 
 
+const mapBomType = (nodes: BomNode[], nextType: string): BomNode[] =>
+  nodes.map((node) => ({
+    ...node,
+    bomType: nextType,
+    children: node.children ? mapBomType(node.children, nextType) : undefined
+  }));
+
+
 interface Version {
   id: string;
   name: string;
@@ -475,7 +483,8 @@ export default function ProductStructure() {
   const [compareToast, setCompareToast] = useState<{ label: string; type: 'file' | 'instance' } | null>(null);
 
   useEffect(() => {
-    if (activeTab !== 'simulation' || selectedBomType !== 'solution') {
+    const canShowSimulationNav = activeTab === 'simulation' && (selectedBomType === 'solution' || selectedBomType === 'simulation');
+    if (!canShowSimulationNav) {
       setIsSimulationNavOpen(false);
     }
   }, [activeTab, selectedBomType]);
@@ -491,7 +500,8 @@ export default function ProductStructure() {
   }, [simulationState.lastCompareEvent]);
 
   useEffect(() => {
-    if (activeTab !== 'simulation' || selectedBomType !== 'solution') {
+    const isSimulationViewActive = activeTab === 'simulation' && (selectedBomType === 'solution' || selectedBomType === 'simulation');
+    if (!isSimulationViewActive) {
       setPreviewSimulationFile(null);
       return;
     }
@@ -1555,9 +1565,8 @@ export default function ProductStructure() {
 
   // 根据BOM类型获取对应的数据结构
   const getBomStructureData = (): BomNode[] => {
-    if (selectedBomType === 'solution') {
-      return [
-        {
+    const solutionStructure: BomNode[] = [
+      {
           id: '001',
           name: '航空发动机总成',
           level: 0,
@@ -1662,8 +1671,15 @@ export default function ProductStructure() {
               ]
             }
           ]
-        }
-      ];
+      }
+    ];
+
+    if (selectedBomType === 'solution') {
+      return solutionStructure;
+    }
+
+    if (selectedBomType === 'simulation') {
+      return mapBomType(solutionStructure, 'simulation');
     }
 
     if (selectedBomType === 'requirement') {
@@ -1701,6 +1717,14 @@ export default function ProductStructure() {
       setActiveTab('structure');
       setExpandedNodes(['001']);
       setSelectedRole('system');
+      setCompareToast(null);
+    } else if (bomTypeId === 'simulation') {
+      setActiveTab('simulation');
+      setExpandedNodes(['001']);
+      setIsSimulationNavOpen(false);
+      setPreviewSimulationFile(null);
+      setCompareToast(null);
+      simulationDispatch({ type: 'RESET' });
     } else if (bomTypeId === 'requirement') {
       setActiveTab('requirement');
       setExpandedNodes(['REQ-ENGINE-001']);
@@ -1713,7 +1737,7 @@ export default function ProductStructure() {
       setActiveTab('structure');
       setExpandedNodes([]);
     }
-  }, [selectedBomType, clearJumpHistory]);
+  }, [selectedBomType, clearJumpHistory, simulationDispatch]);
 
   // 读取对比中心写入的 EBOM 定位指令（一次性消费）
   useEffect(() => {
@@ -1987,6 +2011,8 @@ export default function ProductStructure() {
     const normalizedTab = storedTab === 'solution' ? 'overview' : storedTab;
     const availableTabs = selectedBomType === 'solution'
       ? ['overview', 'definition', 'design', 'simulation', 'test', 'process', 'management']
+      : selectedBomType === 'simulation'
+      ? ['simulation']
       : selectedBomType === 'requirement'
       ? ['requirement']
       : selectedBomType === 'design'
@@ -2000,6 +2026,8 @@ export default function ProductStructure() {
 
     if (selectedBomType === 'solution') {
       setActiveTab('overview');
+    } else if (selectedBomType === 'simulation') {
+      setActiveTab('simulation');
     } else if (selectedBomType === 'requirement') {
       setActiveTab('requirement');
     } else if (selectedBomType === 'design') {
@@ -3044,13 +3072,8 @@ export default function ProductStructure() {
 
 
   const renderSimulationData = () => {
-    if (selectedBomType !== 'solution') {
-      return (
-        <div className="p-6 text-center text-gray-500">
-          <i className="ri-computer-line text-4xl mb-2"></i>
-          <p>仅方案BOM支持仿真数据视图</p>
-        </div>
-      );
+    if (selectedBomType !== 'solution' && selectedBomType !== 'simulation') {
+      return null;
     }
 
     const handleNodeSelect = (ref: TreeNodeReference) => {
@@ -3915,6 +3938,8 @@ export default function ProductStructure() {
                     { id: 'process', name: '工艺与生产', icon: 'ri-tools-line' },
                     { id: 'management', name: '管理与保障', icon: 'ri-shield-check-line' }
                   );
+                } else if (selectedBomType === 'simulation') {
+                  tabs.push({ id: 'simulation', name: '仿真验证', icon: 'ri-computer-line' });
                 } else if (selectedBomType === 'requirement') {
                   tabs.push(
                     { id: 'requirement', name: '需求详情', icon: 'ri-file-list-2-line' }
@@ -4174,7 +4199,7 @@ export default function ProductStructure() {
                 </div>
               )}
 
-              {activeTab === 'simulation' && selectedBomType === 'solution' && (
+              {activeTab === 'simulation' && (selectedBomType === 'solution' || selectedBomType === 'simulation') && (
                 <div role="tabpanel" id="panel-simulation" aria-labelledby="tab-simulation" className="space-y-6">
                   {renderSimulationData()}
                 </div>
