@@ -7,6 +7,7 @@ export const simulationCategories: SimulationCategory[] = [
     description: '静力、疲劳、振动等结构力学分析',
     icon: 'ri-building-3-line',
     color: '#1d4ed8',
+    typeCode: 'structural',
     summary: '关注结构安全、疲劳与振动表现的关键仿真实例集合',
     instances: [
       {
@@ -19,6 +20,34 @@ export const simulationCategories: SimulationCategory[] = [
         reviewers: ['王总师', '赵审核'],
         createdAt: '2024-01-02 09:30',
         updatedAt: '2024-01-18 17:20',
+        executedAt: '2025-02-11T08:42:00Z',
+        timeBucket: '2025-02',
+        primaryStructureId: '001-01-01',
+        structurePath: ['001', '001-01', '001-01-01'],
+        alternateStructureIds: ['001-02-01'],
+        typeCode: 'structural',
+        typeAnnotationSource: 'manual',
+        dimensionSelections: [
+          {
+            id: 'dim-struct-001-01-01',
+            dimension: 'structure',
+            value: '001-01-01',
+            label: '压气机分系统',
+            description: '方案BOM · 推进系统 · 压气机分系统'
+          },
+          {
+            id: 'dim-time-2025-02',
+            dimension: 'time',
+            value: '2025-02',
+            label: '2025/02'
+          },
+          {
+            id: 'dim-type-structural',
+            dimension: 'type',
+            value: 'structural',
+            label: '结构仿真'
+          }
+        ],
         summary: '评估机匣在起飞、巡航、关机工况下的刚度与疲劳寿命，确定结构安全裕度。',
         resources: {
           cpuHours: 240,
@@ -326,6 +355,34 @@ export const simulationCategories: SimulationCategory[] = [
         reviewers: ['黄专家'],
         createdAt: '2023-12-12 08:40',
         updatedAt: '2024-01-15 19:30',
+        executedAt: '2024-12-05T14:30:00Z',
+        timeBucket: '2024-12',
+        primaryStructureId: '001-01-02',
+        structurePath: ['001', '001-01', '001-01-02'],
+        alternateStructureIds: ['001-01-01-B'],
+        typeCode: 'structural',
+        typeAnnotationSource: 'manual',
+        dimensionSelections: [
+          {
+            id: 'dim-struct-001-01-02',
+            dimension: 'structure',
+            value: '001-01-02',
+            label: '燃烧室分系统',
+            description: '方案BOM · 推进系统 · 燃烧室分系统'
+          },
+          {
+            id: 'dim-time-2024-12',
+            dimension: 'time',
+            value: '2024-12',
+            label: '2024/12'
+          },
+          {
+            id: 'dim-type-structural',
+            dimension: 'type',
+            value: 'structural',
+            label: '结构仿真'
+          }
+        ],
         summary: '分析叶片一阶/二阶模态与共振风险，评估振动疲劳寿命。',
         resources: {
           cpuHours: 180,
@@ -404,6 +461,7 @@ export const simulationCategories: SimulationCategory[] = [
     name: '流体仿真',
     description: '冷却、燃烧、流场、热力学分析',
     icon: 'ri-water-flash-line',
+    typeCode: 'fluid',
     instances: [
       {
         id: 'inst-fluid-001',
@@ -414,6 +472,36 @@ export const simulationCategories: SimulationCategory[] = [
         reviewers: ['李热力'],
         createdAt: '2024-01-06 11:22',
         updatedAt: '2024-01-18 21:40',
+        executedAt: '2025-01-22T10:15:00Z',
+        timeBucket: '2025-01',
+        primaryStructureId: '001-02-01',
+        structurePath: ['001', '001-02', '001-02-01'],
+        alternateStructureIds: ['001-01-02-B'],
+        typeCode: 'fluid',
+        typeAnnotationSource: 'auto',
+        dimensionSelections: [
+          {
+            id: 'dim-struct-001-02-01',
+            dimension: 'structure',
+            value: '001-02-01',
+            label: '燃油控制分系统',
+            description: '方案BOM · 控制系统 · 燃油控制分系统'
+          },
+          {
+            id: 'dim-time-2025-01',
+            dimension: 'time',
+            value: '2025-01',
+            label: '2025/01'
+          },
+          {
+            id: 'dim-type-fluid',
+            dimension: 'type',
+            value: 'fluid',
+            label: '流体仿真',
+            autoAssigned: true,
+            description: '自动标注：根据输入文件与求解器推断'
+          }
+        ],
         summary: '分析燃烧室流场均匀性、温度分布及燃烧效率。',
         resources: {
           cpuHours: 320,

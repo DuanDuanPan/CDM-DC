@@ -1,5 +1,48 @@
 export type SimulationFileType = 'geometry' | 'model' | 'document' | 'result' | 'report' | 'dataset';
 
+export type SimulationViewMode = 'structure' | 'time' | 'type';
+
+export type SimulationDimension = 'structure' | 'time' | 'type';
+
+export interface SimulationDimensionSelection {
+  id: string;
+  dimension: SimulationDimension;
+  value: string;
+  label: string;
+  description?: string;
+  autoAssigned?: boolean;
+  meta?: Record<string, unknown>;
+}
+
+export interface SimulationSavedView {
+  id: string;
+  name: string;
+  createdAt: string;
+  viewMode: SimulationViewMode;
+  selections: SimulationDimensionSelection[];
+  searchKeyword: string;
+  filters: SimulationFilters;
+}
+
+export interface SimulationTimeBucket {
+  id: string;
+  month: string;
+  year: string;
+  label: string;
+  totalInstances: number;
+  undefinedCount?: number;
+}
+
+export interface SimulationStructureNode {
+  id: string;
+  label: string;
+  level: number;
+  parentId?: string;
+  path: string[];
+  instanceIds: string[];
+  children?: SimulationStructureNode[];
+}
+
 export type SimulationFileStatus = 'draft' | 'running' | 'completed' | 'failed' | 'archived';
 
 export interface SimulationStatusSummary {
@@ -106,6 +149,14 @@ export interface SimulationInstance {
   riskCount?: number;
   statusSummary?: SimulationStatusSummary[];
   ownerAvatar?: string;
+  executedAt?: string;
+  timeBucket?: string;
+  primaryStructureId?: string;
+  structurePath?: string[];
+  alternateStructureIds?: string[];
+  typeCode?: string;
+  typeAnnotationSource?: 'manual' | 'auto';
+  dimensionSelections?: SimulationDimensionSelection[];
 }
 
 export interface SimulationCategory {
@@ -116,4 +167,5 @@ export interface SimulationCategory {
   instances: SimulationInstance[];
   color?: string;
   summary?: string;
+  typeCode?: string;
 }
