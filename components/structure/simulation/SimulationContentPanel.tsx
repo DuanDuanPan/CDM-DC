@@ -327,9 +327,9 @@ const SimulationContentPanel = ({
   const showControls = hasInteracted && (category || instance || folder);
 
   const renderHeader = () => (
-    <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur">
-      <div className="px-6 py-4 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="sticky top-0 z-10 border-b border-blue-100/50 bg-white/85 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
           {onOpenNavigation && (
             <button
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 md:hidden"
@@ -339,128 +339,128 @@ const SimulationContentPanel = ({
               <i className="ri-menu-line text-lg"></i>
             </button>
           )}
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-            {breadcrumbs.map((item, index) => {
-              const isLast = index === breadcrumbs.length - 1;
-              return (
-                <div key={`${item.label}-${index}`} className="flex items-center gap-2">
-                  {index > 0 && <i className="ri-arrow-right-s-line text-gray-300"></i>}
-                  {item.onClick && !isLast ? (
-                    <button className="hover:text-blue-600" onClick={item.onClick}>
-                      {item.label}
-                    </button>
-                  ) : (
-                    <span className={`font-medium ${isLast ? 'text-gray-800' : 'text-gray-600'}`}>{item.label}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {showControls && (
-            <div className="ml-auto flex items-center gap-2">
-              <div className="relative">
-                <i className="ri-search-line pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input
-                  value={searchKeyword}
-                  onChange={event => onSearchChange(event.target.value)}
-                  placeholder={searchPlaceholder}
-                  className="w-64 rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                />
+          {breadcrumbs.map((item, index) => {
+            const isLast = index === breadcrumbs.length - 1;
+            return (
+              <div key={`${item.label}-${index}`} className="flex items-center gap-2">
+                {index > 0 && <i className="ri-arrow-right-s-line text-gray-300"></i>}
+                {item.onClick && !isLast ? (
+                  <button className="hover:text-blue-600" onClick={item.onClick}>
+                    {item.label}
+                  </button>
+                ) : (
+                  <span className={`font-medium ${isLast ? 'text-gray-800' : 'text-gray-600'}`}>{item.label}</span>
+                )}
               </div>
-              {folder && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <span>每页</span>
-                  <select
-                    value={pageSize}
-                    onChange={event => onPageSizeChange(Number(event.target.value))}
-                    className="rounded-lg border border-gray-200 px-2 py-1 text-xs focus:border-blue-400 focus:outline-none"
-                    aria-label="每页条数"
-                  >
-                    {[10, 20, 50].map(size => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                  <span>条</span>
-                </div>
-              )}
-            </div>
+            );
+          })}
+          {selectionSummary && (
+            <span className="sm:ml-auto text-xs text-gray-500">{selectionSummary}</span>
           )}
         </div>
         {showControls && (
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-            <label className="flex items-center gap-2">
-              <span className="text-gray-500">状态</span>
-              <select
-                value={filters.statuses[0] || 'all'}
-                onChange={event => handleStatusFilterChange(event.target.value)}
-                className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
-              >
-                <option value="all">全部</option>
-                {statusOptions.map(status => (
-                  <option key={status} value={status}>
-                    {statusLabelMap[status] || status}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-gray-500">Owner</span>
-              <select
-                value={filters.owners[0] || 'all'}
-                onChange={event => handleOwnerFilterChange(event.target.value)}
-                className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
-              >
-                <option value="all">全部</option>
-                {ownerOptions.map(owner => (
-                  <option key={owner} value={owner}>
-                    {owner}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-gray-500">标签</span>
-              <select
-                value={filters.tags[0] || 'all'}
-                onChange={event => handleTagFilterChange(event.target.value)}
-                className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
-              >
-                <option value="all">全部</option>
-                {tagOptions.map(tag => (
-                  <option key={tag} value={tag}>
-                    {tag}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-gray-500">时间</span>
-              <select
-                value={filters.timeRange || 'all'}
-                onChange={event => handleTimeRangeChange(event.target.value)}
-                className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
-              >
-                <option value="all">全部</option>
-                <option value="7d">近 7 天</option>
-                <option value="30d">近 30 天</option>
-                <option value="90d">近 90 天</option>
-              </select>
-            </label>
-            {activeFilterCount > 0 && (
-              <button
-                className="ml-auto inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100"
-                onClick={handleResetFilters}
-              >
-                <i className="ri-restart-line text-sm"></i>
-                重置筛选
-              </button>
-            )}
+          <div className="rounded-xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                <label className="flex items-center gap-2">
+                  <span className="text-gray-500">状态</span>
+                  <select
+                    value={filters.statuses[0] || 'all'}
+                    onChange={event => handleStatusFilterChange(event.target.value)}
+                    className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
+                  >
+                    <option value="all">全部</option>
+                    {statusOptions.map(status => (
+                      <option key={status} value={status}>
+                        {statusLabelMap[status] || status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="text-gray-500">Owner</span>
+                  <select
+                    value={filters.owners[0] || 'all'}
+                    onChange={event => handleOwnerFilterChange(event.target.value)}
+                    className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
+                  >
+                    <option value="all">全部</option>
+                    {ownerOptions.map(owner => (
+                      <option key={owner} value={owner}>
+                        {owner}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="text-gray-500">标签</span>
+                  <select
+                    value={filters.tags[0] || 'all'}
+                    onChange={event => handleTagFilterChange(event.target.value)}
+                    className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
+                  >
+                    <option value="all">全部</option>
+                    {tagOptions.map(tag => (
+                      <option key={tag} value={tag}>
+                        {tag}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="text-gray-500">时间</span>
+                  <select
+                    value={filters.timeRange || 'all'}
+                    onChange={event => handleTimeRangeChange(event.target.value)}
+                    className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
+                  >
+                    <option value="all">全部</option>
+                    <option value="7d">近 7 天</option>
+                    <option value="30d">近 30 天</option>
+                    <option value="90d">近 90 天</option>
+                  </select>
+                </label>
+                {activeFilterCount > 0 && (
+                  <button
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                    onClick={handleResetFilters}
+                  >
+                    <i className="ri-restart-line text-sm"></i>
+                    重置
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-1 flex-wrap items-center justify-end gap-2 text-xs text-gray-500">
+                <div className="relative">
+                  <i className="ri-search-line pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                  <input
+                    value={searchKeyword}
+                    onChange={event => onSearchChange(event.target.value)}
+                    placeholder={searchPlaceholder}
+                    className="w-64 rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                {folder && (
+                  <div className="flex items-center gap-1">
+                    <span>每页</span>
+                    <select
+                      value={pageSize}
+                      onChange={event => onPageSizeChange(Number(event.target.value))}
+                      className="rounded-lg border border-gray-200 px-2 py-1 focus:border-blue-400 focus:outline-none"
+                      aria-label="每页条数"
+                    >
+                      {[10, 20, 50].map(size => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                    <span>条</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        )}
-        {showControls && selectionSummary && (
-          <div className="text-xs text-gray-500">{selectionSummary}</div>
         )}
       </div>
     </div>
@@ -552,8 +552,10 @@ const SimulationContentPanel = ({
   return (
     <div className="flex min-h-full flex-col">
       {renderHeader()}
-      <div className="flex-1 px-6 pb-8 pt-4">
-        {content}
+      <div className="flex-1 bg-gray-50">
+        <div className="mx-auto w-full max-w-6xl px-6 pb-8 pt-4">
+          {content}
+        </div>
       </div>
     </div>
   );
