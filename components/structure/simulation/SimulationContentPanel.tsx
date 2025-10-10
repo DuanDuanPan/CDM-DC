@@ -328,7 +328,7 @@ const SimulationContentPanel = ({
 
   const renderHeader = () => (
     <div className="sticky top-0 z-10 border-b border-blue-100/50 bg-white/85 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-4">
+      <div className="flex w-full flex-col gap-3 px-6 py-4">
         <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
           {onOpenNavigation && (
             <button
@@ -553,7 +553,7 @@ const SimulationContentPanel = ({
     <div className="flex min-h-full flex-col">
       {renderHeader()}
       <div className="flex-1 bg-gray-50">
-        <div className="mx-auto w-full max-w-6xl px-6 pb-8 pt-4">
+        <div className="w-full px-6 pb-8 pt-4">
           {content}
         </div>
       </div>
