@@ -1,6 +1,13 @@
+'use client';
+
 import { useEffect, useMemo, useState } from 'react';
 import { SimulationFile, SimulationFileVariantPreview } from './types';
 import ConditionBar from './ConditionBar';
+import EbomModelViewer from '../ebom/EbomModelViewer';
+import VtkMeshViewer from './VtkMeshViewer';
+
+const STEP_VIEWER_FALLBACK = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
+const STEP_EXTENSION_REGEXP = /\.(step|stp)$/i;
 
 interface Props {
   file: SimulationFile | null;
@@ -12,6 +19,9 @@ interface Props {
 
 const renderPreviewContent = (file: SimulationFile, variant?: SimulationFileVariantPreview) => {
   const preview = variant ?? file.preview;
+  const meshInfo = preview?.meshInfo ?? file.preview?.meshInfo;
+  const viewerUrl = meshInfo?.viewerUrl || (STEP_EXTENSION_REGEXP.test(file.name) ? STEP_VIEWER_FALLBACK : undefined);
+  const viewerPoster = meshInfo?.previewImage;
   switch (file.type) {
     case 'result':
       if (preview?.curveData) {
@@ -42,21 +52,40 @@ const renderPreviewContent = (file: SimulationFile, variant?: SimulationFileVari
       }
       return <div className="text-sm text-gray-600">暂无可视化预览，支持下载查看。</div>;
     case 'geometry':
-      if (preview?.meshInfo) {
+      if (meshInfo) {
         return (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-900">几何/网格信息</h4>
             <div className="grid grid-cols-2 gap-3 text-xs text-gray-600">
-              <div className="bg-gray-50 rounded-lg p-3">节点数量：{preview.meshInfo.nodes}</div>
-              <div className="bg-gray-50 rounded-lg p-3">单元数量：{preview.meshInfo.elements}</div>
+              <div className="bg-gray-50 rounded-lg p-3">节点数量：{meshInfo.nodes}</div>
+              <div className="bg-gray-50 rounded-lg p-3">单元数量：{meshInfo.elements}</div>
             </div>
-            <div className="h-40 rounded-lg bg-gradient-to-br from-slate-50 to-slate-200 p-4">
-              <div className="h-full w-full rounded border border-dashed border-slate-400 bg-white/60 grid grid-cols-6 grid-rows-4 gap-1">
-                {Array.from({ length: 24 }).map((_, index) => (
-                  <div key={index} className="rounded bg-slate-300/40"></div>
-                ))}
+            {viewerUrl ? (
+              <div className="rounded-xl border border-gray-200 bg-white/80 p-2">
+                <EbomModelViewer src={viewerUrl} poster={viewerPoster} />
+                <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
+                  <span>格式：{meshInfo.format?.toUpperCase() || (STEP_EXTENSION_REGEXP.test(file.name) ? 'STEP' : '几何')}</span>
+                  <span>支持旋转、缩放、剖切等交互</span>
+                </div>
               </div>
-              <div className="mt-2 text-center text-xs text-gray-500">可接入三维预览组件</div>
+            ) : (
+              <div className="h-40 rounded-lg bg-gradient-to-br from-slate-50 to-slate-200 p-4">
+                <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-slate-300 bg-white/70 text-xs text-gray-500">
+                  暂无 3D 预览连接，可下载查看。
+                </div>
+              </div>
+            )}
+            <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+              <div className="flex items-center justify-between text-xs text-blue-700">
+                <span className="font-medium">机匣有限元网格预览（Mock 数据）</span>
+                <span>vtk.js 渲染 · 支持全屏</span>
+              </div>
+              <div className="mt-2 overflow-hidden rounded-lg border border-blue-100 bg-white">
+                <VtkMeshViewer className="h-72 w-full" preset="casing" allowMaximize title="机匣网格预览" />
+              </div>
+              <p className="mt-2 text-[11px] text-blue-700/80">
+                当前展示为发动机机匣的示意网格，可替换为真实 FEM 数据（VTK/VTU/OBJ 等）并保持同样的交互体验。
+              </p>
             </div>
           </div>
         );
@@ -246,6 +275,12 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
                 加入对比
               </button>
             )}
+            <button
+              className="rounded-lg border border-blue-300 px-3 py-1.5 text-blue-600/80 hover:bg-blue-50"
+              onClick={handleOpen}
+            >
+              打开
+            </button>
             <button className="rounded-lg border border-gray-300 px-3 py-1.5 hover:bg-gray-100">
               下载文件
             </button>
@@ -257,3 +292,8 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
 };
 
 export default SimulationFilePreview;
+  const handleOpen = () => {
+    if (typeof window !== 'undefined') {
+      window.alert(`打开操作开发中：${file.name}`);
+    }
+  };

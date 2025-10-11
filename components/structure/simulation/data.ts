@@ -27,27 +27,6 @@ export const simulationCategories: SimulationCategory[] = [
         alternateStructureIds: ['001-02-01'],
         typeCode: 'structural',
         typeAnnotationSource: 'manual',
-        dimensionSelections: [
-          {
-            id: 'dim-struct-001-01-01',
-            dimension: 'structure',
-            value: '001-01-01',
-            label: '压气机分系统',
-            description: '方案BOM · 推进系统 · 压气机分系统'
-          },
-          {
-            id: 'dim-time-2025-02',
-            dimension: 'time',
-            value: '2025-02',
-            label: '2025/02'
-          },
-          {
-            id: 'dim-type-structural',
-            dimension: 'type',
-            value: 'structural',
-            label: '结构仿真'
-          }
-        ],
         summary: '评估机匣在起飞、巡航、关机工况下的刚度与疲劳寿命，确定结构安全裕度。',
         resources: {
           cpuHours: 240,
@@ -117,7 +96,9 @@ export const simulationCategories: SimulationCategory[] = [
                   meshInfo: {
                     nodes: 182340,
                     elements: 905220,
-                    previewImage: '/mock/previews/geom-case.png'
+                    previewImage: '/mock/previews/geom-case.png',
+                    viewerUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                    format: 'step'
                   }
                 },
                 contexts: {
@@ -362,27 +343,6 @@ export const simulationCategories: SimulationCategory[] = [
         alternateStructureIds: ['001-01-01-B'],
         typeCode: 'structural',
         typeAnnotationSource: 'manual',
-        dimensionSelections: [
-          {
-            id: 'dim-struct-001-01-02',
-            dimension: 'structure',
-            value: '001-01-02',
-            label: '燃烧室分系统',
-            description: '方案BOM · 推进系统 · 燃烧室分系统'
-          },
-          {
-            id: 'dim-time-2024-12',
-            dimension: 'time',
-            value: '2024-12',
-            label: '2024/12'
-          },
-          {
-            id: 'dim-type-structural',
-            dimension: 'type',
-            value: 'structural',
-            label: '结构仿真'
-          }
-        ],
         summary: '分析叶片一阶/二阶模态与共振风险，评估振动疲劳寿命。',
         resources: {
           cpuHours: 180,
@@ -426,7 +386,16 @@ export const simulationCategories: SimulationCategory[] = [
                 updatedAt: '2023-12-20 12:50',
                 statusReason: '已同步叶片减重后的最终几何',
                 lastRunAt: '2023-12-20 12:40',
-                tags: ['几何', '叶片']
+                tags: ['几何', '叶片'],
+                preview: {
+                  meshInfo: {
+                    nodes: 134870,
+                    elements: 702140,
+                    previewImage: '/mock/previews/vib-geom.png',
+                    viewerUrl: 'https://modelviewer.dev/shared-assets/models/Horse.glb',
+                    format: 'step'
+                  }
+                }
               }
             ]
           },
@@ -479,29 +448,6 @@ export const simulationCategories: SimulationCategory[] = [
         alternateStructureIds: ['001-01-02-B'],
         typeCode: 'fluid',
         typeAnnotationSource: 'auto',
-        dimensionSelections: [
-          {
-            id: 'dim-struct-001-02-01',
-            dimension: 'structure',
-            value: '001-02-01',
-            label: '燃油控制分系统',
-            description: '方案BOM · 控制系统 · 燃油控制分系统'
-          },
-          {
-            id: 'dim-time-2025-01',
-            dimension: 'time',
-            value: '2025-01',
-            label: '2025/01'
-          },
-          {
-            id: 'dim-type-fluid',
-            dimension: 'type',
-            value: 'fluid',
-            label: '流体仿真',
-            autoAssigned: true,
-            description: '自动标注：根据输入文件与求解器推断'
-          }
-        ],
         summary: '分析燃烧室流场均匀性、温度分布及燃烧效率。',
         resources: {
           cpuHours: 320,
@@ -554,7 +500,16 @@ export const simulationCategories: SimulationCategory[] = [
                 updatedAt: '2024-01-07 09:50',
                 statusReason: '完成喷嘴段增厚调整',
                 lastRunAt: '2024-01-07 09:40',
-                tags: ['几何', '燃烧室']
+                tags: ['几何', '燃烧室'],
+                preview: {
+                  meshInfo: {
+                    nodes: 198560,
+                    elements: 845320,
+                    previewImage: '/mock/previews/fluid-geom.png',
+                    viewerUrl: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+                    format: 'step'
+                  }
+                }
               }
             ]
           },

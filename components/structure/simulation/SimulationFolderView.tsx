@@ -129,6 +129,12 @@ const SimulationFolderView = ({
   const pageStartIndex = visibleFiles.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const pageEndIndex = visibleFiles.length === 0 ? 0 : pageStartIndex + visibleFiles.length - 1;
 
+  const handleOpen = (file: SimulationFile) => {
+    if (typeof window !== 'undefined') {
+      window.alert(`打开操作开发中：${file.name}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -278,10 +284,11 @@ const SimulationFolderView = ({
                       加入对比
                     </button>
                     <button
-                      className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
-                      onClick={() => onPreview(file)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-blue-300 px-3 py-1.5 text-xs font-medium text-blue-600/80 hover:bg-blue-50"
+                      onClick={() => handleOpen(file)}
                     >
-                      查看上下文
+                      <i className="ri-open-arm-line"></i>
+                      打开
                     </button>
                   </div>
                 </td>

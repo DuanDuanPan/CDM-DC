@@ -1,4 +1,4 @@
-import type { SimulationDimension, SimulationDimensionSelection } from './types';
+import type { SimulationDimension } from './types';
 
 export interface SimulationTypeDictionaryItem {
   code: string;
@@ -6,7 +6,6 @@ export interface SimulationTypeDictionaryItem {
   description: string;
   icon?: string;
   color?: string;
-  defaultSelections?: SimulationDimensionSelection[];
 }
 
 export interface SimulationDimensionDescriptor {

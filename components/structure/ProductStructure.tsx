@@ -18,16 +18,9 @@ import SimulationTreePanel from './simulation/SimulationTreePanel';
 import SimulationContentPanel from './simulation/SimulationContentPanel';
 import SimulationFilePreview from './simulation/SimulationFilePreview';
 import SimulationCompareDrawer from './simulation/SimulationCompareDrawer';
+import SimulationDimensionSlots from './simulation/SimulationDimensionSlots';
 import { useSimulationExplorerState, TreeNodeReference } from './simulation/useSimulationExplorerState';
-import type {
-  SimulationCategory,
-  SimulationDimensionSelection,
-  SimulationFile,
-  SimulationFilters,
-  SimulationInstance,
-  SimulationViewMode
-} from './simulation/types';
-import { SIMULATION_DIMENSION_LIMIT } from './simulation/dimensions';
+import type { SimulationFile, SimulationFilters, SimulationDimension } from './simulation/types';
 import ProductDefinitionPanel from './definition/ProductDefinitionPanel';
 import EbomDetailPanel from './ebom/EbomDetailPanel';
 import { EBOM_BASELINES } from './ebom/data';
@@ -60,40 +53,6 @@ const mapBomType = (nodes: BomNode[], nextType: string): BomNode[] =>
     bomType: nextType,
     children: node.children ? mapBomType(node.children, nextType) : undefined
   }));
-
-const deriveInstanceTimeBucket = (instance: SimulationInstance): string => {
-  if (instance.timeBucket) return instance.timeBucket;
-  if (!instance.executedAt) return 'undefined';
-  const executed = new Date(instance.executedAt);
-  if (Number.isNaN(executed.getTime())) return 'undefined';
-  const month = String(executed.getUTCMonth() + 1).padStart(2, '0');
-  return `${executed.getUTCFullYear()}-${month}`;
-};
-
-const instanceMatchesDimension = (
-  instance: SimulationInstance,
-  category: SimulationCategory,
-  selection: SimulationDimensionSelection
-): boolean => {
-  switch (selection.dimension) {
-    case 'structure':
-      return (
-        instance.primaryStructureId === selection.value ||
-        instance.structurePath?.includes(selection.value) ||
-        instance.alternateStructureIds?.includes(selection.value) ||
-        false
-      );
-    case 'time':
-      return deriveInstanceTimeBucket(instance) === selection.value;
-    case 'type': {
-      const typeCode = instance.typeCode ?? category.typeCode ?? category.id;
-      return typeCode === selection.value;
-    }
-    default:
-      return true;
-  }
-};
-
 
 interface Version {
   id: string;
@@ -146,6 +105,7 @@ interface OutputData {
 }
 
 const VIEW_PREFERENCE_PREFIX = 'product-structure-active-tab';
+const NON_SIMULATION_DIMENSIONS: SimulationDimension[] = ['type'];
 
 const REQUIREMENT_BOM_TREE: BomNode[] = [
   {
@@ -558,25 +518,10 @@ export default function ProductStructure() {
   }, [activeTab, selectedBomType, simulationState.selectedNode, currentSimulationFiles]);
 
   const isSimulationBom = selectedBomType === 'simulation';
-
-  const availableViewModes = useMemo(
-    () => (isSimulationBom ? (['structure', 'time', 'type'] as SimulationViewMode[]) : (['type'] as SimulationViewMode[])),
-    [isSimulationBom]
-  );
+  const activeDimensionsForTree = isSimulationBom ? simulationState.activeDimensions : NON_SIMULATION_DIMENSIONS;
 
   const handleNodeSelect = useCallback(
     (ref: TreeNodeReference) => {
-      if (ref.type === 'dimension' && ref.dimensionType && ref.dimensionValue) {
-        simulationDispatch({
-          type: 'ADD_DIMENSION_SELECTION',
-          payload: {
-            id: `${ref.dimensionType}-${ref.dimensionValue}`,
-            dimension: ref.dimensionType,
-            value: ref.dimensionValue,
-            label: ref.dimensionLabel ?? ref.dimensionValue
-          }
-        });
-      }
       simulationDispatch({ type: 'SELECT_NODE', payload: ref });
       setIsSimulationNavOpen(false);
     },
@@ -597,20 +542,9 @@ export default function ProductStructure() {
     });
   }, [simulationDispatch, simulationState.navVisibleCount, simulationState.navPageSize]);
 
-  const handleRemoveDimensionSelection = useCallback(
-    (selectionId: string) => {
-      simulationDispatch({ type: 'REMOVE_DIMENSION_SELECTION', payload: selectionId });
-    },
-    [simulationDispatch]
-  );
-
-  const handleClearDimensionSelections = useCallback(() => {
-    simulationDispatch({ type: 'CLEAR_DIMENSION_SELECTIONS' });
-  }, [simulationDispatch]);
-
-  const handleViewModeChange = useCallback(
-    (mode: SimulationViewMode) => {
-      simulationDispatch({ type: 'SET_VIEW_MODE', payload: mode });
+  const handleActiveDimensionsChange = useCallback(
+    (next: SimulationDimension[]) => {
+      simulationDispatch({ type: 'SET_ACTIVE_DIMENSIONS', payload: next });
     },
     [simulationDispatch]
   );
@@ -625,20 +559,13 @@ export default function ProductStructure() {
           id: `view-${Date.now()}`,
           name: trimmed,
           createdAt: new Date().toISOString(),
-          viewMode: simulationState.viewMode,
-          selections: simulationState.dimensionSelections.slice(0, SIMULATION_DIMENSION_LIMIT),
+          dimensions: simulationState.activeDimensions,
           searchKeyword: simulationState.searchKeyword,
           filters: simulationState.filters
         }
       });
     },
-    [
-      simulationDispatch,
-      simulationState.dimensionSelections,
-      simulationState.filters,
-      simulationState.searchKeyword,
-      simulationState.viewMode
-    ]
+    [simulationDispatch, simulationState.activeDimensions, simulationState.filters, simulationState.searchKeyword]
   );
 
   const handleApplySavedView = useCallback(
@@ -667,92 +594,55 @@ export default function ProductStructure() {
   const simulationTreeBaseProps = useMemo(
     () => ({
       categories: simulationState.categories,
-      viewMode: simulationState.viewMode,
-      dimensionSelections: simulationState.dimensionSelections,
+      activeDimensions: activeDimensionsForTree,
       selectedNode: simulationState.selectedNode,
       expandedNodeIds: simulationState.expandedNodeIds,
       navVisibleCount: simulationState.navVisibleCount,
       navPageSize: simulationState.navPageSize,
       onToggleExpand: handleToggleExpand,
       onSelectNode: handleNodeSelect,
-      onLoadMore: handleLoadMoreNav,
-      onRemoveSelection: handleRemoveDimensionSelection,
-      onClearSelections: handleClearDimensionSelections
+      onLoadMore: handleLoadMoreNav
     }),
     [
+      activeDimensionsForTree,
       simulationState.categories,
-      simulationState.dimensionSelections,
       simulationState.expandedNodeIds,
       simulationState.navPageSize,
       simulationState.navVisibleCount,
       simulationState.selectedNode,
-      simulationState.viewMode,
       handleToggleExpand,
       handleNodeSelect,
-      handleLoadMoreNav,
-      handleRemoveDimensionSelection,
-      handleClearDimensionSelections
+      handleLoadMoreNav
     ]
   );
 
-  const categoriesForContent = useMemo(() => {
-    if (!isSimulationBom || simulationState.dimensionSelections.length === 0) {
-      return simulationState.categories;
-    }
-    return simulationState.categories
-      .map(category => {
-        const filteredInstances = category.instances.filter(instance =>
-          simulationState.dimensionSelections.every(selection =>
-            instanceMatchesDimension(instance, category, selection)
-          )
-        );
-        if (filteredInstances.length === 0) {
-          return null;
-        }
-        return {
-          ...category,
-          instances: filteredInstances
-        } as SimulationCategory;
-      })
-      .filter(Boolean) as SimulationCategory[];
-  }, [isSimulationBom, simulationState.categories, simulationState.dimensionSelections]);
+  const renderSimulationNavTree = () => (
+    <div className="flex h-full flex-col gap-3 overflow-hidden">
+      <SimulationDimensionSlots
+        activeDimensions={simulationState.activeDimensions}
+        onChange={handleActiveDimensionsChange}
+        savedViews={simulationState.savedViews}
+        onSaveView={handleSaveCurrentView}
+        onApplySavedView={handleApplySavedView}
+        onDeleteSavedView={handleDeleteSavedView}
+        onRenameSavedView={handleRenameSavedView}
+      />
+      <div className="flex-1 overflow-hidden">
+        <SimulationTreePanel {...simulationTreeBaseProps} />
+      </div>
+    </div>
+  );
 
-  useEffect(() => {
-    if (isSimulationBom) return;
-    if (simulationState.viewMode !== 'type') {
-      simulationDispatch({ type: 'SET_VIEW_MODE', payload: 'type' });
-    }
-    if (simulationState.dimensionSelections.length > 0) {
-      simulationDispatch({ type: 'CLEAR_DIMENSION_SELECTIONS' });
-    }
-  }, [isSimulationBom, simulationState.viewMode, simulationState.dimensionSelections.length, simulationDispatch]);
+  const renderSolutionTree = () => <SimulationTreePanel {...simulationTreeBaseProps} />;
 
-  useEffect(() => {
-    if (!isSimulationBom) return;
-    if (simulationState.dimensionSelections.length === 0) return;
-    const tuples = simulationState.categories.flatMap(category =>
-      category.instances.map(instance => ({ category, instance }))
-    );
-    const filtered = tuples.filter(tuple =>
-      simulationState.dimensionSelections.every(selection =>
-        instanceMatchesDimension(tuple.instance, tuple.category, selection)
-      )
-    );
-    if (filtered.length === 0) return;
-    const currentInstanceId = simulationState.selectedNode?.instanceId;
-    if (currentInstanceId && filtered.some(tuple => tuple.instance.id === currentInstanceId)) {
-      return;
+  const renderDesktopTree = () => {
+    if (isSimulationBom) {
+      return null;
     }
-    const first = filtered[0];
-    simulationDispatch({
-      type: 'SELECT_NODE',
-      payload: {
-        type: 'instance',
-        categoryId: first.category.id,
-        instanceId: first.instance.id
-      }
-    });
-  }, [isSimulationBom, simulationState.dimensionSelections, simulationState.categories, simulationState.selectedNode?.instanceId, simulationDispatch]);
+    return renderSolutionTree();
+  };
+
+  const renderOverlayTree = () => (isSimulationBom ? renderSimulationNavTree() : renderSolutionTree());
 
   // 输出数据状态
   const [outputDataList, setOutputDataList] = useState<OutputData[]>([
@@ -3406,40 +3296,6 @@ export default function ProductStructure() {
       setPreviewSimulationFile(null);
     };
 
-    const renderSimulationNavTree = () => (
-      <SimulationTreePanel
-        {...simulationTreeBaseProps}
-        showViewControls
-        availableViewModes={availableViewModes}
-        onViewModeChange={handleViewModeChange}
-        dimensionLimitBreachedAt={simulationState.dimensionLimitBreachedAt}
-        savedViews={simulationState.savedViews}
-        onSaveView={handleSaveCurrentView}
-        onApplySavedView={handleApplySavedView}
-        onDeleteSavedView={handleDeleteSavedView}
-        onRenameSavedView={handleRenameSavedView}
-        enableDimensionSelection
-      />
-    );
-
-    const renderSolutionTree = () => (
-      <SimulationTreePanel
-        {...simulationTreeBaseProps}
-        showViewControls={false}
-        availableViewModes={availableViewModes}
-        enableDimensionSelection={false}
-      />
-    );
-
-    const renderDesktopTree = () => {
-      if (isSimulationBom) {
-        return null;
-      }
-      return renderSolutionTree();
-    };
-
-    const renderOverlayTree = () => (isSimulationBom ? renderSimulationNavTree() : renderSolutionTree());
-
     return (
       <div className="relative flex h-full">
         {isSimulationNavOpen && (
@@ -3463,7 +3319,7 @@ export default function ProductStructure() {
               pageSize={simulationState.pageSize}
               searchKeyword={simulationState.searchKeyword}
               hasInteracted={simulationState.hasInteracted}
-              categories={categoriesForContent}
+              categories={simulationState.categories}
               filters={simulationState.filters}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
@@ -4142,19 +3998,7 @@ export default function ProductStructure() {
           {/* BOM树结构 */}
           <div className="flex-1 overflow-y-auto p-4" ref={treeContainerRef}>
             {isSimulationBom && activeTab === 'simulation' ? (
-              <SimulationTreePanel
-                {...simulationTreeBaseProps}
-                showViewControls
-                availableViewModes={availableViewModes}
-                onViewModeChange={handleViewModeChange}
-                dimensionLimitBreachedAt={simulationState.dimensionLimitBreachedAt}
-                savedViews={simulationState.savedViews}
-                onSaveView={handleSaveCurrentView}
-                onApplySavedView={handleApplySavedView}
-                onDeleteSavedView={handleDeleteSavedView}
-                onRenameSavedView={handleRenameSavedView}
-                enableDimensionSelection
-              />
+              renderSimulationNavTree()
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-3">

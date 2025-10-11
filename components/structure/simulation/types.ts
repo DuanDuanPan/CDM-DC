@@ -1,25 +1,12 @@
 export type SimulationFileType = 'geometry' | 'model' | 'document' | 'result' | 'report' | 'dataset';
 
-export type SimulationViewMode = 'structure' | 'time' | 'type';
-
 export type SimulationDimension = 'structure' | 'time' | 'type';
-
-export interface SimulationDimensionSelection {
-  id: string;
-  dimension: SimulationDimension;
-  value: string;
-  label: string;
-  description?: string;
-  autoAssigned?: boolean;
-  meta?: Record<string, unknown>;
-}
 
 export interface SimulationSavedView {
   id: string;
   name: string;
   createdAt: string;
-  viewMode: SimulationViewMode;
-  selections: SimulationDimensionSelection[];
+  dimensions: SimulationDimension[];
   searchKeyword: string;
   filters: SimulationFilters;
 }
@@ -71,7 +58,7 @@ export interface SimulationCondition {
 
 export interface SimulationFileVariantPreview {
   curveData?: Array<{ x: number; y: number }[]>;
-  meshInfo?: { nodes: number; elements: number; previewImage: string };
+  meshInfo?: { nodes: number; elements: number; previewImage: string; viewerUrl?: string; format?: string };
   documentSummary?: string;
   reportSections?: Array<{ title: string; excerpt: string }>;
 }
@@ -93,7 +80,7 @@ export interface SimulationFile {
   lastRunAt?: string;
   preview?: {
     curveData?: Array<{ x: number; y: number }[]>; // multiple curves
-    meshInfo?: { nodes: number; elements: number; previewImage: string };
+    meshInfo?: { nodes: number; elements: number; previewImage: string; viewerUrl?: string; format?: string };
     documentSummary?: string;
     reportSections?: Array<{ title: string; excerpt: string }>;
   };
@@ -156,7 +143,6 @@ export interface SimulationInstance {
   alternateStructureIds?: string[];
   typeCode?: string;
   typeAnnotationSource?: 'manual' | 'auto';
-  dimensionSelections?: SimulationDimensionSelection[];
 }
 
 export interface SimulationCategory {

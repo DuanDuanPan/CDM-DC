@@ -12,6 +12,13 @@
 4. **组合过滤（专题洞察）**：如“2025/02 + 流体仿真”快速汇聚专题数据，加速跨团队协同闭环。
 5. **个人视图沉淀**：保存自定义视图仅对当前用户生效，可维护最多 10 个视图（命名≤30 字符，按创建时间倒序展示），支持重命名与删除。
 
+## 实施更新 · 2025-10-11
+- 新增 `SimulationDimensionSlots` 组件，以「结构 / 类型 / 时间」三槽位呈现维度顺序与启用状态，可拖拽式（按钮）调整顺序并一键重置为结构单维；槽位与保存的模板视图共存，模板引用当前维度顺序。
+- `useSimulationExplorerState` 状态模型调整：移除 `viewMode` 与 `dimensionSelections`，引入 `activeDimensions: SimulationDimension[]`（默认 `['structure']`），并以 `SET_ACTIVE_DIMENSIONS` 行为重置展开、选中与分页。
+- `SimulationTreePanel` 改写为顺序驱动的层级生成器：根据 `activeDimensions` 依次拼接结构节点（沿用 `SIMULATION_STRUCTURE_TREE`）、仿真类型字典与月份桶，所有组合最终以仿真实例为叶子；节点 badge 自动展示命中实例数。
+- 组合不再作为筛选条件，而是导航层级定义；右侧 `SimulationContentPanel` 展示全量实例，保留搜索 / 状态 / Owner / 标签过滤器。
+- 方案BOM仍默认单维（类型），通过常量 `NON_SIMULATION_DIMENSIONS` 保持原体验；仿真BOM进入后可随时切换维度组合并保存至本地模板。
+
 ## 现状梳理
 | 模块 | 作用 | 代码入口 |
 | --- | --- | --- |
