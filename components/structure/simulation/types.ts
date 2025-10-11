@@ -1,5 +1,7 @@
 export type SimulationFileType = 'geometry' | 'model' | 'document' | 'result' | 'report' | 'dataset';
 
+export type SimulationPreviewStatus = 'ready' | 'processing' | 'unavailable' | 'mock';
+
 export type SimulationDimension = 'structure' | 'time' | 'type';
 
 export interface SimulationSavedView {
@@ -61,6 +63,10 @@ export interface SimulationFileVariantPreview {
   meshInfo?: { nodes: number; elements: number; previewImage: string; viewerUrl?: string; format?: string };
   documentSummary?: string;
   reportSections?: Array<{ title: string; excerpt: string }>;
+  pdfUrl?: string;
+  docxUrl?: string;
+  previewStatus?: SimulationPreviewStatus;
+  convertedAt?: string;
 }
 
 export interface SimulationFile {
@@ -79,11 +85,20 @@ export interface SimulationFile {
   statusReason?: string;
   ownerAvatar?: string;
   lastRunAt?: string;
+  docxUrl?: string;
+  pdfUrl?: string;
+  previewStatus?: SimulationPreviewStatus;
+  convertedAt?: string;
+  previewVersion?: string;
   preview?: {
     curveData?: Array<{ x: number; y: number }[]>; // multiple curves
     meshInfo?: { nodes: number; elements: number; previewImage: string; viewerUrl?: string; format?: string };
     documentSummary?: string;
     reportSections?: Array<{ title: string; excerpt: string }>;
+    pdfUrl?: string;
+    docxUrl?: string;
+    previewStatus?: SimulationPreviewStatus;
+    convertedAt?: string;
   };
   contexts?: {
     project?: string;

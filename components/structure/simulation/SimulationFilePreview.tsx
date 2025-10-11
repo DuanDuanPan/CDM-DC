@@ -5,6 +5,7 @@ import { SimulationFile, SimulationFileVariantPreview } from './types';
 import ConditionBar from './ConditionBar';
 import EbomModelViewer from '../ebom/EbomModelViewer';
 import VtkMeshViewer from './VtkMeshViewer';
+import PdfViewer from '../../common/PdfViewer';
 
 const STEP_VIEWER_FALLBACK = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
 const STEP_EXTENSION_REGEXP = /\.(step|stp)$/i;
@@ -91,30 +92,62 @@ const renderPreviewContent = (file: SimulationFile, variant?: SimulationFileVari
         );
       }
       return <div className="text-sm text-gray-600">暂无几何预览图。</div>;
-    case 'report':
-      if (preview?.reportSections) {
-        return (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-900">报告摘要</h4>
-            {preview.reportSections.map(section => (
-              <div key={section.title} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                <div className="text-xs font-semibold text-gray-700">{section.title}</div>
-                <div className="text-xs text-gray-600 mt-1 leading-relaxed">{section.excerpt}</div>
-              </div>
-            ))}
-          </div>
-        );
-      }
-      return <div className="text-sm text-gray-600">报告可下载查看详细内容。</div>;
-    case 'document':
+    case 'report': {
+      const pdfUrl = variant?.pdfUrl ?? file.pdfUrl ?? file.preview?.pdfUrl;
+      const docxUrl = variant?.docxUrl ?? file.docxUrl ?? file.preview?.docxUrl;
+      const previewStatus = variant?.previewStatus ?? file.previewStatus ?? file.preview?.previewStatus;
+      const convertedAt = variant?.convertedAt ?? file.convertedAt ?? file.preview?.convertedAt;
+      const sections = variant?.reportSections ?? preview?.reportSections;
+      const footer = sections && sections.length > 0
+        ? (
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-gray-700">报告摘要</div>
+              {sections.map(section => (
+                <div key={section.title} className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                  <div className="text-xs font-semibold text-gray-700">{section.title}</div>
+                  <div className="mt-1 text-[11px] leading-relaxed text-gray-600">{section.excerpt}</div>
+                </div>
+              ))}
+            </div>
+          )
+        : undefined;
       return (
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900">文档摘要</h4>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 text-xs text-gray-600">
-            {preview?.documentSummary || '支持在线阅读，可嵌入文档组件展示详细内容。'}
-          </div>
-        </div>
+        <PdfViewer
+          fileName={file.name}
+          sourceUrl={pdfUrl}
+          docxUrl={docxUrl}
+          previewStatus={previewStatus}
+          convertedAt={convertedAt}
+          footerSlot={footer}
+          allowMaximize
+        />
       );
+    }
+    case 'document': {
+      const pdfUrl = variant?.pdfUrl ?? file.pdfUrl ?? file.preview?.pdfUrl;
+      const docxUrl = variant?.docxUrl ?? file.docxUrl ?? file.preview?.docxUrl;
+      const previewStatus = variant?.previewStatus ?? file.previewStatus ?? file.preview?.previewStatus;
+      const convertedAt = variant?.convertedAt ?? file.convertedAt ?? file.preview?.convertedAt;
+      const summary = variant?.documentSummary ?? preview?.documentSummary;
+      const footer = summary
+        ? (
+            <div className="text-xs leading-relaxed text-gray-600">
+              {summary}
+            </div>
+          )
+        : undefined;
+      return (
+        <PdfViewer
+          fileName={file.name}
+          sourceUrl={pdfUrl}
+          docxUrl={docxUrl}
+          previewStatus={previewStatus}
+          convertedAt={convertedAt}
+          footerSlot={footer}
+          allowMaximize
+        />
+      );
+    }
     case 'dataset':
       return (
         <div className="space-y-3">
@@ -159,6 +192,12 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
 
   if (!file) return null;
 
+  const handleOpen = () => {
+    if (typeof window !== 'undefined') {
+      window.alert(`打开操作开发中：${file.name}`);
+    }
+  };
+
   const previewContent = renderPreviewContent(file, variantPreview);
 
   const handleAddCompare = () => {
@@ -169,15 +208,19 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
       activeConditionId: activeConditionId,
       activeConditionName: activeCondition?.name,
       compareKey,
+      docxUrl: variantPreview?.docxUrl ?? file.docxUrl ?? file.preview?.docxUrl,
+      pdfUrl: variantPreview?.pdfUrl ?? file.pdfUrl ?? file.preview?.pdfUrl,
+      previewStatus: variantPreview?.previewStatus ?? file.previewStatus ?? file.preview?.previewStatus,
+      convertedAt: variantPreview?.convertedAt ?? file.convertedAt ?? file.preview?.convertedAt,
       preview: variantPreview ? { ...variantPreview } : file.preview
     };
     onAddCompare(compareItem);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div>
             <h3 className="text-base font-semibold text-gray-900">{file.name}</h3>
             <p className="text-xs text-gray-500">
@@ -198,7 +241,7 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
             <i className="ri-close-line text-xl"></i>
           </button>
         </div>
-        <div className="px-6 py-4 space-y-4 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-600">
             <div className="bg-gray-50 rounded-lg p-3">文件类型：{file.type}</div>
             <div className="bg-gray-50 rounded-lg p-3">文件大小：{file.size}</div>
@@ -292,8 +335,3 @@ const SimulationFilePreview = ({ file, onClose, onOpenFolder, onViewCondition, o
 };
 
 export default SimulationFilePreview;
-  const handleOpen = () => {
-    if (typeof window !== 'undefined') {
-      window.alert(`打开操作开发中：${file.name}`);
-    }
-  };

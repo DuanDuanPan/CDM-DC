@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { SimulationFile, SimulationFolder, SimulationFilters, SimulationFileStatus, SimulationCondition } from './types';
+import { SimulationFile, SimulationFolder, SimulationFilters, SimulationFileStatus, SimulationCondition, SimulationPreviewStatus } from './types';
 import ConditionBar from './ConditionBar';
 
 interface Props {
@@ -30,6 +30,13 @@ const statusLabelMap: Record<SimulationFileStatus, string> = {
   completed: '已完成',
   failed: '失败',
   archived: '已归档'
+};
+
+const previewStatusLabelMap: Record<SimulationPreviewStatus, { label: string; className: string }> = {
+  ready: { label: 'PDF 就绪', className: 'border-emerald-200 bg-emerald-50 text-emerald-600' },
+  mock: { label: 'Mock PDF', className: 'border-amber-200 bg-amber-50 text-amber-600' },
+  processing: { label: '转换中', className: 'border-blue-200 bg-blue-50 text-blue-600' },
+  unavailable: { label: '未生成', className: 'border-gray-200 bg-gray-50 text-gray-500' }
 };
 
 const formatDate = (value?: string) => {
@@ -126,6 +133,10 @@ const SimulationFolderView = ({
       activeConditionName: conditionName,
       compareKey,
       compareVersion: file.compareVersion ?? file.belongsToVersion ?? file.version,
+      docxUrl: variant?.docxUrl ?? file.docxUrl ?? file.preview?.docxUrl,
+      pdfUrl: variant?.pdfUrl ?? file.pdfUrl ?? file.preview?.pdfUrl,
+      previewStatus: variant?.previewStatus ?? file.previewStatus ?? file.preview?.previewStatus,
+      convertedAt: variant?.convertedAt ?? file.convertedAt ?? file.preview?.convertedAt,
       preview: variant ? { ...variant } : file.preview
     };
   };
@@ -227,8 +238,12 @@ const SimulationFolderView = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {visibleFiles.map(file => (
-              <tr key={file.id} className="hover:bg-gray-50">
+            {visibleFiles.map(file => {
+              const previewStatus = file.previewStatus ?? file.preview?.previewStatus;
+              const previewStatusMeta = previewStatus ? previewStatusLabelMap[previewStatus] : null;
+              const convertedAt = file.convertedAt ?? file.preview?.convertedAt;
+              return (
+                <tr key={file.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-2">
                     <div>
@@ -243,6 +258,15 @@ const SimulationFolderView = ({
                       {file.lastRunAt && <span>最近运行 {file.lastRunAt}</span>}
                       {file.tags && file.tags.length > 0 && (
                         <span className="inline-flex items-center gap-1"><i className="ri-price-tag-3-line"></i>{file.tags.slice(0, 2).join('、')}{file.tags.length > 2 ? ` +${file.tags.length - 2}` : ''}</span>
+                      )}
+                      {previewStatusMeta && (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${previewStatusMeta.className}`}
+                          title={convertedAt ? `转换时间 ${convertedAt}` : undefined}
+                        >
+                          <i className="ri-survey-line"></i>
+                          {previewStatusMeta.label}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -309,8 +333,9 @@ const SimulationFolderView = ({
                     </button>
                   </div>
                 </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
             {visibleFiles.length === 0 && (
               <tr>
                 <td colSpan={conditionFilterEnabled ? 9 : 8} className="px-4 py-8 text-center text-gray-500 text-sm">

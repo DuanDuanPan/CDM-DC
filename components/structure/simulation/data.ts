@@ -177,8 +177,16 @@ export const simulationCategories: SimulationCategory[] = [
                 createdAt: '2024-01-05 09:20',
                 updatedAt: '2024-01-12 14:50',
                 description: '说明工况、材料、加载及求解器设置。',
+                docxUrl: '/mock/pdf/mock-standard.pdf',
+                pdfUrl: '/mock/pdf/mock-standard.pdf',
+                previewStatus: 'mock',
+                convertedAt: '2025-10-05 10:32',
                 preview: {
-                  documentSummary: '包含仿真目的、工况、材料、网格划分及求解策略，附带敏感度分析计划。'
+                  documentSummary: '包含仿真目的、工况、材料、网格划分及求解策略，附带敏感度分析计划。',
+                  pdfUrl: '/mock/pdf/mock-standard.pdf',
+                  docxUrl: '/mock/pdf/mock-standard.pdf',
+                  previewStatus: 'mock',
+                  convertedAt: '2025-10-05 10:32'
                 },
                 statusReason: '完成最新评审意见修订',
                 lastRunAt: '2024-01-12 14:45'
@@ -306,12 +314,20 @@ export const simulationCategories: SimulationCategory[] = [
                 createdBy: '李仿真',
                 createdAt: '2024-01-13 10:25',
                 updatedAt: '2024-01-14 09:10',
+                docxUrl: '/mock/pdf/mock-standard.pdf',
+                pdfUrl: '/mock/pdf/mock-standard.pdf',
+                previewStatus: 'ready',
+                convertedAt: '2025-09-30 18:42',
                 preview: {
                   reportSections: [
                     { title: '1. 摘要', excerpt: '总结仿真目的、主要结论与建议。' },
                     { title: '2. 模型与工况', excerpt: '描述几何、网格、材料与边界条件。' },
                     { title: '3. 结果评估', excerpt: '列出关键指标、敏感性分析、可靠性评估。' }
-                  ]
+                  ],
+                  pdfUrl: '/mock/pdf/mock-standard.pdf',
+                  docxUrl: '/mock/pdf/mock-standard.pdf',
+                  previewStatus: 'ready',
+                  convertedAt: '2025-09-30 18:42'
                 }
               }
             ]
@@ -643,11 +659,15 @@ export const simulationCategories: SimulationCategory[] = [
                 createdBy: '王流体',
                 createdAt: '2024-01-18 18:30',
                 updatedAt: '2024-01-18 18:30',
+              docxUrl: '/mock/pdf/mock-dummy.pdf',
+                previewStatus: 'unavailable',
                 preview: {
                   reportSections: [
                     { title: '关键指标', excerpt: '燃烧效率、出口温差、最高温度等关键结果。' },
                     { title: '敏感性分析', excerpt: '不同喷射温度对燃烧效率影响。' }
-                  ]
+                  ],
+                  docxUrl: '/mock/pdf/mock-dummy.pdf',
+                  previewStatus: 'unavailable'
                 }
               }
             ]
@@ -807,8 +827,12 @@ const HISTORICAL_VERSION_DATA: Record<string, SimulationInstanceSnapshot[]> = {
               createdAt: '2023-12-18 08:40',
               updatedAt: '2023-12-29 14:30',
               description: '记录 v3.1 载荷假设及试验验证计划。',
+              docxUrl: '/mock/pdf/mock-dummy.pdf',
+              previewStatus: 'processing',
               preview: {
-                documentSummary: '覆盖 v3.1 改动与风险清单。'
+                documentSummary: '覆盖 v3.1 改动与风险清单。',
+                docxUrl: '/mock/pdf/mock-dummy.pdf',
+                previewStatus: 'processing'
               },
               statusReason: '完成评审反馈修复',
               lastRunAt: '2023-12-29 14:20'
@@ -885,12 +909,20 @@ const HISTORICAL_VERSION_DATA: Record<string, SimulationInstanceSnapshot[]> = {
               createdBy: '李仿真',
               createdAt: '2024-01-06 10:25',
               updatedAt: '2024-01-07 09:10',
+              docxUrl: '/mock/pdf/mock-standard.pdf',
+              pdfUrl: '/mock/pdf/mock-standard.pdf',
+              previewStatus: 'ready',
+              convertedAt: '2025-09-15 09:12',
               preview: {
                 reportSections: [
                   { title: '1. 摘要', excerpt: 'v3.1 版本的主要结论与差异。' },
                   { title: '2. 模型调整', excerpt: '新增加强筋与材料参数调整说明。' },
                   { title: '3. 结果对比', excerpt: '与 v3.0 基线的差异分析。' }
-                ]
+                ],
+                pdfUrl: '/mock/pdf/mock-standard.pdf',
+                docxUrl: '/mock/pdf/mock-standard.pdf',
+                previewStatus: 'ready',
+                convertedAt: '2025-09-15 09:12'
               }
             }
           ]
@@ -1005,8 +1037,12 @@ const HISTORICAL_VERSION_DATA: Record<string, SimulationInstanceSnapshot[]> = {
               createdBy: '李仿真',
               createdAt: '2023-12-05 09:40',
               updatedAt: '2023-12-08 16:15',
+              docxUrl: '/mock/pdf/mock-dummy.pdf',
+              previewStatus: 'unavailable',
               preview: {
-                documentSummary: 'v3.0 基线方案，仅包含结构工况描述。'
+                documentSummary: 'v3.0 基线方案，仅包含结构工况描述。',
+                docxUrl: '/mock/pdf/mock-dummy.pdf',
+                previewStatus: 'unavailable'
               },
               statusReason: '初版文档已归档',
               lastRunAt: '2023-12-08 16:10'

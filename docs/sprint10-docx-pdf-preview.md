@@ -69,5 +69,11 @@
 - 浏览器：Chrome、Edge、Safari（含 iPad）、Firefox。
 
 ## 实现状态（2025-10-11）
-- 文档阶段：需求与方案已确认，Mock PDF 资源尚未接入，开发待启动。
-- 下周计划：优先完成 `PdfViewer` 组件与 Mock 数据改造，使前端可独立验证流程。
+- 前端完成：`components/common/PdfViewer` 已落地，Simulation File Preview、Compare Drawer 引入同一渲染组件，支持分页、缩放、状态兜底以及 DOCX 下载回退。
+- Mock 数据：结构仿真与流体仿真示例补全 `docxUrl` / `pdfUrl` / `previewStatus` / `convertedAt` 字段，使用本地 `/mock/pdf/*.pdf` 静态资源覆盖 `ready`、`mock`、`processing`、`unavailable` 四种态。
+- 待办事项：对接后端签名 URL 与真实转换接口，安排 Safari / iPad 兼容验证，并补充转换失败监控上报。
+
+## 前端实现要点（2025-10-11）
+- 新增组件 `PdfViewer`（懒加载 `pdfjs-dist`），提供工具栏、缩放、适应宽度、重试及错误态反馈。
+- `SimulationFolderView` 增加 PDF 状态徽标；`SimulationFilePreview` 与 `SimulationCompareDrawer` 统一通过 `PdfViewer` 呈现 PDF，缺失时提示下载回退。
+- Mock 数据提供示例 PDF（标准版、差异版）与状态组合，便于前端独立验证多场景。
