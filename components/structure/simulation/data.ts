@@ -280,11 +280,13 @@ export const simulationCategories: SimulationCategory[] = [
                 statusReason: '生成成功，待导入可视化台账',
                 lastRunAt: '2024-01-12 05:10',
                 preview: {
-                  documentSummary: '图片预览: 巡航工况最大应力位置位于加强筋交界处。'
+                  imageUrl: '/mock/images/struct-stress.jpg',
+                  imageCaption: '巡航工况最大主应力云图，红色区域为危险截面。'
                 },
                 conditionVariants: {
                   'cond-struct-002': {
-                    documentSummary: '图片预览: 巡航工况最大应力位置位于加强筋交界处。'
+                    imageUrl: '/mock/images/struct-stress.jpg',
+                    imageCaption: '巡航工况最大主应力云图，红色区域为危险截面。'
                   }
                 },
                 conditions: [

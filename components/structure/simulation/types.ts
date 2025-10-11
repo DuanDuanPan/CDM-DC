@@ -67,6 +67,9 @@ export interface SimulationFileVariantPreview {
   docxUrl?: string;
   previewStatus?: SimulationPreviewStatus;
   convertedAt?: string;
+  imageUrl?: string;
+  imageCaption?: string;
+  imageUrls?: string[];
 }
 
 export interface SimulationFile {
@@ -99,6 +102,9 @@ export interface SimulationFile {
     docxUrl?: string;
     previewStatus?: SimulationPreviewStatus;
     convertedAt?: string;
+    imageUrl?: string;
+    imageCaption?: string;
+    imageUrls?: string[];
   };
   contexts?: {
     project?: string;

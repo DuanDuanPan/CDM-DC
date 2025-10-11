@@ -6,6 +6,7 @@ import ConditionBar from './ConditionBar';
 import EbomModelViewer from '../ebom/EbomModelViewer';
 import VtkMeshViewer from './VtkMeshViewer';
 import PdfViewer from '../../common/PdfViewer';
+import ImageViewer from '../../common/ImageViewer';
 
 const STEP_VIEWER_FALLBACK = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
 const STEP_EXTENSION_REGEXP = /\.(step|stp)$/i;
@@ -24,15 +25,15 @@ const renderPreviewContent = (file: SimulationFile, variant?: SimulationFileVari
   const viewerUrl = meshInfo?.viewerUrl || (STEP_EXTENSION_REGEXP.test(file.name) ? STEP_VIEWER_FALLBACK : undefined);
   const viewerPoster = meshInfo?.previewImage;
   switch (file.type) {
-    case 'result':
+    case 'result': {
       if (preview?.curveData) {
         return (
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-900">结果曲线预览</h4>
             <div className="grid grid-cols-1 gap-3">
               {preview.curveData.map((curve, idx) => (
-                <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3">
-                  <div className="text-xs text-gray-500 mb-2">曲线 {idx + 1}</div>
+                <div key={idx} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="mb-2 text-xs text-gray-500">曲线 {idx + 1}</div>
                   <div className="h-32 overflow-hidden rounded-md bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-100">
                     <svg viewBox="0 0 200 80" className="h-full w-full text-blue-500">
                       <polyline
@@ -51,7 +52,19 @@ const renderPreviewContent = (file: SimulationFile, variant?: SimulationFileVari
           </div>
         );
       }
+      const imageUrl = variant?.imageUrl ?? file.preview?.imageUrl;
+      if (imageUrl) {
+        return (
+          <ImageViewer
+            src={imageUrl}
+            alt={`${file.name} 预览`}
+            caption={variant?.imageCaption ?? file.preview?.imageCaption}
+            allowMaximize
+          />
+        );
+      }
       return <div className="text-sm text-gray-600">暂无可视化预览，支持下载查看。</div>;
+    }
     case 'geometry':
       if (meshInfo) {
         return (
