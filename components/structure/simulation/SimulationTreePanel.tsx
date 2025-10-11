@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { SIMULATION_DIMENSION_DESCRIPTORS, SIMULATION_TYPE_DICTIONARY, getSimulationTypeInfo } from './dimensions';
 import { SIMULATION_STRUCTURE_TREE, type SimulationStructureDefinition } from './structureTree';
 import type { SimulationCategory, SimulationDimension, SimulationInstance } from './types';
@@ -41,6 +41,7 @@ interface Props {
   onToggleExpand: (id: string) => void;
   onSelectNode: (ref: TreeNodeReference) => void;
   onLoadMore: () => void;
+  headerActions?: ReactNode;
 }
 
 interface StructureInfo {
@@ -325,7 +326,8 @@ const SimulationTreePanel = ({
   navPageSize,
   onToggleExpand,
   onSelectNode,
-  onLoadMore
+  onLoadMore,
+  headerActions
 }: Props) => {
   const hierarchy = useMemo(
     () => buildHierarchyTree(categories, activeDimensions),
@@ -419,11 +421,12 @@ const SimulationTreePanel = ({
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <div className="border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="text-sm font-semibold text-gray-900">仿真导航</div>
             <div className="mt-1 text-[11px] text-gray-500">当前层级：{selectionSummary}</div>
           </div>
+          {headerActions ? <div className="flex items-center gap-2">{headerActions}</div> : null}
         </div>
       </div>
       <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-3 pt-2">

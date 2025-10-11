@@ -18,7 +18,7 @@ import SimulationTreePanel from './simulation/SimulationTreePanel';
 import SimulationContentPanel from './simulation/SimulationContentPanel';
 import SimulationFilePreview from './simulation/SimulationFilePreview';
 import SimulationCompareDrawer from './simulation/SimulationCompareDrawer';
-import SimulationDimensionSlots from './simulation/SimulationDimensionSlots';
+import SimulationDimensionManager from './simulation/SimulationDimensionManager';
 import { useSimulationExplorerState, TreeNodeReference } from './simulation/useSimulationExplorerState';
 import type { SimulationFile, SimulationFilters, SimulationDimension } from './simulation/types';
 import ProductDefinitionPanel from './definition/ProductDefinitionPanel';
@@ -485,6 +485,12 @@ export default function ProductStructure() {
   const [previewSimulationFile, setPreviewSimulationFile] = useState<SimulationFile | null>(null);
   const [isSimulationNavOpen, setIsSimulationNavOpen] = useState(false);
   const [compareToast, setCompareToast] = useState<{ label: string; type: 'file' | 'instance' } | null>(null);
+  const [isDimensionManagerOpen, setIsDimensionManagerOpen] = useState(false);
+  const dimensionManagerAnchorRef = useRef<HTMLButtonElement | null>(null);
+
+  const toggleDimensionManager = useCallback(() => {
+    setIsDimensionManagerOpen(prev => !prev);
+  }, []);
 
   useEffect(() => {
     const canShowSimulationNav = activeTab === 'simulation' && (selectedBomType === 'solution' || selectedBomType === 'simulation');
@@ -492,6 +498,12 @@ export default function ProductStructure() {
       setIsSimulationNavOpen(false);
     }
   }, [activeTab, selectedBomType]);
+
+  useEffect(() => {
+    if (!isSimulationNavOpen) {
+      setIsDimensionManagerOpen(false);
+    }
+  }, [isSimulationNavOpen]);
 
   useEffect(() => {
     if (!simulationState.lastCompareEvent) return;
@@ -523,6 +535,12 @@ export default function ProductStructure() {
   const isSimulationBom = selectedBomType === 'simulation';
   const activeDimensionsForTree = isSimulationBom ? simulationState.activeDimensions : NON_SIMULATION_DIMENSIONS;
 
+  useEffect(() => {
+    if (!isSimulationBom) {
+      setIsDimensionManagerOpen(false);
+    }
+  }, [isSimulationBom]);
+
   const handleNodeSelect = useCallback(
     (ref: TreeNodeReference) => {
       simulationDispatch({ type: 'SELECT_NODE', payload: ref });
@@ -552,6 +570,11 @@ export default function ProductStructure() {
     [simulationDispatch]
   );
 
+  const handleResetDimensions = useCallback(() => {
+    handleActiveDimensionsChange(['structure']);
+    setIsDimensionManagerOpen(false);
+  }, [handleActiveDimensionsChange]);
+
   const handleSaveCurrentView = useCallback(
     (name: string) => {
       const trimmed = name.trim();
@@ -570,6 +593,16 @@ export default function ProductStructure() {
     },
     [simulationDispatch, simulationState.activeDimensions, simulationState.filters, simulationState.searchKeyword]
   );
+
+  const handleSaveViewShortcut = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const suggested = `组合 ${simulationState.savedViews.length + 1}`;
+    const input = window.prompt('保存当前维度组合名称（≤30 字符）', suggested);
+    if (!input) return;
+    const trimmed = input.trim().slice(0, 30);
+    if (!trimmed) return;
+    handleSaveCurrentView(trimmed);
+  }, [handleSaveCurrentView, simulationState.savedViews.length]);
 
   const handleApplySavedView = useCallback(
     (viewId: string) => {
@@ -620,8 +653,11 @@ export default function ProductStructure() {
   );
 
   const renderSimulationNavTree = () => (
-    <div className="flex h-full flex-col gap-3 overflow-hidden">
-      <SimulationDimensionSlots
+    <div className="relative flex h-full flex-col">
+      <SimulationDimensionManager
+        open={isDimensionManagerOpen}
+        anchorRef={dimensionManagerAnchorRef}
+        onClose={() => setIsDimensionManagerOpen(false)}
         activeDimensions={simulationState.activeDimensions}
         onChange={handleActiveDimensionsChange}
         savedViews={simulationState.savedViews}
@@ -631,7 +667,47 @@ export default function ProductStructure() {
         onRenameSavedView={handleRenameSavedView}
       />
       <div className="flex-1 overflow-hidden">
-        <SimulationTreePanel {...simulationTreeBaseProps} />
+        <SimulationTreePanel
+          {...simulationTreeBaseProps}
+          headerActions={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600"
+                onClick={handleResetDimensions}
+                title="重置组合"
+                aria-label="重置组合"
+              >
+                <i className="ri-refresh-line text-sm" />
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
+                onClick={handleSaveViewShortcut}
+                title="保存当前维度组合"
+                aria-label="保存当前维度组合"
+              >
+                <i className="ri-save-3-line text-sm" />
+              </button>
+              <button
+                type="button"
+                ref={dimensionManagerAnchorRef}
+                onClick={toggleDimensionManager}
+                className={`inline-flex h-8 w-8 items-center justify-center rounded border ${
+                  isDimensionManagerOpen
+                    ? 'border-blue-300 bg-blue-50 text-blue-600'
+                    : 'border-gray-200 text-gray-600 hover:border-blue-200 hover:text-blue-600'
+                }`}
+                aria-expanded={isDimensionManagerOpen}
+                aria-controls="simulation-dimension-manager"
+                title="管理维度组合"
+                aria-label="管理维度组合"
+              >
+                <i className="ri-equalizer-line text-sm" />
+              </button>
+            </div>
+          }
+        />
       </div>
     </div>
   );
