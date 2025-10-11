@@ -4,7 +4,9 @@ import type {
   SimulationFile,
   SimulationFilters,
   SimulationSavedView,
-  SimulationDimension
+  SimulationDimension,
+  SimulationInstanceSnapshot,
+  SimulationFolder
 } from './types';
 import { simulationCategories } from './data';
 
@@ -42,7 +44,96 @@ interface ExplorerState {
     label: string;
     timestamp: number;
   } | null;
+  selectedInstanceVersions: Record<string, string>;
+  versionChangeNotice: VersionChangeNotice | null;
 }
+
+type VersionChangeNotice = { instanceId: string; message: string; timestamp: number };
+
+const buildInitialInstanceVersionMap = (categories: SimulationCategory[]): Record<string, string> => {
+  const map: Record<string, string> = {};
+  categories.forEach(category => {
+    category.instances.forEach(instance => {
+      map[instance.id] = instance.version;
+    });
+  });
+  return map;
+};
+
+interface VersionChangeResolutionInput {
+  selectedNode: TreeNodeReference | null;
+  snapshot?: SimulationInstanceSnapshot;
+  instanceId: string;
+  categoryId?: string;
+}
+
+const resolveNodeAfterVersionChange = ({
+  selectedNode,
+  snapshot,
+  instanceId,
+  categoryId
+}: VersionChangeResolutionInput): { node: TreeNodeReference | null; notice: string | null } => {
+  if (!selectedNode || selectedNode.instanceId !== instanceId || !snapshot) {
+    return { node: selectedNode, notice: null };
+  }
+
+  const folders = snapshot.folders ?? [];
+  if (folders.length === 0) {
+    return {
+      node: {
+        type: 'instance',
+        categoryId: categoryId ?? selectedNode.categoryId,
+        instanceId
+      },
+      notice: '该版本暂无文件夹，已返回实例视图'
+    };
+  }
+
+  const currentFolderId = selectedNode.folderId;
+  const targetFolder = currentFolderId ? folders.find(folder => folder.id === currentFolderId) : undefined;
+
+  if (!currentFolderId || targetFolder) {
+    if (selectedNode.fileId && targetFolder) {
+      const targetFile = targetFolder.files.find(file => file.id === selectedNode.fileId);
+      if (targetFile) {
+        return { node: selectedNode, notice: null };
+      }
+      const fallbackFile = targetFolder.files[0];
+      if (fallbackFile) {
+        return {
+          node: {
+            ...selectedNode,
+            type: 'file',
+            folderId: targetFolder.id,
+            fileId: fallbackFile.id
+          },
+          notice: '该版本缺少原选中文件，已跳转至首个可用文件'
+        };
+      }
+      return {
+        node: {
+          type: 'folder',
+          categoryId: categoryId ?? selectedNode.categoryId,
+          instanceId,
+          folderId: targetFolder.id
+        },
+        notice: '该版本文件夹暂无文件，已返回文件夹视图'
+      };
+    }
+    return { node: selectedNode, notice: null };
+  }
+
+  const fallbackFolder = folders[0];
+  return {
+    node: {
+      type: 'folder',
+      categoryId: categoryId ?? selectedNode.categoryId,
+      instanceId,
+      folderId: fallbackFolder.id
+    },
+    notice: '该版本缺少原选中文件夹，已自动跳转到默认文件夹'
+  };
+};
 
 type ExplorerAction =
   | { type: 'SELECT_NODE'; payload: TreeNodeReference }
@@ -63,6 +154,8 @@ type ExplorerAction =
   | { type: 'DELETE_VIEW'; payload: string }
   | { type: 'RENAME_VIEW'; payload: { id: string; name: string } }
   | { type: 'APPLY_VIEW'; payload: SimulationSavedView }
+  | { type: 'SET_INSTANCE_VERSION'; payload: { instanceId: string; version: string } }
+  | { type: 'CLEAR_VERSION_NOTICE' }
   | { type: 'RESET' };
 
 const NAV_PAGE_SIZE = 30;
@@ -134,27 +227,32 @@ const loadSavedViews = (): SimulationSavedView[] => {
   }
 };
 
-const createInitialState = (): ExplorerState => ({
-  categories: simulationCategories,
-  selectedNode: null,
-  expandedNodeIds: [],
-  navVisibleCount: NAV_PAGE_SIZE,
-  navPageSize: NAV_PAGE_SIZE,
-  activeDimensions: ['structure'],
-  savedViews: loadSavedViews(),
-  searchKeyword: '',
-  page: 1,
-  pageSize: NAV_PAGE_SIZE,
-  compareQueue: [],
-  filters: {
-    statuses: [],
-    owners: [],
-    tags: [],
-    timeRange: 'all'
-  },
-  hasInteracted: false,
-  lastCompareEvent: null
-});
+const createInitialState = (): ExplorerState => {
+  const versionMap = buildInitialInstanceVersionMap(simulationCategories);
+  return {
+    categories: simulationCategories,
+    selectedNode: null,
+    expandedNodeIds: [],
+    navVisibleCount: NAV_PAGE_SIZE,
+    navPageSize: NAV_PAGE_SIZE,
+    activeDimensions: ['structure'],
+    savedViews: loadSavedViews(),
+    searchKeyword: '',
+    page: 1,
+    pageSize: NAV_PAGE_SIZE,
+    compareQueue: [],
+    filters: {
+      statuses: [],
+      owners: [],
+      tags: [],
+      timeRange: 'all'
+    },
+    hasInteracted: false,
+    lastCompareEvent: null,
+    selectedInstanceVersions: versionMap,
+    versionChangeNotice: null
+  };
+};
 
 function explorerReducer(state: ExplorerState, action: ExplorerAction): ExplorerState {
   switch (action.type) {
@@ -199,6 +297,44 @@ function explorerReducer(state: ExplorerState, action: ExplorerAction): Explorer
         filters: normalizeFilters(action.payload),
         page: 1
       };
+    case 'SET_INSTANCE_VERSION': {
+      const { instanceId, version } = action.payload;
+      const selectedInstanceVersions = {
+        ...state.selectedInstanceVersions,
+        [instanceId]: version
+      };
+      let selectedNode = state.selectedNode;
+      let versionChangeNotice = state.versionChangeNotice;
+
+      const category = state.categories.find(cat => cat.instances.some(inst => inst.id === instanceId));
+      const instance = category?.instances.find(inst => inst.id === instanceId);
+      const snapshot = instance?.versions?.[version];
+
+      if (instance && snapshot) {
+        const { node, notice } = resolveNodeAfterVersionChange({
+          selectedNode,
+          snapshot,
+          instanceId,
+          categoryId: category?.id
+        });
+        selectedNode = node;
+        versionChangeNotice = notice
+          ? { instanceId, message: notice, timestamp: Date.now() }
+          : versionChangeNotice && versionChangeNotice.instanceId === instanceId
+          ? null
+          : versionChangeNotice;
+      }
+
+      return {
+        ...state,
+        selectedInstanceVersions,
+        selectedNode,
+        versionChangeNotice,
+        page: 1
+      };
+    }
+    case 'CLEAR_VERSION_NOTICE':
+      return { ...state, versionChangeNotice: null };
     case 'RESET_PAGE':
       return { ...state, page: 1 };
     case 'ADD_COMPARE': {
@@ -296,34 +432,96 @@ export function useSimulationExplorerState() {
   }, [state.savedViews]);
 
   const derived = useMemo(() => {
-    const { selectedNode, categories, hasInteracted } = state;
+    const { selectedNode, categories, hasInteracted, selectedInstanceVersions } = state;
+
+    const defaultResult = {
+      category: undefined as SimulationCategory | undefined,
+      instance: undefined as SimulationCategory['instances'][number] | undefined,
+      instanceSnapshot: undefined as SimulationInstanceSnapshot | undefined,
+      folder: undefined as SimulationFolder | undefined,
+      files: [] as SimulationFile[],
+      activeInstanceVersion: undefined as string | undefined
+    };
+
+    const resolveSnapshot = (inst?: SimulationCategory['instances'][number]) => {
+      if (!inst) return { snapshot: undefined as SimulationInstanceSnapshot | undefined, activeVersion: undefined as string | undefined };
+      const requestedVersion = selectedInstanceVersions[inst.id] ?? inst.version;
+      const snapshots = inst.versions ?? {};
+      const snapshot =
+        (requestedVersion && snapshots[requestedVersion]) ||
+        (inst.version && snapshots[inst.version]) ||
+        Object.values(snapshots)[0];
+      return {
+        snapshot,
+        activeVersion: snapshot?.version ?? requestedVersion ?? inst.version
+      };
+    };
+
     if (!selectedNode) {
       if (!hasInteracted) {
-        return { category: undefined, instance: undefined, folder: undefined, files: [] as SimulationFile[] };
+        return defaultResult;
       }
 
       const firstCategory = categories[0];
       if (!firstCategory) {
-        return { category: undefined, instance: undefined, folder: undefined, files: [] as SimulationFile[] };
+        return defaultResult;
+      }
+
+      const firstInstance = firstCategory.instances[0];
+      const { snapshot, activeVersion } = resolveSnapshot(firstInstance);
+      if (snapshot) {
+        const firstFolder = snapshot.folders[0];
+        return {
+          category: firstCategory,
+          instance: firstInstance,
+          instanceSnapshot: snapshot,
+          folder: firstFolder,
+          files: firstFolder?.files ?? [],
+          activeInstanceVersion: activeVersion
+        };
       }
 
       return {
         category: firstCategory,
-        instance: undefined,
+        instance: firstInstance,
+        instanceSnapshot: undefined,
         folder: undefined,
-        files: firstCategory.instances.flatMap(inst => inst.folders.flatMap(f => f.files))
+        files: firstCategory.instances.flatMap(inst => inst.folders.flatMap(f => f.files)),
+        activeInstanceVersion: activeVersion
       };
     }
 
     const category = categories.find(c => c.id === selectedNode.categoryId) || categories[0];
     const instance = category?.instances.find(inst => inst.id === selectedNode.instanceId);
-    const folder = instance?.folders.find(f => f.id === selectedNode.folderId);
+    const { snapshot, activeVersion } = resolveSnapshot(instance);
+
+    if (!snapshot) {
+      const fallbackFolder = instance?.folders.find(f => f.id === selectedNode.folderId);
+      const fallbackFiles = fallbackFolder?.files ?? (instance ? instance.folders.flatMap(f => f.files) : []);
+      return {
+        category,
+        instance,
+        instanceSnapshot: undefined,
+        folder: fallbackFolder,
+        files: fallbackFiles,
+        activeInstanceVersion: activeVersion
+      };
+    }
+
+    const folder = selectedNode.folderId ? snapshot.folders.find(f => f.id === selectedNode.folderId) : undefined;
     const files = folder?.files ?? [];
 
-    return { category, instance, folder, files };
+    return {
+      category,
+      instance,
+      instanceSnapshot: snapshot,
+      folder,
+      files,
+      activeInstanceVersion: activeVersion
+    };
   }, [state]);
 
-  return { state, dispatch, ...derived };
+  return { state, dispatch, ...derived, versionNotice: state.versionChangeNotice };
 }
 
 export type { ExplorerState };

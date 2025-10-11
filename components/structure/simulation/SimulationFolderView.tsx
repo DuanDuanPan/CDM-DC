@@ -13,6 +13,7 @@ interface Props {
   onPageChange: (page: number) => void;
   onPreview: (file: SimulationFile) => void;
   onAddCompare: (file: SimulationFile) => void;
+  activeVersion?: string;
 }
 
 const statusColorMap: Record<SimulationFileStatus, string> = {
@@ -47,7 +48,8 @@ const SimulationFolderView = ({
   filters,
   onPageChange,
   onPreview,
-  onAddCompare
+  onAddCompare,
+  activeVersion
 }: Props) => {
   const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / pageSize));
 
@@ -97,6 +99,7 @@ const SimulationFolderView = ({
   }, [allConditions]);
 
   const conditionFilterEnabled = isResultFolder && allConditions.length > 0;
+  const noFilesInVersion = folder.files.length === 0;
 
   const visibleFiles = useMemo(() => {
     if (!conditionFilterEnabled || selectedConditionIds.length === 0) {
@@ -122,6 +125,7 @@ const SimulationFolderView = ({
       activeConditionId: conditionId,
       activeConditionName: conditionName,
       compareKey,
+      compareVersion: file.compareVersion ?? file.belongsToVersion ?? file.version,
       preview: variant ? { ...variant } : file.preview
     };
   };
@@ -143,10 +147,17 @@ const SimulationFolderView = ({
           <p className="text-sm text-gray-600">
             {folder.description || '查看该文件夹内的仿真数据文件。'}
           </p>
+          <div className="mt-1 text-xs text-gray-400">
+            版本 {folder.belongsToVersion ?? activeVersion ?? '—'}
+          </div>
         </div>
         <div className="text-right text-xs text-gray-500 space-y-1">
           <div>
-            {visibleFiles.length === 0 ? '无匹配结果' : `当前显示 ${pageStartIndex}-${pageEndIndex} / ${total} 条`}
+            {visibleFiles.length === 0
+              ? noFilesInVersion
+                ? '该版本暂无文件'
+                : '无匹配结果'
+              : `当前显示 ${pageStartIndex}-${pageEndIndex} / ${total} 条`}
           </div>
           {filterBadges.length === 0 && !conditionFilterEnabled && <div>无额外筛选条件</div>}
           {conditionFilterEnabled && (
@@ -175,6 +186,12 @@ const SimulationFolderView = ({
               {badge.label}
             </span>
           ))}
+        </div>
+      )}
+
+      {noFilesInVersion && (
+        <div className="rounded-lg border border-dashed border-gray-200 bg-white px-4 py-2 text-xs text-gray-500">
+          该版本未上传任何文件。
         </div>
       )}
 
@@ -297,7 +314,7 @@ const SimulationFolderView = ({
             {visibleFiles.length === 0 && (
               <tr>
                 <td colSpan={conditionFilterEnabled ? 9 : 8} className="px-4 py-8 text-center text-gray-500 text-sm">
-                  暂无匹配文件，请调整工况或筛选条件。
+                  该版本暂无可显示文件，请调整工况或筛选条件。
                 </td>
               </tr>
             )}

@@ -68,6 +68,7 @@ export interface SimulationFile {
   name: string;
   type: SimulationFileType;
   version: string;
+  belongsToVersion?: string;
   size: string;
   status: SimulationFileStatus;
   createdBy: string;
@@ -94,16 +95,42 @@ export interface SimulationFile {
   activeConditionId?: string;
   activeConditionName?: string;
   compareKey?: string;
+  compareVersion?: string;
 }
 
 export interface SimulationFolder {
   id: string;
   name: string;
   type: SimulationFileType;
+  belongsToVersion?: string;
   description?: string;
   files: SimulationFile[];
   statusSummary?: SimulationStatusSummary[];
   riskLevel?: 'low' | 'medium' | 'high';
+}
+
+export interface SimulationInstanceSnapshot {
+  version: string;
+  summary: string;
+  resources: {
+    cpuHours: number;
+    memoryGB: number;
+    gpuHours?: number;
+    costEstimate?: number;
+  };
+  conditions: SimulationCondition[];
+  highlights: Array<{ metric: string; value: string; trend: string; status: 'good' | 'warning' | 'risk' }>;
+  folders: SimulationFolder[];
+  tags?: string[];
+  riskCount?: number;
+  statusSummary?: SimulationStatusSummary[];
+  createdAt: string;
+  updatedAt: string;
+  executedAt?: string;
+  ownerAvatar?: string;
+  owner?: string;
+  reviewers?: string[];
+  notes?: string;
 }
 
 export interface SimulationInstance {
@@ -143,6 +170,7 @@ export interface SimulationInstance {
   alternateStructureIds?: string[];
   typeCode?: string;
   typeAnnotationSource?: 'manual' | 'auto';
+  versions?: Record<string, SimulationInstanceSnapshot>;
 }
 
 export interface SimulationCategory {

@@ -1,4 +1,4 @@
-import type { SimulationCategory } from './types';
+import type { SimulationCategory, SimulationInstanceSnapshot, SimulationFolder } from './types';
 
 export const simulationCategories: SimulationCategory[] = [
   {
@@ -419,6 +419,10 @@ export const simulationCategories: SimulationCategory[] = [
             ]
           }
         ],
+        versionHistory: [
+          { version: 'v2.4', date: '2024-01-15', change: '更新叶片减重策略，完成共振校核', owner: '陈振动' },
+          { version: 'v2.3', date: '2023-12-05', change: '建立振动分析基线模型', owner: '陈振动' }
+        ],
         compareBaselines: [
           { id: 'cmp-vib-cond', name: '共振 vs 标准工况', type: 'condition', referenceCondition: 'cond-vib-001' }
         ]
@@ -649,6 +653,10 @@ export const simulationCategories: SimulationCategory[] = [
             ]
           }
         ],
+        versionHistory: [
+          { version: 'v1.6', date: '2024-01-18', change: '加入喷嘴增厚与冷却流道', owner: '王流体' },
+          { version: 'v1.5', date: '2024-01-05', change: '完成基础流场求解与效率评估', owner: '王流体' }
+        ],
         compareBaselines: [
           { id: 'cmp-fluid-cond', name: '工况对比', type: 'condition', referenceCondition: 'cond-fluid-001' },
           { id: 'cmp-fluid-ver', name: '版本对比', type: 'version', referenceVersion: 'v1.5' }
@@ -657,3 +665,617 @@ export const simulationCategories: SimulationCategory[] = [
     ]
   }
 ];
+
+const mapFoldersWithVersion = (folders: SimulationFolder[], version: string): SimulationFolder[] =>
+  folders.map(folder => ({
+    ...folder,
+    belongsToVersion: version,
+    files: folder.files.map(file => ({
+      ...file,
+      version: file.version ?? version,
+      belongsToVersion: version
+    }))
+  }));
+
+const HISTORICAL_VERSION_DATA: Record<string, SimulationInstanceSnapshot[]> = {
+  'inst-struct-001': [
+    {
+      version: 'v3.1',
+      summary: '评估机匣刚度与疲劳寿命的阶段版本，保留旧求解设置。',
+      resources: {
+        cpuHours: 210,
+        memoryGB: 480,
+        gpuHours: 10,
+        costEstimate: 61.2
+      },
+      conditions: [
+        {
+          id: 'cond-struct-001',
+          name: '起飞工况',
+          parameters: [
+            { name: '转速', value: 9600, unit: 'rpm' },
+            { name: '温度', value: 630, unit: '°C' },
+            { name: '压力', value: 3, unit: 'MPa' }
+          ]
+        },
+        {
+          id: 'cond-struct-002',
+          name: '巡航工况',
+          parameters: [
+            { name: '转速', value: 8300, unit: 'rpm' },
+            { name: '温度', value: 560, unit: '°C' }
+          ]
+        }
+      ],
+      highlights: [
+        { metric: '最大位移', value: '1.9 mm', trend: '-1%', status: 'good' },
+        { metric: '疲劳寿命裕度', value: '1.18', trend: '+0.04', status: 'good' },
+        { metric: '危险截面应力', value: '840 MPa', trend: '+1%', status: 'warning' }
+      ],
+      folders: [
+        {
+          id: 'struct-001-geom',
+          name: '几何模型',
+          type: 'geometry',
+          description: 'v3.1 版本的几何与网格资源。',
+          riskLevel: 'medium',
+          statusSummary: [
+            { status: 'completed', count: 2, label: '几何/网格就绪' }
+          ],
+          files: [
+            {
+              id: 'file-geom-001-v31',
+              name: '机匣_v3.1.step',
+              type: 'geometry',
+              version: 'v3.1',
+              size: '45 MB',
+              status: 'completed',
+              createdBy: '张建模',
+              createdAt: '2023-12-20 09:10',
+              updatedAt: '2023-12-22 15:20',
+              description: 'v3.1 减轻非关键加强筋的几何模型。',
+              statusReason: '几何评审通过，待生成细化网格',
+              lastRunAt: '2023-12-22 15:00',
+              tags: ['几何', '优化'],
+              preview: {
+                meshInfo: {
+                  nodes: 170000,
+                  elements: 860000,
+                  previewImage: '/mock/previews/geom-case.png',
+                  viewerUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                  format: 'step'
+                }
+              }
+            },
+            {
+              id: 'file-geom-002-v31',
+              name: '机匣网格_v3.1.msh',
+              type: 'geometry',
+              version: 'v3.1',
+              size: '118 MB',
+              status: 'completed',
+              createdBy: '李网格',
+              createdAt: '2023-12-23 10:05',
+              updatedAt: '2023-12-26 19:10',
+              description: 'v3.1 网格仍保留旧接口过渡区域。',
+              statusReason: '网格质量合格，待验证热载荷响应',
+              lastRunAt: '2023-12-26 18:50',
+              preview: {
+                meshInfo: {
+                  nodes: 430000,
+                  elements: 2050000,
+                  previewImage: '/mock/previews/mesh-case.png'
+                }
+              }
+            }
+          ]
+        },
+        {
+          id: 'struct-001-model',
+          name: '仿真模型',
+          type: 'model',
+          files: [
+            {
+              id: 'file-model-001-v31',
+              name: '机匣结构_ANSYS_v3.1.apdl',
+              type: 'model',
+              version: 'v3.1',
+              size: '3.2 MB',
+              status: 'completed',
+              createdBy: '李仿真',
+              createdAt: '2023-12-24 11:15',
+              updatedAt: '2024-01-02 09:30',
+              description: '保留旧材料数据库与载荷设置。',
+              statusReason: '等待疲劳寿命校核',
+              lastRunAt: '2024-01-02 09:00'
+            }
+          ]
+        },
+        {
+          id: 'struct-001-docs',
+          name: '说明文件',
+          type: 'document',
+          files: [
+            {
+              id: 'file-doc-001-v31',
+              name: '仿真方案说明_v3.1.docx',
+              type: 'document',
+              version: 'v3.1',
+              size: '1.1 MB',
+              status: 'completed',
+              createdBy: '李仿真',
+              createdAt: '2023-12-18 08:40',
+              updatedAt: '2023-12-29 14:30',
+              description: '记录 v3.1 载荷假设及试验验证计划。',
+              preview: {
+                documentSummary: '覆盖 v3.1 改动与风险清单。'
+              },
+              statusReason: '完成评审反馈修复',
+              lastRunAt: '2023-12-29 14:20'
+            }
+          ]
+        },
+        {
+          id: 'struct-001-results',
+          name: '结果文件',
+          type: 'result',
+          files: [
+            {
+              id: 'file-res-001-v31',
+              name: '起飞工况_位移曲线_v3.1.csv',
+              type: 'result',
+              version: 'v3.1',
+              size: '2.2 MB',
+              status: 'completed',
+              createdBy: '仿真平台自动',
+              createdAt: '2024-01-04 03:15',
+              updatedAt: '2024-01-04 03:15',
+              tags: ['曲线', '位移'],
+              statusReason: '自动计算完成，等待复核',
+              lastRunAt: '2024-01-04 03:15',
+              preview: {
+                curveData: [
+                  [
+                    { x: 0, y: 0 },
+                    { x: 1, y: 0.32 },
+                    { x: 2, y: 0.76 },
+                    { x: 3, y: 1.08 },
+                    { x: 4, y: 1.38 }
+                  ]
+                ]
+              },
+              conditionVariants: {
+                'cond-struct-001': {
+                  curveData: [
+                    [
+                      { x: 0, y: 0 },
+                      { x: 1, y: 0.32 },
+                      { x: 2, y: 0.76 },
+                      { x: 3, y: 1.08 },
+                      { x: 4, y: 1.38 }
+                    ]
+                  ]
+                }
+              },
+              conditions: [
+                {
+                  id: 'cond-struct-001',
+                  name: '起飞工况',
+                  parameters: [
+                    { name: '时间', value: '0-4', unit: 's' },
+                    { name: '载荷', value: '最大推力' }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'struct-001-reports',
+          name: '仿真报告',
+          type: 'report',
+          files: [
+            {
+              id: 'file-report-001-v31',
+              name: '机匣结构仿真报告_v3.1.pdf',
+              type: 'report',
+              version: 'v3.1',
+              size: '6.1 MB',
+              status: 'completed',
+              createdBy: '李仿真',
+              createdAt: '2024-01-06 10:25',
+              updatedAt: '2024-01-07 09:10',
+              preview: {
+                reportSections: [
+                  { title: '1. 摘要', excerpt: 'v3.1 版本的主要结论与差异。' },
+                  { title: '2. 模型调整', excerpt: '新增加强筋与材料参数调整说明。' },
+                  { title: '3. 结果对比', excerpt: '与 v3.0 基线的差异分析。' }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      tags: ['结构件', '刚度'],
+      riskCount: 2,
+      statusSummary: [
+        { status: 'completed', count: 12, label: '已完成' },
+        { status: 'running', count: 2, label: '运行中' }
+      ],
+      createdAt: '2023-12-20 10:12',
+      updatedAt: '2024-01-10 18:00',
+      executedAt: '2024-12-28T06:10:00Z',
+      ownerAvatar: '/mock/avatars/li-fangzhen.png',
+      owner: '李仿真',
+      reviewers: ['王总师', '赵审核'],
+      notes: 'v3.1 保持旧求解参数，仅完成部分疲劳分析。'
+    },
+    {
+      version: 'v3.0',
+      summary: '机匣刚度评估初始基线，仅验证关键载荷工况。',
+      resources: {
+        cpuHours: 180,
+        memoryGB: 420,
+        gpuHours: 8,
+        costEstimate: 55.4
+      },
+      conditions: [
+        {
+          id: 'cond-struct-001',
+          name: '起飞工况',
+          parameters: [
+            { name: '转速', value: 9400, unit: 'rpm' },
+            { name: '温度', value: 620, unit: '°C' }
+          ]
+        }
+      ],
+      highlights: [
+        { metric: '最大位移', value: '2.1 mm', trend: '+0.1', status: 'warning' },
+        { metric: '疲劳寿命裕度', value: '1.05', trend: '+0.02', status: 'warning' },
+        { metric: '危险截面应力', value: '860 MPa', trend: '+3%', status: 'risk' }
+      ],
+      folders: [
+        {
+          id: 'struct-001-geom',
+          name: '几何模型',
+          type: 'geometry',
+          description: 'v3.0 基线几何，未包含最新加固。',
+          riskLevel: 'medium',
+          statusSummary: [
+            { status: 'completed', count: 1, label: '几何已同步' }
+          ],
+          files: [
+            {
+              id: 'file-geom-001-v30',
+              name: '机匣_v3.0.step',
+              type: 'geometry',
+              version: 'v3.0',
+              size: '43 MB',
+              status: 'completed',
+              createdBy: '张建模',
+              createdAt: '2023-12-05 11:20',
+              updatedAt: '2023-12-06 18:10',
+              statusReason: '基础结构完成，待局部加强。',
+              lastRunAt: '2023-12-06 18:00',
+              tags: ['几何'],
+              preview: {
+                meshInfo: {
+                  nodes: 158000,
+                  elements: 780000,
+                  previewImage: '/mock/previews/geom-case.png',
+                  viewerUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                  format: 'step'
+                }
+              }
+            }
+          ]
+        },
+        {
+          id: 'struct-001-model',
+          name: '仿真模型',
+          type: 'model',
+          files: [
+            {
+              id: 'file-model-001-v30',
+              name: '机匣结构_ANSYS_v3.0.apdl',
+              type: 'model',
+              version: 'v3.0',
+              size: '3.0 MB',
+              status: 'completed',
+              createdBy: '李仿真',
+              createdAt: '2023-12-06 09:45',
+              updatedAt: '2023-12-07 20:10',
+              statusReason: '已建立基础载荷工况',
+              lastRunAt: '2023-12-07 20:00'
+            }
+          ]
+        },
+        {
+          id: 'struct-001-docs',
+          name: '说明文件',
+          type: 'document',
+          files: [
+            {
+              id: 'file-doc-001-v30',
+              name: '仿真方案说明_v3.0.docx',
+              type: 'document',
+              version: 'v3.0',
+              size: '0.9 MB',
+              status: 'completed',
+              createdBy: '李仿真',
+              createdAt: '2023-12-05 09:40',
+              updatedAt: '2023-12-08 16:15',
+              preview: {
+                documentSummary: 'v3.0 基线方案，仅包含结构工况描述。'
+              },
+              statusReason: '初版文档已归档',
+              lastRunAt: '2023-12-08 16:10'
+            }
+          ]
+        },
+        {
+          id: 'struct-001-results',
+          name: '结果文件',
+          type: 'result',
+          files: []
+        }
+      ],
+      tags: ['结构件'],
+      riskCount: 3,
+      statusSummary: [
+        { status: 'completed', count: 6, label: '已完成' },
+        { status: 'running', count: 1, label: '运行中' }
+      ],
+      createdAt: '2023-12-05 13:50',
+      updatedAt: '2023-12-20 08:10',
+      executedAt: '2024-11-18T07:30:00Z',
+      ownerAvatar: '/mock/avatars/li-fangzhen.png',
+      owner: '李仿真',
+      reviewers: ['王总师'],
+      notes: 'v3.0 初始版本，尚未引入疲劳寿命与多工况分析。'
+    }
+  ],
+  'inst-struct-002': [
+    {
+      version: 'v2.3',
+      summary: '涡轮叶片模态分析早期版本，关注基频与阻尼配置。',
+      resources: {
+        cpuHours: 150,
+        memoryGB: 220,
+        gpuHours: 4,
+        costEstimate: 35.8
+      },
+      conditions: [
+        {
+          id: 'cond-vib-001',
+          name: '共振工况',
+          parameters: [
+            { name: '转速', value: 9900, unit: 'rpm' },
+            { name: '模态阶次', value: 2 }
+          ]
+        }
+      ],
+      highlights: [
+        { metric: '最大振幅', value: '0.92 mm', trend: '+0.18', status: 'risk' },
+        { metric: '阻尼比', value: '2.2%', trend: '+0.1%', status: 'warning' }
+      ],
+      folders: [
+        {
+          id: 'vib-002-geom',
+          name: '几何模型',
+          type: 'geometry',
+          riskLevel: 'medium',
+          statusSummary: [
+            { status: 'completed', count: 1, label: '几何已同步' }
+          ],
+          files: [
+            {
+              id: 'file-geom-050-v23',
+              name: '叶片几何_v2.3.step',
+              type: 'geometry',
+              version: 'v2.3',
+              size: '31 MB',
+              status: 'completed',
+              createdBy: '何设计',
+              createdAt: '2023-11-24 10:30',
+              updatedAt: '2023-12-01 13:20',
+              statusReason: '减重尚未完成，局部加固未加入。',
+              lastRunAt: '2023-12-01 13:00',
+              tags: ['几何', '叶片']
+            }
+          ]
+        },
+        {
+          id: 'vib-002-results',
+          name: '结果文件',
+          type: 'result',
+          files: [
+            {
+              id: 'file-res-050-v23',
+              name: '模态频率表_v2.3.xlsx',
+              type: 'result',
+              version: 'v2.3',
+              size: '0.9 MB',
+              status: 'draft',
+              createdBy: '仿真平台自动',
+              createdAt: '2023-12-04 07:40',
+              updatedAt: '2023-12-04 07:40',
+              description: '仅包含前五阶模态结果，等待复核。'
+            }
+          ]
+        }
+      ],
+      tags: ['振动', '叶片'],
+      riskCount: 2,
+      statusSummary: [
+        { status: 'completed', count: 4, label: '已完成' },
+        { status: 'running', count: 1, label: '运行中' }
+      ],
+      createdAt: '2023-11-22 07:55',
+      updatedAt: '2023-12-05 17:10',
+      executedAt: '2024-11-12T13:15:00Z',
+      owner: '陈振动',
+      reviewers: ['黄专家'],
+      notes: 'v2.3 尚未完成叶片轻量化调整。'
+    }
+  ],
+  'inst-fluid-001': [
+    {
+      version: 'v1.5',
+      summary: '燃烧室流场分析早期版本，聚焦基础流量与温度分布。',
+      resources: {
+        cpuHours: 300,
+        memoryGB: 640,
+        gpuHours: 18,
+        costEstimate: 86
+      },
+      conditions: [
+        {
+          id: 'cond-fluid-001',
+          name: '海平面起飞',
+          parameters: [
+            { name: '流量', value: 40, unit: 'kg/s' },
+            { name: '燃油喷射温度', value: 510, unit: 'K' }
+          ]
+        },
+        {
+          id: 'cond-fluid-002',
+          name: '高原巡航',
+          parameters: [
+            { name: '流量', value: 26, unit: 'kg/s' },
+            { name: '燃油喷射温度', value: 480, unit: 'K' }
+          ]
+        }
+      ],
+      highlights: [
+        { metric: '燃烧效率', value: '97.4%', trend: '+0.2%', status: 'good' },
+        { metric: '出口温差', value: '±18 K', trend: '-1 K', status: 'warning' },
+        { metric: '最高温度', value: '1750 K', trend: '+15 K', status: 'warning' }
+      ],
+      folders: [
+        {
+          id: 'fluid-001-geom',
+          name: '几何模型',
+          type: 'geometry',
+          riskLevel: 'medium',
+          statusSummary: [
+            { status: 'completed', count: 1, label: '几何最新' }
+          ],
+          files: [
+            {
+              id: 'file-geom-300-v15',
+              name: '燃烧室几何_v1.5.step',
+              type: 'geometry',
+              version: 'v1.5',
+              size: '52 MB',
+              status: 'completed',
+              createdBy: '赵设计',
+              createdAt: '2023-12-18 12:00',
+              updatedAt: '2023-12-19 09:30',
+              statusReason: '喷嘴段加厚尚未加入。',
+              lastRunAt: '2023-12-19 09:20',
+              tags: ['几何', '燃烧室']
+            }
+          ]
+        },
+        {
+          id: 'fluid-001-model',
+          name: '仿真模型',
+          type: 'model',
+          files: [
+            {
+              id: 'file-model-220-v15',
+              name: '燃烧室CFD设置_v1.5.cas',
+              type: 'model',
+              version: 'v1.5',
+              size: '6.1 MB',
+              status: 'running',
+              createdBy: '王流体',
+              createdAt: '2023-12-20 08:20',
+              updatedAt: '2023-12-28 21:35',
+              description: '缺少最新的湍流模型参数。',
+              statusReason: '正在迭代求解器设置',
+              lastRunAt: '2023-12-28 21:20'
+            }
+          ]
+        },
+        {
+          id: 'fluid-001-results',
+          name: '结果文件',
+          type: 'result',
+          files: [
+            {
+              id: 'file-res-320-v15',
+              name: '温度分布_海平面_v1.5.vtk',
+              type: 'result',
+              version: 'v1.5',
+              size: '28 MB',
+              status: 'draft',
+              createdBy: '仿真平台自动',
+              createdAt: '2024-01-02 05:20',
+              updatedAt: '2024-01-02 05:20',
+              statusReason: '缺少渲染切片，预览不可用'
+            }
+          ]
+        },
+        {
+          id: 'fluid-001-reports',
+          name: '仿真报告',
+          type: 'report',
+          files: []
+        }
+      ],
+      tags: ['流体', '燃烧'],
+      riskCount: 1,
+      statusSummary: [
+        { status: 'completed', count: 6, label: '已完成' },
+        { status: 'running', count: 3, label: '运行中' },
+        { status: 'failed', count: 1, label: '失败' }
+      ],
+      createdAt: '2023-12-18 09:10',
+      updatedAt: '2024-01-05 12:40',
+      executedAt: '2024-12-30T09:00:00Z',
+      owner: '王流体',
+      reviewers: ['李热力'],
+      notes: 'v1.5 版本尚未引入喷嘴冷却设计。'
+    }
+  ]
+};
+
+simulationCategories.forEach(category => {
+  category.instances.forEach(instance => {
+    const currentVersion = instance.version;
+    const foldersWithVersion = mapFoldersWithVersion(instance.folders, currentVersion);
+    instance.folders = foldersWithVersion;
+    const baseSnapshot: SimulationInstanceSnapshot = {
+      version: currentVersion,
+      summary: instance.summary,
+      resources: instance.resources,
+      conditions: instance.conditions,
+      highlights: instance.highlights,
+      folders: foldersWithVersion,
+      tags: instance.tags,
+      riskCount: instance.riskCount,
+      statusSummary: instance.statusSummary,
+      createdAt: instance.createdAt,
+      updatedAt: instance.updatedAt,
+      executedAt: instance.executedAt,
+      ownerAvatar: instance.ownerAvatar,
+      owner: instance.owner,
+      reviewers: instance.reviewers
+    };
+    const historicalSeeds = HISTORICAL_VERSION_DATA[instance.id] ?? [];
+    const historicalSnapshots = historicalSeeds.reduce<Record<string, SimulationInstanceSnapshot>>((acc, snapshot) => {
+      const versionFolders = mapFoldersWithVersion(snapshot.folders, snapshot.version);
+      acc[snapshot.version] = {
+        ...snapshot,
+        folders: versionFolders
+      };
+      return acc;
+    }, {});
+    instance.versions = {
+      [currentVersion]: baseSnapshot,
+      ...historicalSnapshots
+    };
+  });
+});

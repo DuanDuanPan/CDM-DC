@@ -476,8 +476,11 @@ export default function ProductStructure() {
     dispatch: simulationDispatch,
     category: currentSimulationCategory,
     instance: currentSimulationInstance,
+    instanceSnapshot: currentSimulationSnapshot,
     folder: currentSimulationFolder,
-    files: currentSimulationFiles
+    files: currentSimulationFiles,
+    activeInstanceVersion: currentSimulationVersion,
+    versionNotice: simulationVersionNotice
   } = useSimulationExplorerState();
   const [previewSimulationFile, setPreviewSimulationFile] = useState<SimulationFile | null>(null);
   const [isSimulationNavOpen, setIsSimulationNavOpen] = useState(false);
@@ -3225,6 +3228,7 @@ export default function ProductStructure() {
       const conditionName = file.activeConditionName || file.conditions?.find(condition => condition.id === conditionId)?.name;
       const compareKey = file.compareKey ?? (conditionId ? `${file.id}::${conditionId}` : file.id);
       const variant = conditionId ? file.conditionVariants?.[conditionId] : undefined;
+      const compareVersion = file.compareVersion ?? file.belongsToVersion ?? file.version;
       simulationDispatch({
         type: 'ADD_COMPARE',
         payload: {
@@ -3232,6 +3236,7 @@ export default function ProductStructure() {
           activeConditionId: conditionId,
           activeConditionName: conditionName,
           compareKey,
+           compareVersion,
           preview: variant ? { ...variant } : file.preview
         }
       });
@@ -3239,6 +3244,14 @@ export default function ProductStructure() {
 
     const handleFilterChange = (nextFilters: Partial<SimulationFilters>) => {
       simulationDispatch({ type: 'SET_FILTERS', payload: nextFilters });
+    };
+
+    const handleInstanceVersionChange = (instanceId: string, version: string) => {
+      simulationDispatch({ type: 'SET_INSTANCE_VERSION', payload: { instanceId, version } });
+    };
+
+    const handleDismissVersionNotice = () => {
+      simulationDispatch({ type: 'CLEAR_VERSION_NOTICE' });
     };
 
     const handleRemoveCompareFile = (fileId: string) => {
@@ -3279,19 +3292,48 @@ export default function ProductStructure() {
       setPreviewSimulationFile(file);
     };
 
-    const handleOpenFolderFromPreview = (file: SimulationFile) => {
-      const match = simulationState.categories.flatMap(cat =>
-        cat.instances.flatMap(inst =>
-          inst.folders.map(folder => ({ cat, inst, folder }))
-        )
-      ).find(entry => entry.folder.files.some(f => f.id === file.id));
+  const handleOpenFolderFromPreview = (file: SimulationFile) => {
+      const currentCategoryId = currentSimulationCategory?.id;
+      const currentInstanceId = currentSimulationInstance?.id;
+      const snapshotMatch = currentSimulationSnapshot?.folders.find(folder => folder.files.some(f => f.id === file.id));
+      if (snapshotMatch && currentCategoryId && currentInstanceId) {
+        handleNodeSelect({
+          type: 'folder',
+          categoryId: currentCategoryId,
+          instanceId: currentInstanceId,
+          folderId: snapshotMatch.id
+        });
+        setPreviewSimulationFile(null);
+        return;
+      }
 
-      if (!match) return;
+      let resolvedCategoryId = currentCategoryId;
+      let resolvedInstanceId = currentInstanceId;
+      let resolvedFolderId: string | undefined;
+      let resolvedVersion: string | undefined;
+
+      simulationState.categories.forEach(cat => {
+        cat.instances.forEach(inst => {
+          Object.values(inst.versions ?? {}).forEach(instanceSnapshot => {
+            if (resolvedFolderId) return;
+            const folderHit = instanceSnapshot.folders.find(folder => folder.files.some(f => f.id === file.id));
+            if (folderHit) {
+              resolvedCategoryId = cat.id;
+              resolvedInstanceId = inst.id;
+              resolvedFolderId = folderHit.id;
+              resolvedVersion = instanceSnapshot.version;
+            }
+          });
+        });
+      });
+
+      if (!resolvedCategoryId || !resolvedInstanceId || !resolvedFolderId || !resolvedVersion) return;
+      simulationDispatch({ type: 'SET_INSTANCE_VERSION', payload: { instanceId: resolvedInstanceId, version: resolvedVersion } });
       handleNodeSelect({
         type: 'folder',
-        categoryId: match.cat.id,
-        instanceId: match.inst.id,
-        folderId: match.folder.id
+        categoryId: resolvedCategoryId,
+        instanceId: resolvedInstanceId,
+        folderId: resolvedFolderId
       });
       setPreviewSimulationFile(null);
     };
@@ -3314,12 +3356,20 @@ export default function ProductStructure() {
             <SimulationContentPanel
               category={currentSimulationCategory}
               instance={currentSimulationInstance}
+              instanceSnapshot={currentSimulationSnapshot}
               folder={currentSimulationFolder}
               page={simulationState.page}
               pageSize={simulationState.pageSize}
               searchKeyword={simulationState.searchKeyword}
               hasInteracted={simulationState.hasInteracted}
               categories={simulationState.categories}
+              selectedVersions={simulationState.selectedInstanceVersions}
+              activeVersion={currentSimulationVersion}
+              versionNotice={
+                currentSimulationInstance && simulationVersionNotice?.instanceId === currentSimulationInstance.id
+                  ? simulationVersionNotice.message
+                  : null
+              }
               filters={simulationState.filters}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
@@ -3333,6 +3383,8 @@ export default function ProductStructure() {
               onAddCompareInstance={handleSelectInstance}
               onRegisterCompareInstance={handleRegisterCompareInstance}
               onOpenNavigation={() => setIsSimulationNavOpen(true)}
+              onChangeVersion={handleInstanceVersionChange}
+              onDismissVersionNotice={handleDismissVersionNotice}
             />
           </div>
           <SimulationCompareDrawer

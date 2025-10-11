@@ -355,17 +355,30 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
       <div className={`flex-1 overflow-hidden transition-opacity duration-200 ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <div className="px-4 pb-3">
         <div className="flex space-x-2 overflow-x-auto">
-          {items.map(item => (
-            <div key={item.compareKey ?? item.id} className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-700 flex items-center space-x-2">
-              <span className="truncate max-w-[140px]">
-                {item.name}
-                {item.activeConditionName && <span className="ml-1 text-[10px] text-blue-500">· {item.activeConditionName}</span>}
-              </span>
-              <button className="text-blue-500 hover:text-blue-700" onClick={() => onRemove(item.compareKey ?? item.id)}>
-                <i className="ri-close-line"></i>
-              </button>
-            </div>
-          ))}
+          {items.map(item => {
+            const versionLabel = item.compareVersion ?? item.belongsToVersion ?? item.version;
+            return (
+              <div
+                key={item.compareKey ?? item.id}
+                className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-700 flex items-center gap-2"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate max-w-[120px] sm:max-w-[160px]">{item.name}</span>
+                  {versionLabel && (
+                    <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-600">
+                      {versionLabel}
+                    </span>
+                  )}
+                  {item.activeConditionName && (
+                    <span className="text-[10px] text-blue-500">· {item.activeConditionName}</span>
+                  )}
+                </div>
+                <button className="text-blue-500 hover:text-blue-700" onClick={() => onRemove(item.compareKey ?? item.id)}>
+                  <i className="ri-close-line"></i>
+                </button>
+              </div>
+            );
+          })}
         </div>
         </div>
         <div className="flex-1 min-h-0 border-t border-gray-100 bg-gray-50">

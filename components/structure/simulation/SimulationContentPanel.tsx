@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import {
   SimulationCategory,
   SimulationInstance,
+  SimulationInstanceSnapshot,
   SimulationFolder,
   SimulationFile,
   SimulationFilters,
@@ -14,12 +15,16 @@ import SimulationFolderView from './SimulationFolderView';
 interface Props {
   category?: SimulationCategory;
   instance?: SimulationInstance;
+  instanceSnapshot?: SimulationInstanceSnapshot;
   folder?: SimulationFolder;
   page: number;
   pageSize: number;
   searchKeyword: string;
   hasInteracted: boolean;
   categories: SimulationCategory[];
+  selectedVersions: Record<string, string>;
+  activeVersion?: string;
+  versionNotice?: string | null;
   filters: SimulationFilters;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
@@ -32,18 +37,24 @@ interface Props {
   onAddCompareFile: (file: SimulationFile) => void;
   onAddCompareInstance: (instanceId: string) => void;
   onRegisterCompareInstance: (instanceId: string, instanceName: string) => void;
+  onChangeVersion: (instanceId: string, version: string) => void;
+  onDismissVersionNotice?: () => void;
   onOpenNavigation?: () => void;
 }
 
 const SimulationContentPanel = ({
   category,
   instance,
+  instanceSnapshot,
   folder,
   page,
   pageSize,
   searchKeyword,
   hasInteracted,
   categories,
+  selectedVersions,
+  activeVersion,
+  versionNotice,
   filters,
   onPageChange,
   onPageSizeChange,
@@ -56,28 +67,73 @@ const SimulationContentPanel = ({
   onAddCompareFile,
   onAddCompareInstance,
   onRegisterCompareInstance,
+  onChangeVersion,
+  onDismissVersionNotice,
   onOpenNavigation
 }: Props) => {
   const handleFolderCompare = (folderId: string) => {
-    if (!instance) return;
-    const targetFolder = instance.folders.find(f => f.id === folderId);
+    const list = instanceSnapshot?.folders ?? instance?.folders ?? [];
+    const targetFolder = list.find(f => f.id === folderId);
     if (!targetFolder) return;
-    targetFolder.files.forEach(file => onAddCompareFile(file));
+    targetFolder.files.forEach(file =>
+      onAddCompareFile({ ...file, compareVersion: file.compareVersion ?? file.belongsToVersion ?? file.version })
+    );
   };
 
   const handleInstanceCompare = (instanceId: string) => {
-    if (!category) return;
-    const targetInstance = category.instances.find(inst => inst.id === instanceId);
+    const targetCategory = category ?? categories.find(cat => cat.instances.some(inst => inst.id === instanceId));
+    if (!targetCategory) return;
+    const targetInstance = targetCategory.instances.find(inst => inst.id === instanceId);
     if (!targetInstance) return;
-    targetInstance.folders
-      .flatMap(f => f.files)
+    const versionKey = selectedVersions[instanceId] ?? targetInstance.version;
+    const snapshot = targetInstance.versions?.[versionKey] ?? (targetInstance.versions ? Object.values(targetInstance.versions)[0] : undefined);
+    const files = snapshot
+      ? snapshot.folders.flatMap(f => f.files)
+      : targetInstance.folders.flatMap(f => f.files);
+    files
       .slice(0, 3)
-      .forEach(onAddCompareFile);
+      .forEach(file => onAddCompareFile({ ...file, compareVersion: file.compareVersion ?? file.belongsToVersion ?? file.version }));
     onAddCompareInstance(instanceId);
     onRegisterCompareInstance(instanceId, targetInstance.name);
   };
 
   const normalizedKeyword = searchKeyword.trim().toLowerCase();
+
+  const resolvedSnapshot = useMemo(() => {
+    if (instanceSnapshot) return instanceSnapshot;
+    if (!instance) return undefined;
+    const key = selectedVersions[instance.id] ?? instance.version;
+    return instance.versions?.[key] ?? (instance.versions ? Object.values(instance.versions)[0] : undefined);
+  }, [instanceSnapshot, instance, selectedVersions]);
+
+  const effectiveVersion = activeVersion ?? resolvedSnapshot?.version ?? instance?.version;
+  const effectiveFolders = useMemo(
+    () => resolvedSnapshot?.folders ?? instance?.folders ?? [],
+    [resolvedSnapshot, instance]
+  );
+  const effectiveConditions = useMemo(
+    () => resolvedSnapshot?.conditions ?? instance?.conditions ?? [],
+    [resolvedSnapshot, instance]
+  );
+  const versionOptions = useMemo(() => {
+    if (!instance) return [] as Array<{ version: string; label: string; date?: string; change?: string; owner?: string }>;
+    const map = new Map<string, { version: string; label: string; date?: string; change?: string; owner?: string }>();
+    (instance.versionHistory ?? []).forEach(item => {
+      map.set(item.version, {
+        version: item.version,
+        label: `${item.version}${item.date ? ` · ${item.date}` : ''}`,
+        date: item.date,
+        change: item.change,
+        owner: item.owner
+      });
+    });
+    Object.keys(instance.versions ?? {}).forEach(versionKey => {
+      if (!map.has(versionKey)) {
+        map.set(versionKey, { version: versionKey, label: versionKey });
+      }
+    });
+    return Array.from(map.values());
+  }, [instance]);
 
   const withinTimeRange = useCallback(
     (dateString?: string) => {
@@ -130,10 +186,30 @@ const SimulationContentPanel = ({
 
   const aggregatedFiles = useMemo(() => {
     if (folder) return folder.files;
-    if (instance) return instance.folders.flatMap(f => f.files);
-    if (category) return category.instances.flatMap(inst => inst.folders.flatMap(f => f.files));
-    return categories.flatMap(cat => cat.instances.flatMap(inst => inst.folders.flatMap(f => f.files)));
-  }, [folder, instance, category, categories]);
+    if (resolvedSnapshot) return resolvedSnapshot.folders.flatMap(f => f.files);
+    if (instance) {
+      const versionKey = selectedVersions[instance.id] ?? instance.version;
+      const snapshot = instance.versions?.[versionKey];
+      if (snapshot) return snapshot.folders.flatMap(f => f.files);
+      return instance.folders.flatMap(f => f.files);
+    }
+    if (category) {
+      return category.instances.flatMap(inst => {
+        const versionKey = selectedVersions[inst.id] ?? inst.version;
+        const snapshot = inst.versions?.[versionKey];
+        const folders = snapshot?.folders ?? inst.folders;
+        return folders.flatMap(f => f.files);
+      });
+    }
+    return categories.flatMap(cat =>
+      cat.instances.flatMap(inst => {
+        const versionKey = selectedVersions[inst.id] ?? inst.version;
+        const snapshot = inst.versions?.[versionKey];
+        const folders = snapshot?.folders ?? inst.folders;
+        return folders.flatMap(f => f.files);
+      })
+    );
+  }, [folder, resolvedSnapshot, instance, category, categories, selectedVersions]);
 
   const folderFilterResult = useMemo(() => {
     if (!folder) return null;
@@ -155,6 +231,9 @@ const SimulationContentPanel = ({
   const filteredInstanceFolders = useMemo(() => {
     if (!instance) return null;
 
+    const foldersSource = resolvedSnapshot?.folders ?? instance.folders;
+    if (!foldersSource) return null;
+
     const includeAll =
       normalizedKeyword.length === 0 &&
       filters.statuses.length === 0 &&
@@ -162,7 +241,7 @@ const SimulationContentPanel = ({
       filters.tags.length === 0 &&
       (!filters.timeRange || filters.timeRange === 'all');
 
-    return instance.folders
+    return foldersSource
       .map(folderItem => {
         const matchingFiles = folderItem.files.filter(matchesFile);
         const folderMatchesKeyword =
@@ -180,7 +259,7 @@ const SimulationContentPanel = ({
         };
       })
       .filter(Boolean) as Array<{ folder: SimulationFolder; matchingFiles: SimulationFile[] }>;
-  }, [instance, matchesFile, normalizedKeyword, filters.statuses, filters.owners, filters.tags, filters.timeRange]);
+  }, [instance, resolvedSnapshot, matchesFile, normalizedKeyword, filters.statuses, filters.owners, filters.tags, filters.timeRange]);
 
   const filteredCategoryInstances = useMemo(() => {
     if (!category) return null;
@@ -194,27 +273,31 @@ const SimulationContentPanel = ({
 
     return category.instances
       .map(item => {
-        const allFiles = item.folders.flatMap(f => f.files);
+        const versionKey = selectedVersions[item.id] ?? item.version;
+        const snapshot = item.versions?.[versionKey];
+        const folders = snapshot?.folders ?? item.folders;
+        const allFiles = folders.flatMap(f => f.files);
         const statusHit = filters.statuses.length === 0 || allFiles.some(file => filters.statuses.includes(file.status));
         const ownerHit =
           filters.owners.length === 0 ||
-          filters.owners.includes(item.owner) ||
+          filters.owners.includes(snapshot?.owner ?? item.owner) ||
           allFiles.some(file => filters.owners.includes(file.createdBy));
         const tagHit =
           filters.tags.length === 0 ||
-          (item.tags?.some(tag => filters.tags.includes(tag)) ?? false) ||
+          ((snapshot?.tags ?? item.tags)?.some(tag => filters.tags.includes(tag)) ?? false) ||
           allFiles.some(file => file.tags?.some(tag => filters.tags.includes(tag)) ?? false);
+        const updatedAt = snapshot?.updatedAt ?? item.updatedAt;
         const timeHit =
           !filters.timeRange ||
           filters.timeRange === 'all' ||
-          withinTimeRange(item.updatedAt) ||
+          withinTimeRange(updatedAt) ||
           allFiles.some(file => withinTimeRange(file.lastRunAt || file.updatedAt || file.createdAt));
 
         const keywordHit =
           normalizedKeyword.length === 0 ||
           item.name.toLowerCase().includes(normalizedKeyword) ||
-          item.summary.toLowerCase().includes(normalizedKeyword) ||
-          (item.tags?.some(tag => tag.toLowerCase().includes(normalizedKeyword)) ?? false) ||
+          (snapshot?.summary ?? item.summary).toLowerCase().includes(normalizedKeyword) ||
+          ((snapshot?.tags ?? item.tags)?.some(tag => tag.toLowerCase().includes(normalizedKeyword)) ?? false) ||
           allFiles.some(file =>
             file.name.toLowerCase().includes(normalizedKeyword) ||
             (file.description?.toLowerCase().includes(normalizedKeyword) ?? false)
@@ -227,7 +310,7 @@ const SimulationContentPanel = ({
         return item;
       })
       .filter(Boolean) as SimulationInstance[];
-  }, [category, withinTimeRange, normalizedKeyword, filters.statuses, filters.owners, filters.tags, filters.timeRange]);
+  }, [category, selectedVersions, withinTimeRange, normalizedKeyword, filters.statuses, filters.owners, filters.tags, filters.timeRange]);
 
   const statusOptions = useMemo(() => {
     const unique = new Set<SimulationFileStatus>(aggregatedFiles.map(file => file.status));
@@ -237,12 +320,16 @@ const SimulationContentPanel = ({
   const ownerOptions = useMemo(() => {
     const owners = new Set<string>();
     aggregatedFiles.forEach(file => owners.add(file.createdBy));
-    if (instance) owners.add(instance.owner);
+    if (instance) owners.add(resolvedSnapshot?.owner ?? instance.owner);
     if (category) {
-      category.instances.forEach(inst => owners.add(inst.owner));
+      category.instances.forEach(inst => {
+        const versionKey = selectedVersions[inst.id] ?? inst.version;
+        const snapshotOwner = inst.versions?.[versionKey]?.owner;
+        owners.add(snapshotOwner ?? inst.owner);
+      });
     }
     return Array.from(owners);
-  }, [aggregatedFiles, instance, category]);
+  }, [aggregatedFiles, instance, resolvedSnapshot, category, selectedVersions]);
 
   const tagOptions = useMemo(() => {
     const tags = new Set<string>();
@@ -313,16 +400,27 @@ const SimulationContentPanel = ({
       return `文件夹包含 ${folder.files.length} 个文件`;
     }
     if (instance) {
-      const totalFolders = instance.folders.length;
+      const totalFolders = effectiveFolders.length;
       const visibleFolders = filteredInstanceFolders?.length ?? totalFolders;
-      return `版本 ${instance.version} · 工况 ${instance.conditions.length} · 文件夹 ${visibleFolders}/${totalFolders}`;
+      const conditionCount = effectiveConditions.length;
+      return `版本 ${effectiveVersion ?? '—'} · 工况 ${conditionCount} · 文件夹 ${visibleFolders}/${Math.max(totalFolders, 0)}`;
     }
     if (category) {
       const visibleInstances = filteredCategoryInstances?.length ?? category.instances.length;
       return `已筛选 ${visibleInstances} / ${category.instances.length} 个仿真实例`;
     }
     return '';
-  }, [folder, instance, category, folderFilterResult, filteredInstanceFolders, filteredCategoryInstances]);
+  }, [
+    folder,
+    instance,
+    category,
+    folderFilterResult,
+    filteredInstanceFolders,
+    filteredCategoryInstances,
+    effectiveFolders,
+    effectiveConditions,
+    effectiveVersion
+  ]);
 
   const showControls = hasInteracted && (category || instance || folder);
 
@@ -520,17 +618,24 @@ const SimulationContentPanel = ({
         onAddCompare={onAddCompareFile}
         filters={filters}
         searchKeyword={searchKeyword}
+        activeVersion={effectiveVersion}
       />
     );
   } else if (instance) {
     content = (
       <SimulationInstanceView
         instance={instance}
-        folders={filteredInstanceFolders ?? instance.folders.map(folderItem => ({ folder: folderItem, matchingFiles: folderItem.files }))}
+        snapshot={resolvedSnapshot}
+        folders={filteredInstanceFolders ?? effectiveFolders.map(folderItem => ({ folder: folderItem, matchingFiles: folderItem.files }))}
         searchKeyword={searchKeyword}
         filters={filters}
         onSelectFolder={onSelectFolder}
         onAddCompare={handleFolderCompare}
+        activeVersion={effectiveVersion}
+        versionOptions={versionOptions}
+        onChangeVersion={version => onChangeVersion(instance.id, version)}
+        versionNotice={versionNotice ?? null}
+        onDismissVersionNotice={onDismissVersionNotice}
       />
     );
   } else if (category) {
