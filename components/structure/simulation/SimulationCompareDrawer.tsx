@@ -53,11 +53,23 @@ const renderCompareContent = (
           }
           return item;
         });
-        const [haveImage] = [normalizedItems.some(it => /\.(png|jpg|jpeg|bmp|gif|webp|svg)$/i.test(it.name))];
-        const [view, setView] = [
-          (typeof window !== 'undefined' && (window as any).__sim_view_result__) || 'curve',
-          (v: 'curve' | 'image') => { if (typeof window !== 'undefined') (window as any).__sim_view_result__ = v; }
-        ] as const;
+        const haveImage = normalizedItems.some(it => Boolean(it.preview?.imageUrl) || /\.(png|jpg|jpeg|bmp|gif|webp|svg)$/i.test(it.name));
+        const hasCurves = normalizedItems.some(it => (it.preview?.curveData?.length ?? 0) > 0);
+        let currentView: 'curve' | 'image' = 'curve';
+        const defaultView: 'curve' | 'image' = hasCurves ? 'curve' : haveImage ? 'image' : 'curve';
+        if (typeof window !== 'undefined') {
+          currentView = (window as any).__sim_view_result__ || defaultView;
+        } else {
+          currentView = defaultView;
+        }
+        if (!hasCurves && currentView !== 'image') {
+          currentView = 'image';
+          if (typeof window !== 'undefined') (window as any).__sim_view_result__ = 'image';
+        }
+        const setView = (view: 'curve' | 'image') => {
+          if (!hasCurves && view === 'curve') return;
+          if (typeof window !== 'undefined') (window as any).__sim_view_result__ = view;
+        };
         const [alignMode, setAlignMode] = [
           (typeof window !== 'undefined' && (window as any).__sim_align_mode__) || 'original',
           (v: 'original' | 'normalizedX') => { if (typeof window !== 'undefined') (window as any).__sim_align_mode__ = v; }
@@ -87,8 +99,19 @@ const renderCompareContent = (
                   <>
                     <span className="text-gray-500">对比视图</span>
                     <div className="inline-flex rounded-md border border-gray-200 overflow-hidden">
-                      <button className={`px-2 py-1 ${view==='curve'?'bg-blue-50 text-blue-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setView('curve')}>曲线</button>
-                      <button className={`px-2 py-1 ${view==='image'?'bg-blue-50 text-blue-700':'text-gray-600 hover:bg-gray-50'}`} onClick={() => setView('image')}>图像</button>
+                      <button
+                        className={`px-2 py-1 ${currentView === 'curve' ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50'}`}
+                        onClick={() => setView('curve')}
+                        disabled={!hasCurves}
+                      >
+                        曲线
+                      </button>
+                      <button
+                        className={`px-2 py-1 ${currentView === 'image' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                        onClick={() => setView('image')}
+                      >
+                        图像
+                      </button>
                     </div>
                   </>
                 )}
@@ -129,18 +152,26 @@ const renderCompareContent = (
               </div>
             </div>
             <div className="flex-1 min-h-0 flex flex-col gap-3">
-              {view === 'image' && haveImage ? (
+              {currentView === 'image' && haveImage ? (
                 <div className="flex-1 min-h-[220px] rounded-lg bg-slate-50">
                   <ImageComparePanel files={normalizedItems} mode={imageMode as any} />
                 </div>
               ) : (
                 <>
-                  <div className="max-h-36 overflow-auto">
-                    <KpiMatrix files={normalizedItems} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} />
-                  </div>
-                  <div className="flex-1 min-h-[220px] rounded-lg bg-white">
-                    <CurveComparePanel files={normalizedItems} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} mode={curveMode} alignMode={alignMode as any} yNormMode={yNormMode as any} fillHeight />
-                  </div>
+                  {hasCurves ? (
+                    <>
+                      <div className="max-h-36 overflow-auto">
+                        <KpiMatrix files={normalizedItems} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} />
+                      </div>
+                      <div className="flex-1 min-h-[220px] rounded-lg bg-white">
+                        <CurveComparePanel files={normalizedItems} conditions={conditions} selectedIds={selectedIds} baselineId={baselineId} mode={curveMode} alignMode={alignMode as any} yNormMode={yNormMode as any} fillHeight />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white text-sm text-gray-500">
+                      当前文件没有曲线数据，可切换“图像”查看云图。
+                    </div>
+                  )}
                 </>
               )}
             </div>
