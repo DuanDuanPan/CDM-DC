@@ -5,16 +5,23 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sync:3dviewer": "node scripts/sync-online3dviewer-assets.js",
+    "postinstall": "npm run sync:3dviewer"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.19.3",
     "next": "15.3.2",
+    "online-3d-viewer": "^0.16.0",
     "pdfjs-dist": "^4.6.82",
+    "draco3d": "1.5.7",
+    "occt-import-js": "0.0.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.0.2",
-    "vtk.js": "^34.13.1"
+    "rhino3dm": "8.17.0",
+    "vtk.js": "^34.13.1",
+    "web-ifc": "0.0.68"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
