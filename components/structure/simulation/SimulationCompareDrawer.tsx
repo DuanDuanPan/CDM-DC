@@ -115,7 +115,7 @@ const renderCompareContent = (
                     </div>
                   </>
                 )}
-                {view !== 'image' && (
+                {currentView !== 'image' && (
                   <>
                     <span className="text-gray-400">|</span>
                     <span className="text-gray-500">曲线模式</span>
@@ -138,7 +138,7 @@ const renderCompareContent = (
                     </div>
                   </>
                 )}
-                {view === 'image' && haveImage && (
+                {currentView === 'image' && haveImage && (
                   <>
                     <span className="text-gray-400">|</span>
                     <span className="text-gray-500">图像模式</span>
