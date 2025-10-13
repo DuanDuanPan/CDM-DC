@@ -10,11 +10,12 @@ interface Props {
   preset?: MockPreset;
   allowMaximize?: boolean;
   title?: string;
+  height?: number;
 }
 
 const background = [0.97, 0.98, 1];
 
-export default function VtkMeshViewer({ className, preset = 'casing', allowMaximize = false, title }: Props) {
+export default function VtkMeshViewer({ className, preset = 'casing', allowMaximize = false, title, height }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerToken, setContainerToken] = useState(0);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -241,8 +242,11 @@ export default function VtkMeshViewer({ className, preset = 'casing', allowMaxim
     );
   }
 
+  // 高度策略：若传入 height，则以内联样式设置高度，避免 Tailwind 固定高度造成的左右不一致
+  const outerStyle = height ? { height: `${height}px` } : undefined;
+
   return (
-    <div className={className}>
+    <div className={className} style={outerStyle}>
       <div className="relative h-full w-full">
         {!allowMaximize && title && (
           <div className="absolute left-3 top-3 z-10 rounded-full bg-white/80 px-3 py-1 text-[11px] font-medium text-gray-600 shadow-sm">

@@ -154,21 +154,52 @@ const SimulationInstanceView = ({
     if (versionOptions.length <= 1) return null;
     if (versionOptions.length <= 3) {
       return (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-gray-500">切换版本</span>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-            {versionOptions.map(option => (
-              <button
-                key={option.version}
-                type="button"
-                onClick={() => handleSelectVersion(option.version)}
-                className={`px-3 py-1 text-xs font-medium transition-colors ${
-                  option.version === displayVersion ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-600 hover:bg-white'
-                }`}
-              >
-                {option.version}
-              </button>
-            ))}
+        <div className="inline-flex items-center gap-2">
+          <span className="sr-only">切换版本</span>
+          <div
+            role="tablist"
+            aria-label="切换版本"
+            className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5"
+          >
+            {versionOptions.map((option) => {
+              const selected = option.version === displayVersion;
+              return (
+                <button
+                  key={option.version}
+                  id={`ver-tab-${option.version}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => handleSelectVersion(option.version)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End') {
+                      e.preventDefault();
+                      const currentIndex = versionOptions.findIndex(v => v.version === displayVersion);
+                      let nextIndex = currentIndex;
+                      if (e.key === 'ArrowRight') nextIndex = Math.min(versionOptions.length - 1, currentIndex + 1);
+                      if (e.key === 'ArrowLeft') nextIndex = Math.max(0, currentIndex - 1);
+                      if (e.key === 'Home') nextIndex = 0;
+                      if (e.key === 'End') nextIndex = versionOptions.length - 1;
+                      const nextVer = versionOptions[nextIndex]?.version;
+                      if (nextVer && nextVer !== displayVersion) {
+                        handleSelectVersion(nextVer);
+                        const el = document.getElementById(`ver-tab-${nextVer}`);
+                        el?.focus();
+                      }
+                    }
+                  }}
+                  className={
+                    `rounded-md px-2.5 py-1 text-xs font-medium transition inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ` +
+                    (selected
+                      ? 'text-blue-700 bg-blue-50 border border-blue-200 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.05)]'
+                      : 'text-gray-600 bg-gray-50 border border-transparent hover:bg-white')
+                  }
+                >
+                  {option.version}
+                </button>
+              );
+            })}
           </div>
         </div>
       );
@@ -179,7 +210,7 @@ const SimulationInstanceView = ({
         <select
           value={displayVersion}
           onChange={event => handleSelectVersion(event.target.value)}
-          className="min-w-[9rem] rounded-lg border border-gray-200 px-3 py-1 text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100"
+          className="min-w-[9rem] rounded-lg border border-gray-200 px-3 py-1 text-xs text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-100"
         >
           {versionOptions.map(option => (
             <option key={option.version} value={option.version}>
@@ -211,21 +242,31 @@ const SimulationInstanceView = ({
               )}
             </div>
             <h2 className="mt-1 text-lg font-semibold text-gray-900">{instance.name}</h2>
-            <p className="mt-2 text-sm text-gray-600">{snapshotData.summary}</p>
+            <p className="mt-2 text-sm text-gray-600 line-clamp-2">{snapshotData.summary}</p>
           </div>
-          <div className="flex flex-col gap-2 text-xs text-gray-500 md:items-end md:text-right">
-            {renderVersionSwitcher()}
-            {currentVersionMeta?.change && (
-              <div className="max-w-xs text-left text-gray-400 md:text-right">
-                {currentVersionMeta.change}
-                {currentVersionMeta.date ? ` · ${currentVersionMeta.date}` : ''}
-              </div>
-            )}
-            <div>Owner：{owner}</div>
-            {reviewers?.length ? <div>评审：{reviewers.join('、')}</div> : null}
-            <div>创建时间：{snapshotData.createdAt}</div>
-            <div>更新时间：{snapshotData.updatedAt}</div>
-            <div>{filteredCountLabel}</div>
+          {/* 右侧信息区：紧凑两列网格，减少垂直空间 */}
+          <div className="flex items-start gap-4 md:text-right">
+            <div className="shrink-0 self-start">{renderVersionSwitcher()}</div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-gray-500">
+              {currentVersionMeta?.change && (
+                <div className="col-span-2 max-w-xs md:justify-self-end text-[11px] text-gray-400">
+                  {currentVersionMeta.change}
+                  {currentVersionMeta.date ? ` · ${currentVersionMeta.date}` : ''}
+                </div>
+              )}
+              <div className="whitespace-nowrap"><span className="text-gray-500">Owner：</span><span className="text-gray-900">{owner}</span></div>
+              <div className="whitespace-nowrap"><span className="text-gray-500">更新时间：</span><span className="text-gray-900">{snapshotData.updatedAt}</span></div>
+              <div className="whitespace-nowrap col-span-2 md:col-span-1"><span className="text-gray-500">创建时间：</span><span className="text-gray-700">{snapshotData.createdAt}</span></div>
+              {reviewers?.length ? (
+                <div className="truncate col-span-2 md:col-span-1" title={`评审：${reviewers.join('、')}`}>
+                  <span className="text-gray-500">评审：</span>
+                  <span className="text-gray-700">
+                    {reviewers.length > 2 ? `${reviewers.slice(0, 2).join('、')}… +${reviewers.length - 2}` : reviewers.join('、')}
+                  </span>
+                </div>
+              ) : null}
+              <div className="col-span-2 md:col-span-1 md:justify-self-end whitespace-nowrap">{filteredCountLabel}</div>
+            </div>
           </div>
         </div>
         {versionNotice && (

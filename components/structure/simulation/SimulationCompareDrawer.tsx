@@ -557,7 +557,8 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
     const minHeightClass = items.length === 0 ? 'min-h-[220px]' : 'h-full';
     return (
       <div className={`flex-1 min-h-0 border-t border-gray-100 bg-gray-50`}> 
-        <div className={`flex flex-col overflow-hidden rounded-lg border border-dashed border-gray-300 bg-white ${wrapperMargin} ${padding} ${minHeightClass}`}>
+        {/* 允许内部滚动，避免子项内容被裁剪（例如 3D 视图底部被遮挡） */}
+        <div className={`flex flex-col overflow-auto rounded-lg border border-dashed border-gray-300 bg-white ${wrapperMargin} ${padding} ${minHeightClass}`}>
           {renderCompareContent(items, {
             conditions: allConditions,
             selectedConditionIds,

@@ -1,6 +1,6 @@
 import PdfViewer from '../../common/PdfViewer';
 import ImageViewer from '../../common/ImageViewer';
-import EbomModelViewer from '../ebom/EbomModelViewer';
+import OnlineViewer from '../preview/OnlineViewer';
 import VtkMeshViewer from './VtkMeshViewer';
 import type { SimulationFile, SimulationFileVariantPreview } from './types';
 
@@ -119,8 +119,14 @@ const SimulationPreviewContent = ({ file, variant, allowMaximize = false, height
             )}
           </div>
           {isLightweightModel && viewerUrl && (
-            <div className="flex-1 min-h-[240px] overflow-hidden rounded-lg border border-gray-100 bg-slate-50">
-              <EbomModelViewer src={viewerUrl} poster={viewerPoster} height={height ?? 280} syncKey={syncKey} />
+            <div className="flex-1 min-h-[260px]">
+              <OnlineViewer
+                src={viewerUrl}
+                poster={viewerPoster}
+                height={height ?? 280}
+                syncKey={syncKey}
+                allowMaximize={allowMaximize}
+              />
             </div>
           )}
           {isFemMesh && (
@@ -130,7 +136,14 @@ const SimulationPreviewContent = ({ file, variant, allowMaximize = false, height
                 <span className="text-[11px]">vtk.js · 全屏支持</span>
               </div>
               <div className="overflow-hidden rounded-md border border-blue-100 bg-white">
-                <VtkMeshViewer className="h-72 w-full" preset="casing" allowMaximize title="机匣网格预览" />
+                {/* 使用传入的 height 以与其它卡片保持一致高度 */}
+                <VtkMeshViewer
+                  className="w-full"
+                  preset="casing"
+                  allowMaximize
+                  title="机匣网格预览"
+                  height={height ?? 280}
+                />
               </div>
               <p className="text-[11px] text-blue-600/80">
                 当前示例可替换为真实 FEM 数据，交互能力保持一致。
