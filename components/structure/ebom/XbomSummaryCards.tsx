@@ -16,6 +16,7 @@ interface Props {
   baseline?: string;
   onJumpLogged?: () => void;
   onViewRequirement?: (payload: { requirementIds: string[]; sourceNodeId?: string | null; sourceNodeName?: string | null }) => void;
+  onViewSimulation?: (payload: { simBomRefId?: string | null; nodeId?: string | null; sourceNodeId?: string | null; sourceNodeName?: string | null }) => void;
   sourceNodeId?: string | null;
   sourceNodeName?: string | null;
 }
@@ -31,6 +32,7 @@ export default function XbomSummaryCards({
   baseline,
   onJumpLogged,
   onViewRequirement,
+  onViewSimulation,
   sourceNodeId,
   sourceNodeName,
 }: Props) {
@@ -160,12 +162,23 @@ export default function XbomSummaryCards({
             <div className="mt-auto">
               <JumpButton
                 label="查看仿真详情"
-                url={summary.links?.detailUrl}
                 system="SIMSYS"
                 nodeId={nodeId}
                 baseline={baseline}
                 context={{ scope: "simulation", model: summary.simulation?.modelVer }}
-                onLogged={() => onJumpLogged?.()}
+                requireConfirm={false}
+                onLogged={(entry) => {
+                  onJumpLogged?.();
+                  if (entry.status !== "success") {
+                    return;
+                  }
+                  onViewSimulation?.({
+                    simBomRefId: summary.links?.simBomRef?.id ?? null,
+                    nodeId: summary.nodeId ?? nodeId ?? null,
+                    sourceNodeId: sourceNodeId ?? nodeId ?? summary.nodeId ?? null,
+                    sourceNodeName,
+                  });
+                }}
               />
             </div>
           </article>

@@ -81,6 +81,7 @@ interface Props {
   onSelectNode?: (nodeId: string) => void;
   activeView?: 'structure' | 'cockpit';
   onNavigateRequirement?: (payload: { requirementIds: string[]; sourceNodeId?: string | null; sourceNodeName?: string | null }) => void;
+  onViewSimulation?: (payload: { simBomRefId?: string | null; nodeId?: string | null; sourceNodeId?: string | null; sourceNodeName?: string | null }) => void;
 }
 
 const badge = (cls: string, icon: string, text: string) => (
@@ -326,7 +327,7 @@ const findById = (root: EbomTreeNode, id: string): EbomTreeNode | null => {
   return null;
 };
 
-export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onSelectNode, activeView = 'structure', onNavigateRequirement }: Props) {
+export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onSelectNode, activeView = 'structure', onNavigateRequirement, onViewSimulation }: Props) {
   const [refreshAt, setRefreshAt] = useState<string | null>(null);
   const [windowLabel, setWindowLabel] = useState<'24h'|'7d'|'30d'>('24h');
   const [showReq, setShowReq] = useState(true);
@@ -1826,6 +1827,14 @@ export default function EbomDetailPanel({ selectedNodeId, onNavigateBomType, onS
                       requirementIds,
                       sourceNodeId: sourceNodeId ?? selectedNodeId ?? active?.id ?? null,
                       sourceNodeName: sourceNodeName ?? active?.name ?? null,
+                    });
+                  }}
+                  onViewSimulation={(payload) => {
+                    onViewSimulation?.({
+                      ...payload,
+                      nodeId: payload.nodeId ?? selectedNodeId ?? active?.id ?? null,
+                      sourceNodeId: payload.sourceNodeId ?? selectedNodeId ?? active?.id ?? null,
+                      sourceNodeName: payload.sourceNodeName ?? active?.name ?? null,
                     });
                   }}
                   sourceNodeId={selectedNodeId}

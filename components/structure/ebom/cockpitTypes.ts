@@ -105,7 +105,11 @@ export interface XbomSummary {
     last?: string;
     anomalies?: Array<{ type: string; count: number }>;
   } | null;
-  links?: { detailUrl: string; context?: Record<string, string> } | null;
+  links?: {
+    detailUrl?: string;
+    context?: Record<string, string>;
+    simBomRef?: { id: string; label: string };
+  } | null;
 }
 
 export interface XbomSummaryDrawerData {

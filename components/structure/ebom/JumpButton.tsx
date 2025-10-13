@@ -79,7 +79,7 @@ export default function JumpButton({
         onClick={handleClick}
         className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-blue-600 hover:border-blue-300"
       >
-        <i className="ri-external-link-line mr-1" />
+        <i className={`${url ? 'ri-external-link-line' : 'ri-compass-3-line'} mr-1`} />
         {label}
       </button>
       {noted === 'success' && (

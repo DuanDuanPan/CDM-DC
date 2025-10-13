@@ -21,6 +21,7 @@ import SimulationCompareDrawer from './simulation/SimulationCompareDrawer';
 import SimulationDimensionManager from './simulation/SimulationDimensionManager';
 import { useSimulationExplorerState, TreeNodeReference } from './simulation/useSimulationExplorerState';
 import type { SimulationFile, SimulationFilters, SimulationDimension } from './simulation/types';
+import { simulationJumpTargets, SIMULATION_JUMP_UNMAPPED, type SimulationJumpTarget } from './simulation/simulationJumpMap';
 import ProductDefinitionPanel from './definition/ProductDefinitionPanel';
 import EbomDetailPanel from './ebom/EbomDetailPanel';
 import { EBOM_BASELINES } from './ebom/data';
@@ -106,6 +107,37 @@ interface OutputData {
 
 const VIEW_PREFERENCE_PREFIX = 'product-structure-active-tab';
 const NON_SIMULATION_DIMENSIONS: SimulationDimension[] = ['type'];
+
+const SIMULATION_JUMP_MAP_BY_REF = new Map<string, SimulationJumpTarget>();
+const SIMULATION_JUMP_MAP_BY_NODE = new Map<string, SimulationJumpTarget>();
+
+simulationJumpTargets.forEach((target) => {
+  SIMULATION_JUMP_MAP_BY_REF.set(target.simBomRefId, target);
+  target.nodeIds?.forEach((nodeId) => {
+    if (!SIMULATION_JUMP_MAP_BY_NODE.has(nodeId)) {
+      SIMULATION_JUMP_MAP_BY_NODE.set(nodeId, target);
+    }
+  });
+});
+
+const resolveSimulationJumpTarget = (
+  simBomRefId?: string | null,
+  nodeId?: string | null,
+): SimulationJumpTarget | null => {
+  if (simBomRefId) {
+    const direct = SIMULATION_JUMP_MAP_BY_REF.get(simBomRefId);
+    if (direct) {
+      return direct;
+    }
+  }
+  if (nodeId) {
+    const byNode = SIMULATION_JUMP_MAP_BY_NODE.get(nodeId);
+    if (byNode) {
+      return byNode;
+    }
+  }
+  return null;
+};
 
 const REQUIREMENT_BOM_TREE: BomNode[] = [
   {
@@ -215,14 +247,38 @@ const REQUIREMENT_BOM_TREE: BomNode[] = [
 ];
 
 type JumpEntry = {
+  kind: 'requirement' | 'simulation';
   fromBomType: string;
   fromTab: string;
   fromNodeId: string | null;
   fromExpandedNodes: string[];
-  requirementIds: string[];
+  targetBomType: string;
+  targetTab: string;
+  requirementIds?: string[];
+  simulationTarget?: {
+    simBomRefId?: string | null;
+    categoryId: string;
+    instanceId: string;
+    defaultVersion?: string;
+  };
   sourceNodeId: string | null;
   sourceNodeName?: string | null;
   createdAt: number;
+};
+
+type SimulationJumpSelection = {
+  categoryId: string;
+  instanceId: string;
+  defaultVersion?: string;
+  simBomRefId?: string | null;
+  sourceNodeId: string | null;
+  sourceNodeName?: string | null;
+};
+
+type SimulationJumpFeedback = {
+  type: 'info' | 'warning';
+  message: string;
+  timestamp: number;
 };
 
 const BOM_TYPE_LABELS: Record<string, string> = {
@@ -278,6 +334,9 @@ export default function ProductStructure() {
   const [jumpHistory, setJumpHistory] = useState<JumpEntry[]>([]);
   const [pendingRequirementFocus, setPendingRequirementFocus] = useState<string | null>(null);
   const [pendingTreeScrollTarget, setPendingTreeScrollTarget] = useState<string | null>(null);
+  const [pendingSimulationSelection, setPendingSimulationSelection] = useState<SimulationJumpSelection | null>(null);
+  const [simulationJumpFeedback, setSimulationJumpFeedback] = useState<SimulationJumpFeedback | null>(null);
+  const [simulationWarningToast, setSimulationWarningToast] = useState<SimulationJumpFeedback | null>(null);
   const [skipNextTabPersistence, setSkipNextTabPersistence] = useState(false);
   const autoTransitionRef = useRef(false);
   const previousBomTypeRef = useRef(selectedBomType);
@@ -325,6 +384,21 @@ export default function ProductStructure() {
     });
     setPendingRequirementFocus(null);
     setPendingTreeScrollTarget(null);
+    setPendingSimulationSelection(null);
+    setSimulationJumpFeedback(null);
+    setSimulationWarningToast(null);
+  }, []);
+
+  const dismissSimulationFeedback = useCallback(() => {
+    setSimulationJumpFeedback(null);
+  }, []);
+
+  const dismissSimulationToast = useCallback(() => {
+    setSimulationWarningToast(null);
+  }, []);
+
+  const pushSimulationWarning = useCallback((message: string) => {
+    setSimulationWarningToast({ type: 'warning', message, timestamp: Date.now() });
   }, []);
   
   // 添加缺失的状态变量
@@ -516,6 +590,18 @@ export default function ProductStructure() {
   }, [simulationState.lastCompareEvent]);
 
   useEffect(() => {
+    if (!simulationJumpFeedback || simulationJumpFeedback.type !== 'info') return;
+    const timer = window.setTimeout(() => setSimulationJumpFeedback(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [simulationJumpFeedback]);
+
+  useEffect(() => {
+    if (!simulationWarningToast) return;
+    const timer = window.setTimeout(() => setSimulationWarningToast(null), 4800);
+    return () => window.clearTimeout(timer);
+  }, [simulationWarningToast]);
+
+  useEffect(() => {
     const isSimulationViewActive = activeTab === 'simulation' && (selectedBomType === 'solution' || selectedBomType === 'simulation');
     if (!isSimulationViewActive) {
       setPreviewSimulationFile(null);
@@ -562,6 +648,58 @@ export default function ProductStructure() {
       payload: simulationState.navVisibleCount + simulationState.navPageSize
     });
   }, [simulationDispatch, simulationState.navVisibleCount, simulationState.navPageSize]);
+
+  useEffect(() => {
+    if (!pendingSimulationSelection) return;
+    if (selectedBomType !== 'simulation' || activeTab !== 'simulation') return;
+
+    const { categoryId, instanceId, defaultVersion, simBomRefId, sourceNodeName } = pendingSimulationSelection;
+
+    if (!simulationState.activeDimensions.includes('structure')) {
+      simulationDispatch({ type: 'SET_ACTIVE_DIMENSIONS', payload: ['structure', ...simulationState.activeDimensions] });
+      return;
+    }
+
+    const category = simulationState.categories.find(cat => cat.id === categoryId);
+    const instance = category?.instances.find(inst => inst.id === instanceId);
+    if (!category || !instance) {
+      const warning = simBomRefId
+        ? `未找到仿真实例映射（${simBomRefId}），请在仿真 BOM 中手动定位。`
+        : '未找到仿真实例映射，请在仿真 BOM 中手动定位。';
+      pushSimulationWarning(warning);
+      setPendingSimulationSelection(null);
+      return;
+    }
+
+    if (defaultVersion && simulationState.selectedInstanceVersions[instanceId] !== defaultVersion) {
+      simulationDispatch({ type: 'SET_INSTANCE_VERSION', payload: { instanceId, version: defaultVersion } });
+      return;
+    }
+
+    const structurePath = Array.isArray(instance.structurePath) ? instance.structurePath : [];
+    for (const structureId of structurePath) {
+      const nodeId = `dimension:structure:${structureId}`;
+      if (!simulationState.expandedNodeIds.includes(nodeId)) {
+        simulationDispatch({ type: 'TOGGLE_EXPAND', payload: nodeId });
+        return;
+      }
+    }
+
+    handleNodeSelect({ type: 'instance', categoryId, instanceId });
+    setPendingSimulationSelection(null);
+    const infoMessage = sourceNodeName
+      ? `已定位到仿真实例「${instance.name}」，来源：${sourceNodeName}`
+      : `已定位到仿真实例「${instance.name}」`;
+    setSimulationJumpFeedback({ type: 'info', message: infoMessage, timestamp: Date.now() });
+  }, [
+    pendingSimulationSelection,
+    selectedBomType,
+    activeTab,
+    simulationState,
+    simulationDispatch,
+    handleNodeSelect,
+    pushSimulationWarning,
+  ]);
 
   const handleActiveDimensionsChange = useCallback(
     (next: SimulationDimension[]) => {
@@ -2014,10 +2152,13 @@ export default function ProductStructure() {
       }
 
       const entry: JumpEntry = {
+        kind: 'requirement',
         fromBomType: selectedBomType,
         fromTab: activeTab,
         fromNodeId: selectedNode,
         fromExpandedNodes: [...expandedNodes],
+        targetBomType: 'requirement',
+        targetTab: 'requirement',
         requirementIds: [...requirementIds],
         sourceNodeId: resolvedSourceNodeId,
         sourceNodeName: resolvedSourceName,
@@ -2057,6 +2198,99 @@ export default function ProductStructure() {
     ]
   );
 
+  const handleNavigateSimulation = useCallback(
+    ({
+      simBomRefId,
+      nodeId,
+      sourceNodeId,
+      sourceNodeName,
+    }: {
+      simBomRefId?: string | null;
+      nodeId?: string | null;
+      sourceNodeId?: string | null;
+      sourceNodeName?: string | null;
+    }) => {
+      const resolvedSourceNodeId = sourceNodeId ?? selectedNode ?? null;
+      let resolvedSourceName = sourceNodeName ?? null;
+      if (!resolvedSourceName && resolvedSourceNodeId) {
+        const sourceNode = findNodeById(resolvedSourceNodeId, bomStructureData);
+        resolvedSourceName = sourceNode?.name ?? null;
+      }
+
+      const target = resolveSimulationJumpTarget(simBomRefId ?? undefined, nodeId ?? undefined);
+
+      const entry: JumpEntry = {
+        kind: 'simulation',
+        fromBomType: selectedBomType,
+        fromTab: activeTab,
+        fromNodeId: selectedNode,
+        fromExpandedNodes: [...expandedNodes],
+        targetBomType: 'simulation',
+        targetTab: 'simulation',
+        simulationTarget: target
+          ? {
+              simBomRefId: simBomRefId ?? null,
+              categoryId: target.categoryId,
+              instanceId: target.instanceId,
+              defaultVersion: target.defaultVersion,
+            }
+          : undefined,
+        sourceNodeId: resolvedSourceNodeId,
+        sourceNodeName: resolvedSourceName,
+        createdAt: Date.now(),
+      };
+
+      autoTransitionRef.current = true;
+      setJumpHistory((prev) => {
+        const next = [...prev, entry];
+        if (typeof window !== 'undefined') {
+          console.debug('[ProductStructure] jump stack length:', next.length);
+        }
+        return next;
+      });
+
+      setSkipNextTabPersistence(true);
+      setSelectedBomType('simulation');
+      setActiveTab('simulation');
+      setPendingRequirementFocus(null);
+      setPendingTreeScrollTarget(null);
+      setSimulationJumpFeedback(null);
+      setSimulationWarningToast(null);
+
+      if (target) {
+        setPendingSimulationSelection({
+          categoryId: target.categoryId,
+          instanceId: target.instanceId,
+          defaultVersion: target.defaultVersion,
+          simBomRefId: simBomRefId ?? null,
+          sourceNodeId: resolvedSourceNodeId,
+          sourceNodeName: resolvedSourceName,
+        });
+      } else {
+        setPendingSimulationSelection(null);
+        if (simBomRefId) {
+          const warning = SIMULATION_JUMP_UNMAPPED.has(simBomRefId)
+            ? `仿真映射暂未配置（${simBomRefId}），请在仿真 BOM 中手动定位。`
+            : `暂未找到仿真映射（${simBomRefId}），已停留在默认仿真视图。`;
+          pushSimulationWarning(warning);
+        } else {
+          pushSimulationWarning('暂未配置仿真映射，已停留在默认仿真视图。');
+        }
+      }
+
+      simulationDispatch({ type: 'RESET' });
+    },
+    [
+      activeTab,
+      bomStructureData,
+      expandedNodes,
+      selectedBomType,
+      selectedNode,
+      simulationDispatch,
+      pushSimulationWarning,
+    ]
+  );
+
   const handleJumpBack = useCallback(() => {
     if (!jumpHistory.length) return;
     const entry = jumpHistory[jumpHistory.length - 1];
@@ -2075,13 +2309,22 @@ export default function ProductStructure() {
     setSelectedNode(entry.fromNodeId ?? null);
     setPendingRequirementFocus(null);
     setPendingTreeScrollTarget(entry.fromNodeId ?? null);
-  }, [jumpHistory]);
+    setPendingSimulationSelection(null);
+    setSimulationJumpFeedback(null);
+    if (entry.kind === 'simulation') {
+      simulationDispatch({ type: 'RESET' });
+    }
+  }, [jumpHistory, simulationDispatch]);
 
   const latestJump = jumpHistory.length ? jumpHistory[jumpHistory.length - 1] : null;
+  const isInJumpContext = Boolean(
+    latestJump && selectedBomType === latestJump.targetBomType && activeTab === latestJump.targetTab,
+  );
+  const isRequirementJumpContext = Boolean(isInJumpContext && latestJump?.kind === 'requirement');
+  const isSimulationJumpContext = Boolean(isInJumpContext && latestJump?.kind === 'simulation');
   const backButtonLabel = latestJump
     ? `返回${BOM_TYPE_LABELS[latestJump.fromBomType] ?? '上一视图'}${latestJump.sourceNodeName ? ` · ${latestJump.sourceNodeName}` : ''}`
     : '';
-  const hasJumpContext = Boolean(latestJump && selectedBomType === 'requirement' && activeTab === 'requirement');
 
   // 添加参数
   // 添加缺失的处理函数
@@ -2342,89 +2585,140 @@ export default function ProductStructure() {
     }
   };
 
-  const getNodeColor = (node: BomNode) => {
-    if (node.bomType === 'solution' && node.schemeType) {
-      return node.schemeType === 'A' ? 'text-blue-600 bg-blue-100' : 'text-green-600 bg-green-100';
+const getNodeTone = (node: BomNode) => {
+  if (node.bomType === 'solution' && node.schemeType) {
+    return node.schemeType === 'A'
+      ? { bg: 'bg-blue-50', text: 'text-blue-600' }
+      : { bg: 'bg-emerald-50', text: 'text-emerald-600' };
+  }
+
+  if (node.bomType === 'requirement') {
+    switch (node.unitType) {
+      case 'product_functional_unit':
+        return { bg: 'bg-violet-50', text: 'text-violet-600' };
+      case 'subsystem_functional_unit':
+        return { bg: 'bg-indigo-50', text: 'text-indigo-600' };
+      case 'component_assembly':
+        return { bg: 'bg-blue-50', text: 'text-blue-600' };
+      case 'important_part':
+        return { bg: 'bg-amber-50', text: 'text-amber-600' };
+      default:
+        return { bg: 'bg-slate-50', text: 'text-slate-500' };
     }
-    
-    if (node.bomType === 'requirement') {
-      switch (node.unitType) {
-        case 'product_functional_unit': return 'text-purple-600 bg-purple-100';
-        case 'subsystem_functional_unit': return 'text-indigo-600 bg-indigo-100';
-        case 'component_assembly': return 'text-blue-600 bg-blue-100';
-        case 'important_part': return 'text-cyan-600 bg-cyan-100';
-        default: return 'text-green-600 bg-green-100';
-      }
+  }
+
+  switch (node.bomType) {
+    case 'solution':
+      return { bg: 'bg-blue-50', text: 'text-blue-600' };
+    case 'design':
+      return { bg: 'bg-purple-50', text: 'text-purple-600' };
+    case 'simulation':
+      return { bg: 'bg-orange-50', text: 'text-orange-600' };
+    case 'test':
+      return { bg: 'bg-rose-50', text: 'text-rose-600' };
+    case 'physical':
+      return { bg: 'bg-indigo-50', text: 'text-indigo-600' };
+    default:
+      return { bg: 'bg-slate-100', text: 'text-slate-500' };
+  }
+};
+
+const TAG_TONE_CLASS: Record<'primary' | 'warning' | 'neutral', string> = {
+  primary: 'border-blue-200 text-blue-600 bg-blue-50',
+  warning: 'border-amber-200 text-amber-700 bg-amber-50',
+  neutral: 'border-gray-200 text-gray-500 bg-white/80',
+};
+
+const buildNodeTags = (node: BomNode) => {
+  const tags: Array<{ label: string; tone: 'primary' | 'warning' | 'neutral' }> = [];
+
+  if (node.bomType === 'requirement') {
+    switch (node.unitType) {
+      case 'component_assembly':
+        tags.push({ label: '成附件', tone: 'primary' });
+        break;
+      case 'important_part':
+        tags.push({ label: '重要零件', tone: 'warning' });
+        break;
+      case 'product_functional_unit':
+        tags.push({ label: '产品级', tone: 'neutral' });
+        break;
+      case 'subsystem_functional_unit':
+        tags.push({ label: '子系统级', tone: 'neutral' });
+        break;
+      default:
+        break;
     }
-    
-    switch (node.bomType) {
-      case 'solution': return 'text-blue-600 bg-blue-100';
-      case 'design': return 'text-purple-600 bg-purple-100';
-      case 'simulation': return 'text-orange-600 bg-orange-100';
-      case 'test': return 'text-red-600 bg-red-100';
-      case 'physical': return 'text-indigo-600 bg-indigo-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
+  }
+
+  if (node.schemeType) {
+    tags.push({ label: `方案${node.schemeType}`, tone: 'neutral' });
+  }
+
+  return tags;
+};
 
   const renderTreeNode = (node: BomNode) => {
     const isExpanded = expandedNodes.includes(node.id);
     const hasChildren = node.children && node.children.length > 0;
     const isSelected = selectedNode === node.id;
+    const iconTone = getNodeTone(node);
+    const tags = buildNodeTags(node);
+    const primaryName = node.name.replace(/\s*\(.*?\)\s*/g, '').trim();
 
     return (
       <div key={node.id}>
-        <div 
-          className={`flex items-center p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-            isSelected ? 'bg-blue-50 border border-blue-200' : ''
+        <div
+          className={`relative flex items-start gap-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:bg-slate-50 ${
+            isSelected ? 'border-blue-300 bg-white shadow-sm' : ''
           }`}
           style={{ marginLeft: `${node.level * 20}px` }}
           data-tree-node-id={node.id}
           onClick={() => handleNodeClick(node.id)}
         >
-          <div className="w-5">
-            {hasChildren && (
+          {isSelected && <span className="absolute inset-y-1 left-1 w-1 rounded-full bg-blue-500"></span>}
+
+          <div className="flex h-full flex-col items-center justify-start pt-0.5">
+            {hasChildren ? (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
+                type="button"
+                className="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 text-gray-400 transition hover:border-blue-200 hover:text-blue-600"
+                onClick={(event) => {
+                  event.stopPropagation();
                   toggleNodeExpansion(node.id);
                 }}
-                className="w-4 h-4 flex items-center justify-center hover:bg-gray-200 rounded"
+                aria-label={isExpanded ? '收起节点' : '展开节点'}
               >
                 <i className={`ri-${isExpanded ? 'subtract' : 'add'}-line text-xs`}></i>
               </button>
+            ) : (
+              <div className="h-5 w-5" />
             )}
           </div>
 
-          <div className={`w-4 h-4 rounded flex items-center justify-center mr-2 ${getNodeColor(node)}`}>
-            <i className={`${getNodeIcon(node)} text-xs`}></i>
+          <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md ${iconTone.bg} ${iconTone.text}`}>
+            <i className={`${getNodeIcon(node)} text-base`}></i>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-900 truncate">{node.name}</span>
-              {node.schemeType && (
-                <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
-                  node.schemeType === 'A' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                }`}>
-                  {node.schemeType}
-                </span>
-              )}
-              {/* 需求BOM显示单元类型标识 */}
-              {node.bomType === 'requirement' && node.unitType && (
-                <span className={`ml-2 px-1.5 py-0.5 text-xs rounded-full ${
-                  node.unitType === 'component_assembly' ? 'bg-blue-100 text-blue-700' : 
-                  node.unitType === 'important_part' ? 'bg-orange-100 text-orange-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {node.unitType === 'component_assembly' ? '成附件' : 
-                   node.unitType === 'important_part' ? '重要零件' : 
-                   node.unitType === 'product_functional_unit' ? '产品级' :
-                   node.unitType === 'subsystem_functional_unit' ? '子系统级' : ''}
-                </span>
-              )}
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-sm font-medium text-gray-900">{primaryName || node.name}</span>
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">{node.id}</div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-medium tracking-wide text-slate-400">{node.id}</span>
+              {tags.length ? (
+                <div className="flex flex-wrap justify-end gap-1">
+                  {tags.map((tag) => (
+                    <span
+                      key={`${node.id}-${tag.label}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${TAG_TONE_CLASS[tag.tone]}`}
+                    >
+                      {tag.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -3414,6 +3708,16 @@ export default function ProductStructure() {
       setPreviewSimulationFile(null);
     };
 
+    const showSimulationBar = Boolean(isSimulationJumpContext || latestJump);
+    const simulationBarMessage = simulationJumpFeedback?.type === 'info'
+      ? simulationJumpFeedback.message
+      : latestJump?.sourceNodeName
+      ? `来源：${latestJump.sourceNodeName}`
+      : latestJump
+      ? `已从${BOM_TYPE_LABELS[latestJump.fromBomType] ?? '上一视图'}跳转`
+      : '';
+    const resolvedSimulationBarMessage = simulationBarMessage || '仿真视图上下文已锁定';
+
     return (
       <div className="relative flex h-full">
         {isSimulationNavOpen && (
@@ -3428,6 +3732,48 @@ export default function ProductStructure() {
           {renderDesktopTree()}
         </div>
         <div className="flex-1 flex flex-col bg-gray-50">
+          {showSimulationBar ? (
+            <div className="sticky top-0 z-20 border-b border-gray-100 bg-white/85 px-4 py-2 text-xs text-slate-600 backdrop-blur">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <i className={`ri-${simulationJumpFeedback ? 'information-line text-blue-500' : 'compass-3-line text-blue-400'} text-sm`}></i>
+                  <span className="truncate">{resolvedSimulationBarMessage}</span>
+                  {simulationJumpFeedback?.type === 'info' ? (
+                    <button
+                      type="button"
+                      onClick={dismissSimulationFeedback}
+                      className="text-xs text-slate-400 transition hover:text-slate-600"
+                      aria-label="关闭提示"
+                    >
+                      <i className="ri-close-line"></i>
+                    </button>
+                  ) : null}
+                </div>
+                {latestJump ? (
+                  <div className="flex items-center gap-1.5">
+                    {isSimulationJumpContext ? (
+                      <button
+                        type="button"
+                        onClick={handleJumpBack}
+                        className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-700 hover:border-blue-300 hover:text-blue-800"
+                      >
+                        <i className="ri-arrow-left-line"></i>
+                        {backButtonLabel || '返回上一个视图'}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={clearJumpHistory}
+                      className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-400 hover:text-gray-600"
+                      aria-label="清除跳转上下文"
+                    >
+                      <i className="ri-close-line"></i>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <div className="flex-1 overflow-y-auto">
             <SimulationContentPanel
               category={currentSimulationCategory}
@@ -3475,6 +3821,22 @@ export default function ProductStructure() {
           onOpenFolder={handleOpenFolderFromPreview}
           onAddCompare={handleAddCompareFile}
         />
+        {simulationWarningToast ? (
+          <div className="pointer-events-auto fixed top-20 right-6 z-50 max-w-sm">
+            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-white/95 px-4 py-3 text-xs text-amber-700 shadow-lg backdrop-blur">
+              <i className="ri-alert-line text-base"></i>
+              <span className="leading-relaxed">{simulationWarningToast.message}</span>
+              <button
+                type="button"
+                onClick={dismissSimulationToast}
+                className="ml-auto text-amber-500 transition hover:text-amber-700"
+                aria-label="关闭警告"
+              >
+                <i className="ri-close-line"></i>
+              </button>
+            </div>
+          </div>
+        ) : null}
         {compareToast && (
           <div className="pointer-events-none fixed bottom-28 right-8 z-50">
             <div className="flex items-center gap-3 rounded-xl bg-slate-900/90 px-4 py-3 text-sm text-white shadow-lg">
@@ -4228,7 +4590,7 @@ export default function ProductStructure() {
             {selectedBomType === 'requirement' && (
               <div className="sticky top-0 z-10 px-6 py-2 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-gray-100">
                 <div className="flex flex-col gap-2">
-                  {hasJumpContext && latestJump && (
+                  {isRequirementJumpContext && latestJump && (
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
@@ -4360,6 +4722,7 @@ export default function ProductStructure() {
                     onSelectNode={(id) => handleNodeClick(id)}
                     activeView={activeTab === 'cockpit' ? 'cockpit' : 'structure'}
                     onNavigateRequirement={handleNavigateRequirement}
+                    onViewSimulation={handleNavigateSimulation}
                   />
                 </div>
               )}
