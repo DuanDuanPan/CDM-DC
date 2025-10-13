@@ -1,12 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { SimulationFile, SimulationCondition } from './types';
 import ConditionBar from './ConditionBar';
 import KpiMatrix from './KpiMatrix';
 import CurveComparePanel from './CurveComparePanel';
 import ImageComparePanel from './ImageComparePanel';
-import GeometryComparePanel from './GeometryComparePanel';
+// GeometryComparePanel 已被通用逐卡渲染取代
+import SimulationPreviewContent from './SimulationPreviewContent';
 import PdfViewer from '../../common/PdfViewer';
+import { SimulationFile, SimulationCondition } from './types';
+import { CompareSyncContext, CameraStateSnapshot } from './CompareSyncContext';
+
+const TYPE_LABELS: Record<SimulationFile['type'], string> = {
+  geometry: '几何模型',
+  model: '仿真模型',
+  document: '说明文档',
+  result: '仿真结果',
+  report: '分析报告',
+  dataset: '数据集'
+};
+
+const combine = (...tokens: Array<string | false | null | undefined>) => tokens.filter(Boolean).join(' ');
 
 interface Props {
   items: SimulationFile[];
@@ -32,6 +45,118 @@ const renderCompareContent = (
   }
 
   const types = new Set(items.map(item => item.type));
+
+  // helper: normalize items by shared/active condition for preview fallback
+  const normalizeItems = () => {
+    const conditions = opts?.conditions ?? [];
+    const selectedIds = opts?.selectedConditionIds ?? [];
+    const sharedConditionId = selectedIds.length ? selectedIds[selectedIds.length - 1] : undefined;
+    return items.map(item => {
+      const targetConditionId = sharedConditionId ?? item.activeConditionId;
+      const variant = targetConditionId ? item.conditionVariants?.[targetConditionId] : undefined;
+      const conditionName = targetConditionId
+        ? conditions.find(c => c.id === targetConditionId)?.name ?? item.activeConditionName
+        : item.activeConditionName;
+      return {
+        ...item,
+        activeConditionId: targetConditionId,
+        activeConditionName: conditionName,
+        docxUrl: variant?.docxUrl ?? item.docxUrl ?? item.preview?.docxUrl,
+        pdfUrl: variant?.pdfUrl ?? item.pdfUrl ?? item.preview?.pdfUrl,
+        previewStatus: variant?.previewStatus ?? item.previewStatus ?? item.preview?.previewStatus,
+        convertedAt: variant?.convertedAt ?? item.convertedAt ?? item.preview?.convertedAt,
+        preview: variant ? { ...variant } : item.preview
+      } as SimulationFile;
+    });
+  };
+
+  const renderGenericGrid = () => {
+    const normalized = normalizeItems();
+    const gridClass = normalized.length >= 3 ? 'md:grid-cols-2 xl:grid-cols-3' : normalized.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-1';
+    const viewerHeight = opts?.maximized
+      ? (typeof window !== 'undefined' ? Math.max(window.innerHeight - 210, 400) : 520)
+      : 360;
+    const conditions = opts?.conditions ?? [];
+    const selectedIds = opts?.selectedConditionIds ?? [];
+    const baselineId = opts?.baselineId;
+    return (
+      <div className="space-y-4 pb-[10px]">
+        {conditions.length > 0 && (
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1 overflow-x-auto pr-2">
+              <ConditionBar
+                conditions={conditions}
+                selectedIds={selectedIds}
+                baselineId={baselineId}
+                onChange={ids => opts?.onChangeSelected?.(ids)}
+                onBaselineChange={id => opts?.onChangeBaseline?.(id)}
+              />
+            </div>
+          </div>
+        )}
+        <div className={`grid h-full auto-rows-[minmax(0,1fr)] gap-4 ${gridClass}`}>
+          {normalized.map(item => {
+            const version = item.compareVersion ?? item.belongsToVersion ?? item.version;
+            const typeLabel = TYPE_LABELS[item.type] ?? item.type;
+            const cardKey = item.compareKey ?? item.id;
+            const titleId = `compare-card-title-${cardKey}`;
+            return (
+              <article
+                key={cardKey}
+                className={combine(
+                  'flex h-full min-h-0 flex-col rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm transition-shadow',
+                  'hover:shadow-md focus-within:shadow-md focus-within:ring-2 focus-within:ring-blue-200'
+                )}
+                tabIndex={0}
+                aria-labelledby={titleId}
+              >
+                <header className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span id={titleId} className="truncate text-sm font-semibold text-gray-900" title={item.name}>
+                        {item.name}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                        {typeLabel}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                      <span className="font-medium text-gray-500">版本 {version}</span>
+                      {item.activeConditionName && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-400">
+                          <i className="ri-equalizer-line"></i>
+                          {item.activeConditionName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-gray-400">
+                    <button
+                      type="button"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-400 transition hover:border-gray-300 hover:text-gray-600 disabled:cursor-not-allowed"
+                      aria-label="更多操作"
+                      title="更多操作即将上线"
+                      disabled
+                    >
+                      <i className="ri-more-2-fill"></i>
+                    </button>
+                  </div>
+                </header>
+                <div className="mt-3 flex-1 min-h-0">
+                  <SimulationPreviewContent
+                    file={item}
+                    allowMaximize
+                    height={viewerHeight}
+                    syncKey={cardKey}
+                  />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   if (types.size === 1) {
     const [type] = Array.from(types);
@@ -224,7 +349,8 @@ const renderCompareContent = (
         );
       }
       case 'geometry':
-        return <GeometryComparePanel files={items} />;
+        // 改为逐卡渲染，保持与单项预览一致
+        return renderGenericGrid();
       case 'model':
         return (
           <div className="space-y-3">
@@ -243,11 +369,8 @@ const renderCompareContent = (
     }
   }
 
-  return (
-    <div className="text-sm text-gray-600">
-      多类型文件混合对比暂不支持，请选择相同类型的文件。
-    </div>
-  );
+  // 混合类型：按加入顺序逐卡渲染
+  return renderGenericGrid();
 };
 
 const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
@@ -257,6 +380,12 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
   const [selectedConditionIds, setSelectedConditionIds] = useState<string[]>([]);
   const [baselineConditionId, setBaselineConditionId] = useState<string | undefined>(undefined);
   const [curveMode, setCurveMode] = useState<'overlay' | 'grid'>('overlay');
+  const [syncEnabled, setSyncEnabled] = useState(true);
+  const [lastCamera, setLastCamera] = useState<{ sourceId: string; state: CameraStateSnapshot } | undefined>(undefined);
+
+  const updateCamera = useCallback((sourceId: string, state: CameraStateSnapshot) => {
+    setLastCamera({ sourceId, state });
+  }, []);
 
   const allConditions = useMemo(() => {
     const map = new Map<string, SimulationCondition>();
@@ -305,6 +434,11 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
     return () => window.clearTimeout(timer);
   }, [items.length]);
 
+  useEffect(() => {
+    if (typeof performance === 'undefined') return;
+    performance.mark(`compare:items-update:${items.length}`);
+  }, [items.length]);
+
   // 键盘快捷键：C 折叠/展开；M 最大化；E 导出（>=2项）；Cmd/Ctrl+Backspace 清空
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -346,6 +480,11 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
     }
   };
 
+  useEffect(() => {
+    if (typeof performance === 'undefined') return;
+    performance.mark(isMaximized ? 'compare:maximized' : 'compare:restored');
+  }, [isMaximized]);
+
   // 高度策略
   // 折叠 44px；最大化 75vh；展开时：有内容固定 400px，无内容自适应（避免大面积留白）
   const containerHeightClass = isCollapsed
@@ -355,6 +494,10 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
       : (items.length === 0 ? 'h-auto min-h-[140px]' : 'h-[400px]');
 
   const canExport = items.length >= 2;
+  const syncContextValue = useMemo(
+    () => ({ syncEnabled, setSyncEnabled, lastCamera, updateCamera }),
+    [syncEnabled, lastCamera, updateCamera]
+  );
 
   // 空态折叠时渲染一个轻量 pill，减少干扰
   if (!isMaximized && isCollapsed && items.length === 0) {
@@ -393,7 +536,11 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
                     <span className="text-[10px] text-blue-500">· {item.activeConditionName}</span>
                   )}
                 </div>
-                <button className="text-blue-500 hover:text-blue-700" onClick={() => onRemove(item.compareKey ?? item.id)}>
+                <button
+                  className="text-blue-500 hover:text-blue-700"
+                  onClick={() => onRemove(item.compareKey ?? item.id)}
+                  aria-label={`移除 ${item.name} 对比`}
+                >
                   <i className="ri-close-line"></i>
                 </button>
               </div>
@@ -465,6 +612,19 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
                   <span className="hidden text-xs sm:inline">{isMaximized ? '退出' : '最大化'}</span>
                 </button>
                 <button
+                  type="button"
+                  onClick={() => setSyncEnabled(prev => !prev)}
+                  className={`inline-flex items-center gap-1 rounded-md border px-2 py-1.5 text-[11px] sm:px-3 sm:text-xs transition ${
+                    syncEnabled ? 'border-blue-300 text-blue-600 hover:bg-blue-50' : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                  }`}
+                  aria-pressed={syncEnabled}
+                  aria-label={`同步视角${syncEnabled ? '已开启' : '已关闭'}`}
+                  title="同步视角：开启后多张 3D 卡联动旋转/缩放"
+                >
+                  <i className={syncEnabled ? 'ri-link' : 'ri-link-unlink'}></i>
+                  <span className="hidden xs:inline">同步视角</span>
+                </button>
+                <button
                   className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1.5 text-[11px] sm:px-3 sm:text-xs hover:bg-gray-100"
                   onClick={onClear}
                 >
@@ -503,6 +663,19 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
             清空
           </button>
           <button
+            type="button"
+            onClick={() => setSyncEnabled(prev => !prev)}
+            className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs transition ${
+              syncEnabled ? 'border-blue-300 text-blue-600 hover:bg-blue-50' : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+            }`}
+            aria-pressed={syncEnabled}
+            aria-label={`同步视角${syncEnabled ? '已开启' : '已关闭'}`}
+            title="同步视角：开启后多张 3D 卡联动"
+          >
+            <i className={syncEnabled ? 'ri-link' : 'ri-link-unlink'}></i>
+            同步视角
+          </button>
+          <button
             className={`inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs ${
               canExport ? 'border-blue-300 text-blue-600 hover:bg-blue-50' : 'cursor-not-allowed border-gray-200 text-gray-400'
             }`}
@@ -532,30 +705,34 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
             if (event.target === event.currentTarget) setIsMaximized(false);
           }}
         >
-          <div className="flex h-[calc(100vh-64px)] w-[calc(100vw-48px)] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
-            {renderHeader('overlay')}
-            <div className="flex-1 overflow-hidden bg-gray-50">
-              {renderContentBlock('overlay')}
+          <CompareSyncContext.Provider value={syncContextValue}>
+            <div className="flex h-[calc(100vh-64px)] w-[calc(100vw-48px)] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white pb-[10px] shadow-2xl">
+              {renderHeader('overlay')}
+              <div className="flex-1 overflow-hidden bg-gray-50">
+                {renderContentBlock('overlay')}
+              </div>
             </div>
-          </div>
+          </CompareSyncContext.Provider>
         </div>,
         document.body
       )
     : null;
 
   const baseDrawer = isMaximized ? null : (
-    <div
-      role="region"
-      aria-label="对比栏"
-      className={`sticky bottom-0 left-0 right-0 z-20 w-full border-t border-gray-200 ${isCollapsed ? 'bg-white/80' : 'bg-white'} flex flex-col transition-all duration-300 ease-out ${
-        isHighlighted ? 'shadow-[0_-4px_20px_rgba(37,99,235,0.15)]' : ''
-      } ${containerHeightClass} pb-[env(safe-area-inset-bottom)]`}
-    >
-      {renderHeader('base')}
-      <div className={`flex-1 overflow-hidden transition-opacity duration-200 ${isCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
-        {renderContentBlock('base')}
+    <CompareSyncContext.Provider value={syncContextValue}>
+      <div
+        role="region"
+        aria-label="对比栏"
+        className={`sticky bottom-0 left-0 right-0 z-20 w-full border-t border-gray-200 ${isCollapsed ? 'bg-white/80' : 'bg-white'} flex flex-col transition-all duration-300 ease-out ${
+          isHighlighted ? 'shadow-[0_-4px_20px_rgba(37,99,235,0.15)]' : ''
+        } ${containerHeightClass} pb-[env(safe-area-inset-bottom)]`}
+      >
+        {renderHeader('base')}
+        <div className={`flex-1 overflow-hidden transition-opacity duration-200 ${isCollapsed ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
+          {renderContentBlock('base')}
+        </div>
       </div>
-    </div>
+    </CompareSyncContext.Provider>
   );
 
   return (

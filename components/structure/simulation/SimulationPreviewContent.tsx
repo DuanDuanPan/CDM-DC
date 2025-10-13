@@ -4,23 +4,49 @@ import EbomModelViewer from '../ebom/EbomModelViewer';
 import VtkMeshViewer from './VtkMeshViewer';
 import type { SimulationFile, SimulationFileVariantPreview } from './types';
 
-const STEP_VIEWER_FALLBACK = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
+const STEP_VIEWER_FALLBACK = '/models/cfm56-fan-case.glb';
 const STEP_EXTENSION_REGEXP = /\.(step|stp)$/i;
+
+const combine = (...tokens: Array<string | false | null | undefined>) => tokens.filter(Boolean).join(' ');
+
+const formatMetric = (value?: number) => {
+  if (value === undefined || value === null) return '—';
+  const abs = Math.abs(value);
+  const trim = (num: number, fractionDigits: number) => {
+    return Number(num.toFixed(fractionDigits)).toString();
+  };
+  if (abs >= 1_000_000) {
+    return `${trim(value / 1_000_000, abs % 1_000_000 === 0 ? 0 : 2)}M`;
+  }
+  if (abs >= 1_000) {
+    return `${trim(value / 1_000, abs % 1_000 === 0 ? 0 : 1)}K`;
+  }
+  return new Intl.NumberFormat('en-US').format(value);
+};
+
+const MetricBadge = ({ label, value, icon }: { label: string; value?: number; icon?: string }) => (
+  <span className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600">
+    {icon && <i className={combine(icon, 'text-gray-400')} />}
+    <span>{label}</span>
+    <span className="text-gray-900 tabular-nums">{formatMetric(value)}</span>
+  </span>
+);
 
 interface SimulationPreviewContentProps {
   file: SimulationFile;
   variant?: SimulationFileVariantPreview;
   allowMaximize?: boolean;
   height?: number;
+  syncKey?: string;
 }
 
 const defaultPdfHeight = 420;
 
-const SimulationPreviewContent = ({ file, variant, allowMaximize = false, height }: SimulationPreviewContentProps) => {
+const SimulationPreviewContent = ({ file, variant, allowMaximize = false, height, syncKey }: SimulationPreviewContentProps) => {
   const preview = variant ?? file.preview;
   const meshInfo = preview?.meshInfo ?? file.preview?.meshInfo;
   const viewerUrl = meshInfo?.viewerUrl || (STEP_EXTENSION_REGEXP.test(file.name) ? STEP_VIEWER_FALLBACK : undefined);
-  const viewerPoster = meshInfo?.previewImage;
+  const viewerPoster = meshInfo?.previewImage ?? '/models/cfm56-thumb.jpeg';
 
   switch (file.type) {
     case 'result': {
@@ -52,6 +78,7 @@ const SimulationPreviewContent = ({ file, variant, allowMaximize = false, height
       }
 
       const imageUrl = preview?.imageUrl ?? file.preview?.imageUrl;
+      const imageUrls = preview?.imageUrls ?? file.preview?.imageUrls;
       if (imageUrl) {
         return (
           <ImageViewer
@@ -60,6 +87,7 @@ const SimulationPreviewContent = ({ file, variant, allowMaximize = false, height
             caption={preview?.imageCaption ?? file.preview?.imageCaption}
             allowMaximize={allowMaximize}
             height={height ?? 320}
+            comparisonSources={imageUrls}
           />
         );
       }
@@ -79,40 +107,39 @@ const SimulationPreviewContent = ({ file, variant, allowMaximize = false, height
       const isFemMesh = femMeshFormats.has(extension) || (!viewerUrl && meshInfo.nodes && meshInfo.elements);
 
       return (
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900">几何/网格信息</h4>
-          <div className="grid grid-cols-2 gap-3 text-xs text-gray-600">
-            <div className="rounded-lg bg-gray-50 p-3">节点数量：{meshInfo.nodes}</div>
-            <div className="rounded-lg bg-gray-50 p-3">单元数量：{meshInfo.elements}</div>
+        <div className="flex h-full flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <MetricBadge icon="ri-node-tree" label="节点" value={meshInfo.nodes} />
+            <MetricBadge icon="ri-group-line" label="单元" value={meshInfo.elements} />
+            {meshInfo.format && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                <i className="ri-markup-line text-gray-400" />
+                格式 <span className="text-gray-900">{meshInfo.format.toUpperCase()}</span>
+              </span>
+            )}
           </div>
           {isLightweightModel && viewerUrl && (
-            <div className="rounded-xl border border-gray-200 bg-white/80 p-2">
-              <EbomModelViewer src={viewerUrl} poster={viewerPoster} />
-              <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
-                <span>格式：{meshInfo.format?.toUpperCase() || extension.toUpperCase() || '3D'}</span>
-                <span>支持旋转、缩放、剖切等交互</span>
-              </div>
+            <div className="flex-1 min-h-[240px] overflow-hidden rounded-lg border border-gray-100 bg-slate-50">
+              <EbomModelViewer src={viewerUrl} poster={viewerPoster} height={height ?? 280} syncKey={syncKey} />
             </div>
           )}
           {isFemMesh && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3">
-              <div className="flex items-center justify-between text-xs text-blue-700">
-                <span className="font-medium">有限元网格预览（Mock 数据）</span>
-                <span>vtk.js 渲染 · 支持全屏</span>
+            <section className="flex flex-col gap-2 rounded-lg border border-blue-100 bg-blue-50/40 p-3 text-xs text-blue-700">
+              <div className="flex items-center justify-between font-medium">
+                <span>有限元网格预览（Mock 数据）</span>
+                <span className="text-[11px]">vtk.js · 全屏支持</span>
               </div>
-              <div className="mt-2 overflow-hidden rounded-lg border border-blue-100 bg-white">
+              <div className="overflow-hidden rounded-md border border-blue-100 bg-white">
                 <VtkMeshViewer className="h-72 w-full" preset="casing" allowMaximize title="机匣网格预览" />
               </div>
-              <p className="mt-2 text-[11px] text-blue-700/80">
-                当前展示为发动机机匣的示意网格，可替换为真实 FEM 数据并保持同样的交互体验。
+              <p className="text-[11px] text-blue-600/80">
+                当前示例可替换为真实 FEM 数据，交互能力保持一致。
               </p>
-            </div>
+            </section>
           )}
           {!isLightweightModel && !isFemMesh && (
-            <div className="h-40 rounded-lg bg-gradient-to-br from-slate-50 to-slate-200 p-4">
-              <div className="flex h-full w-full items-center justify-center rounded border border-dashed border-slate-300 bg-white/70 text-xs text-gray-500">
-                暂无匹配的几何/网格预览，可下载源文件查看。
-              </div>
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-gray-500">
+              暂无匹配的几何/网格预览，可下载源文件查看。
             </div>
           )}
         </div>

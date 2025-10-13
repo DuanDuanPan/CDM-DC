@@ -184,28 +184,27 @@ const PdfViewerClient = ({ sourceUrl, fileName, onError }: PdfViewerClientProps)
     setPageNumber(prev => Math.min(numPages, prev + 1));
   }, [numPages]);
 
-  const handleZoomIn = useCallback(() => {
+  const setPresetScale = useCallback((value: number) => {
     setFitWidth(false);
-    setScale(prev => clamp(prev + 0.25, 0.5, 4));
-    setTimeout(scheduleRender, 0);
-  }, [scheduleRender]);
-
-  const handleZoomOut = useCallback(() => {
-    setFitWidth(false);
-    setScale(prev => clamp(prev - 0.25, 0.5, 4));
+    setScale(clamp(value, 0.5, 4));
     setTimeout(scheduleRender, 0);
   }, [scheduleRender]);
 
   const handleResetScale = useCallback(() => {
-    setFitWidth(false);
-    setScale(1);
-    setTimeout(scheduleRender, 0);
-  }, [scheduleRender]);
+    setPresetScale(1);
+  }, [setPresetScale]);
 
   const handleFitWidth = useCallback(() => {
     setFitWidth(true);
     setTimeout(scheduleRender, 0);
   }, [scheduleRender]);
+
+  const handlePresetScale = useCallback(
+    (value: number) => () => {
+      setPresetScale(value);
+    },
+    [setPresetScale]
+  );
 
   const progressLabel = useMemo(() => {
     if (isLoading) return '正在加载文档...';
@@ -216,76 +215,85 @@ const PdfViewerClient = ({ sourceUrl, fileName, onError }: PdfViewerClientProps)
   const zoomPercent = useMemo(() => `${Math.round(computedScale * 100)}%`, [computedScale]);
 
   return (
-    <div className="flex h-full min-h-[280px] flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs text-gray-600">
-        <div className="flex items-center gap-3">
+    <div className="relative flex h-full min-h-[280px] flex-col">
+      <div className="pointer-events-none absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
+        <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-[11px] text-gray-600 shadow" title={fileName}>
           <span className="inline-flex items-center gap-1">
             <i className="ri-pages-line text-gray-400"></i>
             {progressLabel}
           </span>
+          <span className="h-3 w-px bg-gray-200" aria-hidden="true"></span>
           <span className="inline-flex items-center gap-1">
             <i className="ri-zoom-in-line text-gray-400"></i>
             {zoomPercent}
           </span>
-          <span className="hidden sm:inline-flex items-center gap-1 text-gray-400" title={fileName}>
+          <span className="hidden sm:inline-flex items-center gap-1 text-gray-400">
             <i className="ri-file-line"></i>
             {fileName}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex overflow-hidden rounded-md border border-gray-200 bg-white text-gray-600">
+        <div className="pointer-events-auto flex flex-col gap-2 rounded-lg bg-white/95 p-3 text-xs text-gray-600 shadow-lg">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handlePrevious}
               disabled={isLoading || pageNumber <= 1}
-              className="px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
             >
               <i className="ri-arrow-left-s-line"></i>
+              上一页
             </button>
             <button
               type="button"
               onClick={handleNext}
               disabled={isLoading || pageNumber >= numPages}
-              className="px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
             >
+              下一页
               <i className="ri-arrow-right-s-line"></i>
             </button>
           </div>
-          <div className="inline-flex overflow-hidden rounded-md border border-gray-200 bg-white text-gray-600">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleZoomOut}
+              onClick={handlePresetScale(0.9)}
               disabled={isLoading || isRendering}
-              className="px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
             >
-              <i className="ri-zoom-out-line"></i>
+              90%
             </button>
             <button
               type="button"
-              onClick={handleZoomIn}
+              onClick={handlePresetScale(1)}
               disabled={isLoading || isRendering}
-              className="px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
             >
-              <i className="ri-zoom-in-line"></i>
+              100%
             </button>
-          </div>
-          <div className="inline-flex overflow-hidden rounded-md border border-gray-200 bg-white text-gray-600">
+            <button
+              type="button"
+              onClick={handlePresetScale(1.25)}
+              disabled={isLoading || isRendering}
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
+            >
+              125%
+            </button>
             <button
               type="button"
               onClick={handleFitWidth}
               disabled={isLoading || isRendering || fitWidth}
-              className="px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
             >
               <i className="ri-fullscreen-line"></i>
-              适应宽度
+              适应宽
             </button>
             <button
               type="button"
               onClick={handleResetScale}
               disabled={isLoading || isRendering || (!fitWidth && Math.abs(scale - 1) < 0.01)}
-              className="px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 hover:bg-gray-100"
             >
-              100%
+              复位
             </button>
           </div>
         </div>

@@ -1,19 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCompareSync } from '../simulation/CompareSyncContext';
 
 interface Props {
   src?: string; // glTF/GLB URL
   poster?: string; // preview image
   className?: string;
+  height?: number;
+  syncKey?: string;
 }
 
 // 轻量化 3D 预览：优先用 <model-viewer>（web component，懒加载脚本），
 // 无依赖、适合 MVP。若脚本加载失败，展示占位提示。
-export default function EbomModelViewer({ src, poster, className }: Props) {
+export default function EbomModelViewer({ src, poster, className, height = 280, syncKey }: Props) {
   const [section, setSection] = useState<'none' | 'xz' | 'yz'>('none');
   const [isolated, setIsolated] = useState(false);
   const [highlight, setHighlight] = useState<'manufacturing' | 'risk' | 'none'>('none');
+  const viewerRef = useRef<any>(null);
+  const applyingRef = useRef(false);
+  const { syncEnabled, lastCamera, updateCamera } = useCompareSync();
 
   useEffect(() => {
     if ((window as any).ModelViewerElement) return; // 已加载
@@ -49,6 +55,38 @@ export default function EbomModelViewer({ src, poster, className }: Props) {
     }
   }, [highlight]);
 
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !syncKey) return;
+    const handleCamera = () => {
+      if (!syncEnabled || applyingRef.current) return;
+      updateCamera(syncKey, {
+        orbit: viewer.getAttribute('camera-orbit'),
+        target: viewer.getAttribute('camera-target'),
+        fieldOfView: viewer.getAttribute('field-of-view'),
+        timestamp: Date.now()
+      });
+    };
+    viewer.addEventListener('camera-change', handleCamera);
+    return () => {
+      viewer.removeEventListener('camera-change', handleCamera);
+    };
+  }, [syncEnabled, syncKey, updateCamera]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !syncKey || !lastCamera || !syncEnabled) return;
+    if (lastCamera.sourceId === syncKey) return;
+    applyingRef.current = true;
+    if (lastCamera.state.orbit) viewer.setAttribute('camera-orbit', lastCamera.state.orbit);
+    if (lastCamera.state.target) viewer.setAttribute('camera-target', lastCamera.state.target);
+    if (lastCamera.state.fieldOfView) viewer.setAttribute('field-of-view', lastCamera.state.fieldOfView);
+    const raf = window.requestAnimationFrame(() => {
+      applyingRef.current = false;
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [lastCamera, syncEnabled, syncKey]);
+
   if (!src) {
     return (
       <div className={`flex h-64 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white text-gray-400 ${className ?? ''}`}>
@@ -64,9 +102,10 @@ export default function EbomModelViewer({ src, poster, className }: Props) {
     <div className={`relative ${className ?? ''}`}>
       {/* @ts-expect-error web component */}
       <model-viewer
+        ref={viewerRef}
         src={src}
         poster={poster}
-        style={{ width: '100%', height: '280px', background: 'white', borderRadius: '0.75rem' }}
+        style={{ width: '100%', height: `${height}px`, background: 'white', borderRadius: '0.75rem' }}
         camera-controls
         ar
         exposure="0.9"
