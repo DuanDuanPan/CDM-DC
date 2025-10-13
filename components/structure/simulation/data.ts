@@ -79,25 +79,25 @@ export const simulationCategories: SimulationCategory[] = [
             files: [
               {
                 id: 'file-geom-001',
-                name: '机匣_v3.2.step',
+                name: 'CFM56机匣装配_v4.1.step',
                 type: 'geometry',
-                version: 'v3.2',
-                size: '48 MB',
+                version: 'v4.1',
+                size: '63 MB',
                 status: 'completed',
                 createdBy: '张建模',
                 ownerAvatar: '/mock/avatars/zhang-jianmo.png',
-                createdAt: '2024-01-03 10:15',
-                updatedAt: '2024-01-05 09:40',
-                description: '优化后的机匣几何模型，包含加强筋细节。',
-                tags: ['几何', '优化'],
-                statusReason: '完成网格修正与质量检查',
-                lastRunAt: '2024-01-05 09:30',
+                createdAt: '2024-07-12 10:15',
+                updatedAt: '2024-07-15 09:40',
+                description: '引入 Marathon OS 提供的 CFM56 风扇机匣 STEP 模型，包含外机匣、导流段与安装筋。',
+                tags: ['几何', 'CFM56'],
+                statusReason: '完成尺寸校核与装配兼容性验证',
+                lastRunAt: '2024-07-15 09:30',
                 preview: {
                   meshInfo: {
-                    nodes: 182340,
-                    elements: 905220,
-                    previewImage: '/mock/previews/geom-case.png',
-                    viewerUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                    nodes: 184320,
+                    elements: 912640,
+                    previewImage: '/models/cfm56-thumb.jpeg',
+                    viewerUrl: '/models/cfm56-fan-case.glb',
                     format: 'step'
                   }
                 },
@@ -394,23 +394,23 @@ export const simulationCategories: SimulationCategory[] = [
             files: [
               {
                 id: 'file-geom-050',
-                name: '叶片几何_v2.4.step',
+                name: 'Rotor67叶片_tipGap_v2.6.step',
                 type: 'geometry',
-                version: 'v2.4',
-                size: '32 MB',
+                version: 'v2.6',
+                size: '38 MB',
                 status: 'completed',
                 createdBy: '何设计',
-                createdAt: '2023-12-12 09:30',
-                updatedAt: '2023-12-20 12:50',
-                statusReason: '已同步叶片减重后的最终几何',
-                lastRunAt: '2023-12-20 12:40',
-                tags: ['几何', '叶片'],
+                createdAt: '2024-06-18 11:05',
+                updatedAt: '2024-06-19 17:20',
+                statusReason: '已同步 NASA Rotor67 tip-gap 叶片基线，并完成冷却孔/榫头精细化。',
+                lastRunAt: '2024-06-19 17:10',
+                tags: ['几何', '叶片', 'NASA'],
                 preview: {
                   meshInfo: {
-                    nodes: 134870,
-                    elements: 702140,
+                    nodes: 184320,
+                    elements: 912640,
                     previewImage: '/mock/previews/vib-geom.png',
-                    viewerUrl: 'https://modelviewer.dev/shared-assets/models/Horse.glb',
+                    viewerUrl: '/models/rotor67-tipgap.glb',
                     format: 'step'
                   }
                 }

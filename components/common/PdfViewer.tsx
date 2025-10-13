@@ -242,7 +242,10 @@ const PdfViewer = ({
   );
 
   const viewerBody = (
-    <div className="flex-1 bg-gray-50" style={{ minHeight: viewerHeight, maxHeight: viewerHeight, height: viewerHeight }}>
+    <div
+      className="flex-1 overflow-auto bg-gray-50"
+      style={{ minHeight: viewerHeight, maxHeight: viewerHeight, height: viewerHeight }}
+    >
       {sourceUrl ? (
         <PdfViewerClient sourceUrl={sourceUrl} fileName={fileName} />
       ) : (
@@ -290,7 +293,10 @@ const PdfViewer = ({
                 退出全屏
               </button>
             )}
-            <div className="flex-1 bg-gray-50" style={{ minHeight: overlayHeight, maxHeight: overlayHeight, height: overlayHeight }}>
+            <div
+              className="flex-1 overflow-auto bg-gray-50"
+              style={{ minHeight: overlayHeight, maxHeight: overlayHeight, height: overlayHeight }}
+            >
               {sourceUrl ? (
                 <PdfViewerClient sourceUrl={sourceUrl} fileName={fileName} />
               ) : (
