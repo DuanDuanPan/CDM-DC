@@ -110,7 +110,7 @@ const SimulationDimensionManager = ({
   return (
     <div
       id="simulation-dimension-manager"
-      className="absolute right-0 top-12 z-30 w-80 rounded-xl border border-gray-200 bg-white p-3 shadow-xl"
+      className="absolute right-0 top-12 z-30 w-72 rounded-xl border border-gray-200 bg-white p-3 shadow-xl"
       ref={panelRef}
     >
       <div className="flex items-center justify-between pb-2">
