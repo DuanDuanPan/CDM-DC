@@ -7,3 +7,7 @@ out
 
 # Local editor settings
 .vscode/
+# BMAD (local only)
+.bmad-core/
+.bmad-*/
+web-bundles/
