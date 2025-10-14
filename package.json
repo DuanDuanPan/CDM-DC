@@ -7,7 +7,10 @@
     "build": "next build",
     "lint": "next lint",
     "sync:3dviewer": "node scripts/sync-online3dviewer-assets.js",
-    "postinstall": "npm run sync:3dviewer"
+    "postinstall": "npm run sync:3dviewer",
+    "bmad:refresh": "bmad-method install -f -i codex",
+    "bmad:list": "bmad-method list:agents",
+    "bmad:validate": "bmad-method validate"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.19.3",
