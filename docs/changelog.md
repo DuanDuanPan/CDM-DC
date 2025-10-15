@@ -21,6 +21,11 @@
   - 相应顺延后续故事编号至 1.12；
   - 里程碑节将工程基座拆为独立里程碑（M2）。
 
+#### v0.2.3 · 工具链统一（代码+文档）
+- 移除 `@tailwindcss/postcss` 等 Tailwind v4 生态包，锁定 `tailwindcss@3.4.17`、`postcss@8.4.47`、`autoprefixer@10.4.21`。
+- 更新 README 与 `docs/ui-architecture.md`，明确“Tailwind v3 冻结与升级流程”及禁止事项。
+- 运行 `npm run lint`、`npm run build`、`npm run dev -- --port 3100` 验证构建链一致性。
+
 ### Front-End Spec（UI/UX） · v0.2 · 冻结（Frozen）
 - 新增 docs/front-end-spec.md 并冻结为评审基线 v0.2：
   - IA：站点地图、导航结构（侧边栏主导航 + 模块内二级导航）、权衡与假设。

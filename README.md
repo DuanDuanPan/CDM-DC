@@ -34,3 +34,8 @@
 - TBOM 相关组件放置于 `components/tbom/`，结构类组件位于 `components/tbom/structure/`
 - 组件与 Hook 的单元测试放至同级 `__tests__/` 目录，并采用 `.test.tsx` 后缀
 - 端到端用例集中保存在仓库根目录的 `e2e/` 文件夹中，以功能域或场景命名
+
+## Tailwind 工具链策略
+- 本仓库冻结在 Tailwind CSS **v3.4.17**，配套 `postcss@8.4.47`、`autoprefixer@10.4.21`
+- 禁止引入 Tailwind v4 生态包（如 `@tailwindcss/postcss`）；如确需升级须提交 ADR 评审并规划独立窗口
+- 运行 `npm install` 将保持上述版本锁定；如遇样式异常，先核对 `tailwind.config.js` 的 `content` 范围与自定义插件

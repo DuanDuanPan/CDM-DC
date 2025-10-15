@@ -1,0 +1,38 @@
+schema: 1
+story: '1.2'
+story_title: 'Tailwind 工具链统一'
+gate: PASS
+status_reason: 'Tailwind 工具链已锁定至 v3 组合，构建/开发/文档验证均通过。'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-15T00:00:00Z'
+top_issues: []
+waiver:
+  active: false
+quality_score: 100
+expires: '2025-10-29T00:00:00Z'
+evidence:
+  tests_reviewed: 3
+  risks_identified: 1
+  trace:
+    ac_covered: [1, 2, 3]
+    ac_gaps: []
+nfr_validation:
+  security:
+    status: PASS
+    notes: '依赖与文档调整，不涉及敏感运行时。'
+  performance:
+    status: PASS
+    notes: '固定 v3 版本避免未知升级开销。'
+  reliability:
+    status: PASS
+    notes: 'lint/build/dev 脚本复测通过。'
+  maintainability:
+    status: PASS
+    notes: '文档描述冻结策略与流程，易于遵循。'
+recommendations:
+  immediate: []
+  future:
+    - action: '在 CI 中加入依赖守护脚本，阻止重新引入 Tailwind v4 生态包或解锁版本。'
+      refs:
+        - 'package.json'
+        - 'docs/ui-architecture.md'

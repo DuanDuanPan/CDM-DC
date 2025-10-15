@@ -201,6 +201,12 @@ export async function listProjects(): Promise<TbomProject[]> {
 - 类顺序：布局 → 间距 → 排版 → 颜色（与仓库规范一致）。
 - 组件：优先复用 `components/common/*`；严禁在原子组件里直接引入重库与业务逻辑。
 
+### 7.1 Tailwind v3 冻结与升级流程
+- 版本矩阵：`tailwindcss@3.4.17`、`postcss@8.4.47`、`autoprefixer@10.4.21` 为唯一支持组合，Lockfile 已冻结对应 semver。
+- 禁止事项：不得新增或恢复任何 v4 生态包（`@tailwindcss/postcss`、`tailwindcss/postcss` 等）；CI 将检查 package.json 与 lockfile。
+- 变更流程：若团队评估 v4 升级价值，需提出新 ADR（延续 ADR-0001）并在独立迭代窗口执行，保留回滚用 Lockfile。
+- 排查指引：当出现类名未生效时，优先确认 `tailwind.config.js` 的 `content` 路径是否覆盖 `app/`、`components/`、`docs/` 示例；其次检查 JIT 编译缓存并执行 `npx tailwindcss -m` 手动验证。
+
 ---
 
 ## 8. Testing Requirements（最小测试矩阵）
