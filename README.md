@@ -1,30 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CDM Digital Continuity Prototype
 
-## Getting Started
+## 快速开始
+- 安装依赖：`npm install`
+- 启动开发服务：`npm run dev`
+- 访问应用：<http://localhost:3000>
 
-First, run the development server:
+## 自动化测试基座
+本项目预置了 React Testing Library（Jest）与 Playwright 的最小运行配置。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 组件测试（Jest + React Testing Library）
+- 运行全部组件测试：`npm run test`
+- 测试文件放置在与功能相邻的 `__tests__` 目录，例如：`components/tbom/__tests__/NodeTestBadge.test.tsx`
+- Jest 会自动加载 `jest.setup.ts` 并启用 `@testing-library/jest-dom` 断言
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 端到端测试（Playwright）
+- 首次运行前安装浏览器依赖：`npx playwright install --with-deps`
+- 执行测试：`npm run test:e2e`
+- Playwright 会自动启动本地开发服务（默认端口 `3000`）；如需自定义基地址，可设置 `PLAYWRIGHT_BASE_URL`
+- 测试样例保存在 `e2e/` 目录，例如：`e2e/tbom.deep-link.spec.ts`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 环境变量
+测试运行依赖以下环境变量（本地可在 `.env.local` 中设置）：
+- `NEXT_PUBLIC_MOCK_MODE=true`
+- `NEXT_PUBLIC_API_BASE=/api/mock`
+- `NEXT_PUBLIC_3D_ASSETS_BASE=/3dviewer`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 常见故障排查
+- **Playwright 无法启动浏览器**：执行 `npx playwright install --with-deps` 并确认系统具备必要的图形库（在 CI 中可使用 Playwright 官方 Docker 基础镜像）
+- **Jest 找不到全局断言**：确认未移除 `jest.setup.ts` 引入的 `@testing-library/jest-dom`
+- **测试读取不到环境变量**：确保 `.env.local` 中声明的变量以 `NEXT_PUBLIC_` 开头，或在启动脚本前以 shell 变量形式导出
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 目录约定
+- TBOM 相关组件放置于 `components/tbom/`，结构类组件位于 `components/tbom/structure/`
+- 组件与 Hook 的单元测试放至同级 `__tests__/` 目录，并采用 `.test.tsx` 后缀
+- 端到端用例集中保存在仓库根目录的 `e2e/` 文件夹中，以功能域或场景命名

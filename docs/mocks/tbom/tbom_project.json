@@ -1,0 +1,20 @@
+[
+  {
+    "project_id": "P-EX-001",
+    "type": "结构振动",
+    "title": "机匣组件结构振动评估",
+    "objectives": "获取固有频率/阻尼，校核环境耐受，建立对比基线",
+    "input_docs": [
+      "docs/incoming/试验技术要求.pdf",
+      "docs/incoming/试验大纲_v1.0.pdf",
+      "docs/incoming/大纲评审记录.docx",
+      "docs/incoming/试验项目方案.docx"
+    ],
+    "baseline_id": "BL-2025-10",
+    "relations": [
+      { "kind": "requirement", "ref_id": "REQ-123" },
+      { "kind": "ebom", "ref_id": "EBOM-ASSY-456" },
+      { "kind": "simulation", "ref_id": "SIM-CSE-789" }
+    ]
+  }
+]

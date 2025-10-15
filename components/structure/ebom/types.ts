@@ -117,30 +117,46 @@ export interface EbomPartRef {
     posterUrl?: string; // 预览图
     simBomRef?: { id: string; label: string };
     testBomRef?: { id: string; label: string };
-    docs?: Array<{
-      id: string;
-      name: string;
-      type: 'spec' | 'drawing' | 'calc' | 'review' | 'report' | 'image';
-      version?: string;
-      updatedAt?: string;
-      owner?: string;
-      url?: string;
-      status?: 'approved' | 'in-review' | 'pending' | 'missing';
-      classification?: Confidentiality;
-      approver?: string;
-      approvalAt?: string;
-      reviewDue?: string;
-    }>;
+    docs?: EbomDocumentLink[];
   };
   designParams?: Array<{ name: string; value: string; unit?: string; status?: 'ok' | 'risk' | 'watch' }>;
+  changeTrace?: {
+    ecoId?: string;
+    ccbStatus?: 'pending' | 'approved' | 'rejected' | 'in-review';
+    approvalState?: 'draft' | 'in-review' | 'approved' | 'released';
+    lastChangedBy?: string;
+    lastChangedAt?: string;
+  };
+  dataQuality?: {
+    score: number;
+    updatedAt: string;
+    updatedBy: string;
+    source: 'manual' | 'system' | 'simulation' | 'test';
+  };
   parameterDeckId?: string;
   parameterGroups?: EbomParameterGroup[];
   ownerDiscipline?: string;
   responsibility?: EbomResponsibility;
+  [key: string]: any;
 }
 
 export interface EbomTreeNode extends EbomPartRef {
   children?: EbomTreeNode[];
+}
+
+export interface EbomDocumentLink {
+  id: string;
+  name: string;
+  type: 'spec' | 'drawing' | 'calc' | 'review' | 'report' | 'image';
+  version?: string;
+  updatedAt?: string;
+  owner?: string;
+  url?: string;
+  classification?: Confidentiality;
+  approver?: string;
+  approvalAt?: string;
+  reviewDue?: string;
+  status?: 'approved' | 'pending' | 'in-review' | 'missing';
 }
 
 export interface EbomBaseline {

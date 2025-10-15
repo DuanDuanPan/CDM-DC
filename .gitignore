@@ -1,6 +1,9 @@
 node_modules
 out
 .next
+playwright-report/
+test-results/
+.DS_Store
 
 # YoYo AI version control directory
 .yoyo/

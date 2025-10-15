@@ -13,7 +13,7 @@ interface Props {
   height?: number;
 }
 
-const background = [0.97, 0.98, 1];
+const background: [number, number, number] = [0.97, 0.98, 1];
 
 export default function VtkMeshViewer({ className, preset = 'casing', allowMaximize = false, title, height }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -181,13 +181,11 @@ export default function VtkMeshViewer({ className, preset = 'casing', allowMaxim
           } catch {
             // ignore cancel errors
           }
-          interactor.setAnimationState?.(false);
-          if (containerRef.current) {
-            interactor.unbindEvents?.(containerRef.current);
-          }
+          (interactor as any).setAnimationState?.(false);
+          (interactor as any).unbindEvents?.();
         }
         renderer.removeAllViewProps();
-        genericRenderWindow.setContainer(null);
+        genericRenderWindow.setContainer(null as unknown as HTMLElement);
         genericRenderWindow.delete();
         resizeObserver?.disconnect();
       };

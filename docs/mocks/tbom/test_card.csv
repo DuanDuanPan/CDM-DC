@@ -1,0 +1,4 @@
+param_name,value,unit,source
+扫频范围,5-2000,Hz,试验卡片
+控制RMS,7.7,g,控制器
+驻留规则,3dB/Oct,-,试验卡片

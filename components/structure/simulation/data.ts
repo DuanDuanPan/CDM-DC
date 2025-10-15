@@ -94,6 +94,8 @@ export const simulationCategories: SimulationCategory[] = [
                 lastRunAt: '2024-07-15 09:30',
                 preview: {
                   meshInfo: {
+                    nodes: 365000,
+                    elements: 1745000,
                     previewImage: '/models/cfm56-thumb.jpeg',
                     viewerUrl: '/models/cfm56-fan-case.glb',
                     format: 'step'
@@ -405,6 +407,8 @@ export const simulationCategories: SimulationCategory[] = [
                 tags: ['几何', '叶片', 'NASA'],
                 preview: {
                   meshInfo: {
+                    nodes: 289000,
+                    elements: 1350000,
                     previewImage: '/mock/previews/vib-geom.png',
                     viewerUrl: '/models/rotor67-tipgap.glb',
                     format: 'step'

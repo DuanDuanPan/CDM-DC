@@ -170,7 +170,7 @@ const normalizeDimensions = (input: SimulationDimension[]): SimulationDimension[
       result.push(dim);
     }
   });
-  return result.length > 0 ? result : ['structure'];
+  return result.length > 0 ? result : (['structure'] as SimulationDimension[]);
 };
 
 const normalizeFilters = (input?: Partial<SimulationFilters>): SimulationFilters => ({

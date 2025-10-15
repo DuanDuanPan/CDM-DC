@@ -46,7 +46,7 @@ export default function EbomMiniTreeDiff({
   const [focusId, setFocusId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(CHUNK_SIZE);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef<HTMLLIElement | null>(null);
 
   useEffect(() => {
     if (depth !== undefined) {

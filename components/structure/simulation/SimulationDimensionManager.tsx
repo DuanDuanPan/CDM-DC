@@ -3,6 +3,8 @@ import { SIMULATION_DIMENSION_DESCRIPTORS } from './dimensions';
 import type { SimulationDimension, SimulationSavedView } from './types';
 
 const DIMENSION_SEQUENCE: SimulationDimension[] = ['structure', 'type', 'time'];
+const DEFAULT_DIMENSION: SimulationDimension = 'structure';
+const getFallbackDimensions = (): SimulationDimension[] => [DEFAULT_DIMENSION];
 
 const iconFallback: Record<SimulationDimension, string> = {
   structure: 'ri-mind-map',
@@ -12,9 +14,14 @@ const iconFallback: Record<SimulationDimension, string> = {
 
 const dimensionDescriptorMap = new Map(SIMULATION_DIMENSION_DESCRIPTORS.map(descriptor => [descriptor.id, descriptor]));
 
+type AnchorRef =
+  | React.RefObject<HTMLElement | null>
+  | React.MutableRefObject<HTMLElement | null>
+  | React.MutableRefObject<HTMLButtonElement | null>;
+
 interface Props {
   open: boolean;
-  anchorRef: React.RefObject<HTMLElement>;
+  anchorRef: AnchorRef;
   onClose: () => void;
   activeDimensions: SimulationDimension[];
   onChange: (next: SimulationDimension[]) => void;
@@ -32,7 +39,7 @@ const normalizeActive = (dimensions: SimulationDimension[]) => {
       result.push(dimension);
     }
   });
-  return result.length > 0 ? result : ['structure'];
+  return result.length > 0 ? result : (['structure'] as SimulationDimension[]);
 };
 
 const SimulationDimensionManager = ({
@@ -80,7 +87,7 @@ const SimulationDimensionManager = ({
     const exists = orderedActive.includes(dimension);
     if (exists) {
       const next = orderedActive.filter(item => item !== dimension);
-      onChange(next.length > 0 ? next : ['structure']);
+      onChange(next.length > 0 ? next : getFallbackDimensions());
     } else {
       onChange([...orderedActive, dimension]);
     }

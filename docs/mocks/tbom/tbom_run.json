@@ -1,0 +1,15 @@
+[
+  {
+    "run_id": "R-EX-001",
+    "test_id": "T-EX-001",
+    "run_index": 1,
+    "planned_at": "2025-10-20T09:00:00Z",
+    "executed_at": "2025-10-20T10:15:00Z",
+    "operator": "testerA",
+    "environment": { "table": "shaker-A", "axes": "Z", "temp": 23.5 },
+    "test_item_sn": "SN-0001",
+    "assembly_bom_id": "ASSY-0001-R1",
+    "ebom_node_id": "EBN-ASSY-0001-003",
+    "attachments": ["F-IMG-001", "F-LOG-001"]
+  }
+]

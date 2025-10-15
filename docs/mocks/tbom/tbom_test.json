@@ -1,0 +1,11 @@
+[
+  {
+    "test_id": "T-EX-001",
+    "project_id": "P-EX-001",
+    "name": "整机随机+正弦扫描+模态",
+    "purpose": "随机验证环境耐受，正弦扫频识别共振，模态提取 FRF",
+    "spec_refs": ["MIL-STD-810H 514.8", "NASA GEVS", "B&K Modal Testing"],
+    "ebom_node_id": "EBN-ASSY-0001-003",
+    "ebom_path": "ASSY-0001/FRAME-02/TOP-PLATE"
+  }
+]
