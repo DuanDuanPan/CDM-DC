@@ -20,7 +20,7 @@
 - 测试样例保存在 `e2e/` 目录，例如：`e2e/tbom.deep-link.spec.ts`
 
 ### 环境变量
-测试运行依赖以下环境变量（本地可在 `.env.local` 中设置）：
+复制 `.env.example` 到 `.env.local` 并按需调整；默认值支持 Mock API：
 - `NEXT_PUBLIC_MOCK_MODE=true`
 - `NEXT_PUBLIC_API_BASE=/api/mock`
 - `NEXT_PUBLIC_3D_ASSETS_BASE=/3dviewer`

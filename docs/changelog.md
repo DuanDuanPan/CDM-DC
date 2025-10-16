@@ -26,6 +26,12 @@
 - 更新 README 与 `docs/ui-architecture.md`，明确“Tailwind v3 冻结与升级流程”及禁止事项。
 - 运行 `npm run lint`、`npm run build`、`npm run dev -- --port 3100` 验证构建链一致性。
 
+#### v0.2.4 · Mock API 出口与服务封装
+- 新增 `app/api/mock/tbom/*` Route Handlers，读取 `docs/mocks/tbom/` 中的 JSON/CSV，支持 timeseries 404 兜底。
+- 新增 `services/http.ts`（原生 fetch + Zod 校验封装）与 `services/tbom.ts`，统一对外服务函数。
+- 提供 `.env.example`，并在 README 说明 Mock API 所需环境变量；Story 1.3 标记为 Ready for Review。
+- 调整 `next.config.ts` 至 `output: 'standalone'`，以便在开发/构建阶段运行 Mock API Route Handlers。
+
 ### Front-End Spec（UI/UX） · v0.2 · 冻结（Frozen）
 - 新增 docs/front-end-spec.md 并冻结为评审基线 v0.2：
   - IA：站点地图、导航结构（侧边栏主导航 + 模块内二级导航）、权衡与假设。
