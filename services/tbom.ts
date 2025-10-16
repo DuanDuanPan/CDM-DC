@@ -118,3 +118,14 @@ export async function listRunsByEbomNode(
     return parentTest?.ebom_node_id === ebomNodeId;
   });
 }
+
+export function filterRunsByStatus(
+  runs: TbomRun[],
+  statuses: TbomRun['status'][],
+): TbomRun[] {
+  if (!statuses.length) {
+    return runs;
+  }
+  const set = new Set(statuses);
+  return runs.filter((run) => set.has(run.status));
+}

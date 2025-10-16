@@ -92,6 +92,7 @@ docs/
 边界与约定：
 - 重库（pdfjs-dist / online-3d-viewer / vtk.js / rhino3dm / occt-import-js / web-ifc）一律仅在对应叶子组件内动态 import，不得在顶层静态引入。
 - TBOM 目录内的 UI 组件默认为 Client 组件；数据服务和契约校验可在 Server 端执行但需保持无副作用、可在浏览器执行（原型阶段）。
+- 运行状态：`tbom_run.status` 提供 `planned/executing/completed/aborted` 四种状态，契约见 `docs/tbom-contract.md`，供 Story 1.5 的筛选与徽标展示使用。
 - 共享样式与视觉变量优先使用 Tailwind + CSS vars（见样式章节）。
 
 ---

@@ -1,7 +1,7 @@
-# 试验 BOM（TBOM）最小上载契约 v0.2
+# 试验 BOM（TBOM）最小上载契约 v0.3
 
-> 版本：v0.2（2025-10-16）｜适用阶段：TBOM MVP 原型与 Mock 服务｜状态：冻结  
-> 变更说明：补齐字段定义、跨域追溯键、Mock 样例与校验原则；新增第二套示例数据。
+> 版本：v0.3（2025-10-16）｜适用阶段：TBOM MVP 原型与 Mock 服务｜状态：冻结  
+> 变更说明：补齐字段定义、跨域追溯键、Mock 样例与校验原则；新增第二套示例数据。v0.3 新增 `run.status` 字段及取值说明，用于运行状态筛选。
 
 本契约规定在尚未接入真实 BFF 之前，如何通过一组 JSON/CSV 文件为“试验 BOM（TBOM）”提供最小可用数据以驱动前端原型。目标：
 
@@ -78,6 +78,7 @@ JSON 数组，每个元素遵循：
 | `run_id`        | string                  | ✔    | 运行标识                                              |
 | `test_id`       | string                  | ✔    | 所属试验                                              |
 | `run_index`     | number                  | ✔    | 运行序号                                              |
+| `status`        | enum                    | ✔    | 运行状态：`planned`｜`executing`｜`completed`｜`aborted` |
 | `planned_at`    | string (ISO8601)        | ✔    | 计划时间                                              |
 | `executed_at`   | string (ISO8601)        | ✖    | 实际执行时间                                          |
 | `operator`      | string                  | ✖    | 操作员                                                |
@@ -236,6 +237,7 @@ CSV 每列代表通道，必备列：
     "run_id": "R-EX-001",
     "test_id": "T-EX-001",
     "run_index": 1,
+    "status": "completed",
     "planned_at": "2025-10-20T09:00:00Z",
     "executed_at": "2025-10-20T10:15:00Z",
     "operator": "testerA",
@@ -249,6 +251,7 @@ CSV 每列代表通道，必备列：
     "run_id": "R-EX-002",
     "test_id": "T-EX-002",
     "run_index": 1,
+    "status": "executing",
     "planned_at": "2025-11-02T07:30:00Z",
     "executed_at": "2025-11-02T08:05:00Z",
     "operator": "testerB",
@@ -293,6 +296,7 @@ pnpm tsx scripts/verify-tbom-data.ts
 
 | 版本 | 日期       | 描述                                       |
 |------|------------|--------------------------------------------|
+| v0.3 | 2025-10-16 | 新增 `run.status` 字段，供状态筛选使用       |
 | v0.2 | 2025-10-16 | 补齐字段表、第二套样例、校验策略与脚本指引 |
 | v0.1 | 2025-10-15 | 初版草案                                   |
 

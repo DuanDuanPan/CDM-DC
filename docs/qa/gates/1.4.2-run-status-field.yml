@@ -1,0 +1,37 @@
+schema: 1
+story: '1.4.2'
+story_title: 'TBOM 运行状态字段（status）与筛选支撑'
+gate: PASS
+status_reason: 'run.status 字段已在契约、Mock、Schema 与服务层同步落地，验证脚本和文档指引更新完成。'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-16T00:00:00Z'
+top_issues: []
+waiver:
+  active: false
+quality_score: 100
+expires: '2025-10-30T00:00:00Z'
+evidence:
+  tests_reviewed: 5
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6]
+    ac_gaps: []
+nfr_validation:
+  security:
+    status: PASS
+    notes: '仅文档与 Mock 更新，无外部接口风险。'
+  performance:
+    status: PASS
+    notes: '新增枚举字段与 selector 不带额外性能负担。'
+  reliability:
+    status: PASS
+    notes: '验证脚本与 curl 接口均覆盖新字段，运行稳定。'
+  maintainability:
+    status: PASS
+    notes: '契约/Schema/文档一致，selector 抽象明确。'
+recommendations:
+  immediate: []
+  future:
+    - action: '在结构导航实际筛选实现时添加单元测试，确保与 selector 一致。'
+      refs:
+        - 'services/tbom.ts:69'

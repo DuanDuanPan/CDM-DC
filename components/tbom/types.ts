@@ -38,6 +38,7 @@ export const TbomRunSchema = z.object({
   run_id: z.string(),
   test_id: z.string(),
   run_index: z.number(),
+  status: z.enum(['planned', 'executing', 'completed', 'aborted']),
   planned_at: z.string(),
   executed_at: z.string().optional(),
   operator: z.string().optional(),

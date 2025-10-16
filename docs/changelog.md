@@ -37,6 +37,7 @@
 - `docs/mocks/tbom/` 增加第二套 Project/Test/Run 数据及对应 CSV（时序、事件、试验卡、附件），确保引用自洽。
 - 新增 `components/tbom/types.ts` 提供 TBOM Zod schema/type，`services/tbom.ts` 复用并增加 `groupRunsByProject`、`listRunsByEbomNode`。
 - 新增 `scripts/verify-tbom-data.ts` 校验脚本及 `npm run verify:tbom` 命令，README 增补执行方式。
+- v0.2.5.1：契约新增 `run.status` 字段及枚举，Mock 数据和 schema 同步支持状态筛选，并提供 `filterRunsByStatus` 辅助函数。
 
 ### Front-End Spec（UI/UX） · v0.2 · 冻结（Frozen）
 - 新增 docs/front-end-spec.md 并冻结为评审基线 v0.2：
