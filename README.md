@@ -39,3 +39,9 @@
 - 本仓库冻结在 Tailwind CSS **v3.4.17**，配套 `postcss@8.4.47`、`autoprefixer@10.4.21`
 - 禁止引入 Tailwind v4 生态包（如 `@tailwindcss/postcss`）；如确需升级须提交 ADR 评审并规划独立窗口
 - 运行 `npm install` 将保持上述版本锁定；如遇样式异常，先核对 `tailwind.config.js` 的 `content` 范围与自定义插件
+
+## 数据契约验证
+1. 启动 Mock 服务（开发或 Standalone 任一方式，例如 `npm run dev -- --port 3100` 或 `node .next/standalone/server.js --port 4000`）。
+2. 执行 `npm run verify:tbom`（默认指向 `http://localhost:3100/api/mock`，可替换参数）。脚本会输出项目/运行统计并演示缺失 runId 的错误返回。
+
+所有契约定义详见 `docs/tbom-contract.md`，示例数据位于 `docs/mocks/tbom/`。

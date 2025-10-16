@@ -1,0 +1,3 @@
+event_id,run_id,category,severity,start_ts,end_ts,desc,code
+E10,R-EX-002,anomaly,major,2025-11-02T07:50:30Z,2025-11-02T07:51:10Z,尾喷管外壁温度超差,TEMP_EXCEED
+E11,R-EX-002,note,minor,2025-11-02T07:55:00Z,2025-11-02T07:55:00Z,巡检摄像头校准,NOTE

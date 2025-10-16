@@ -1,0 +1,37 @@
+schema: 1
+story: '1.4'
+story_title: 'TBOM 领域模型与最小上载契约'
+gate: PASS
+status_reason: '契约文档、Mock 数据、类型/schema 与验证脚本均按验收标准落地，npm run verify:tbom 成功覆盖成功/错误路径。'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-16T00:00:00Z'
+top_issues: []
+waiver:
+  active: false
+quality_score: 100
+expires: '2025-10-30T00:00:00Z'
+evidence:
+  tests_reviewed: 7
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: []
+nfr_validation:
+  security:
+    status: PASS
+    notes: 'Mock 数据仍为本地文件，无新增外部依赖。'
+  performance:
+    status: PASS
+    notes: '契约与脚本调整未引入重型计算。'
+  reliability:
+    status: PASS
+    notes: '验证脚本成功执行并覆盖空/异常路径。'
+  maintainability:
+    status: PASS
+    notes: '类型/schema 统一管理，脚本与文档指引完整。'
+recommendations:
+  immediate: []
+  future:
+    - action: '在 CI 中运行 npm run verify:tbom，确保契约扩展得到自动校验。'
+      refs:
+        - 'package.json:17'

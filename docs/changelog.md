@@ -32,6 +32,12 @@
 - 提供 `.env.example`，并在 README 说明 Mock API 所需环境变量；Story 1.3 标记为 Ready for Review。
 - 调整 `next.config.ts` 至 `output: 'standalone'`，以便在开发/构建阶段运行 Mock API Route Handlers。
 
+#### v0.2.5 · TBOM 契约与样例扩充
+- `docs/tbom-contract.md` 升级为 v0.2，补充字段表、跨域追溯键、示例与校验策略。
+- `docs/mocks/tbom/` 增加第二套 Project/Test/Run 数据及对应 CSV（时序、事件、试验卡、附件），确保引用自洽。
+- 新增 `components/tbom/types.ts` 提供 TBOM Zod schema/type，`services/tbom.ts` 复用并增加 `groupRunsByProject`、`listRunsByEbomNode`。
+- 新增 `scripts/verify-tbom-data.ts` 校验脚本及 `npm run verify:tbom` 命令，README 增补执行方式。
+
 ### Front-End Spec（UI/UX） · v0.2 · 冻结（Frozen）
 - 新增 docs/front-end-spec.md 并冻结为评审基线 v0.2：
   - IA：站点地图、导航结构（侧边栏主导航 + 模块内二级导航）、权衡与假设。

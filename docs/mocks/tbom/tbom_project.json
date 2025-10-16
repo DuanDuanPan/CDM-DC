@@ -16,5 +16,20 @@
       { "kind": "ebom", "ref_id": "EBOM-ASSY-456" },
       { "kind": "simulation", "ref_id": "SIM-CSE-789" }
     ]
+  },
+  {
+    "project_id": "P-EX-002",
+    "type": "热结构耦合",
+    "title": "尾喷管热-力联合验证",
+    "objectives": "评估热载荷对尾喷管结构的影响并验证加强方案",
+    "input_docs": [
+      "docs/incoming/尾喷管热结构需求.pdf",
+      "docs/incoming/试验方案_v0.8.docx"
+    ],
+    "baseline_id": "BL-2025-11",
+    "relations": [
+      { "kind": "requirement", "ref_id": "REQ-458" },
+      { "kind": "ebom", "ref_id": "EBOM-ASSY-009" }
+    ]
   }
 ]

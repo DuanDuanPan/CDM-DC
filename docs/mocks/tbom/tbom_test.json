@@ -7,5 +7,14 @@
     "spec_refs": ["MIL-STD-810H 514.8", "NASA GEVS", "B&K Modal Testing"],
     "ebom_node_id": "EBN-ASSY-0001-003",
     "ebom_path": "ASSY-0001/FRAME-02/TOP-PLATE"
+  },
+  {
+    "test_id": "T-EX-002",
+    "project_id": "P-EX-002",
+    "name": "尾喷管热环境模拟",
+    "purpose": "复现极端高温工况并校核热应力响应",
+    "spec_refs": ["HB 6168-2016", "GE-Aero-Heat-Guide"],
+    "ebom_node_id": "EBN-ASSY-009-112",
+    "ebom_path": "ASSY-009/NOZZLE-CORE/HOT-SECTION"
   }
 ]

@@ -11,5 +11,18 @@
     "assembly_bom_id": "ASSY-0001-R1",
     "ebom_node_id": "EBN-ASSY-0001-003",
     "attachments": ["F-IMG-001", "F-LOG-001"]
+  },
+  {
+    "run_id": "R-EX-002",
+    "test_id": "T-EX-002",
+    "run_index": 1,
+    "planned_at": "2025-11-02T07:30:00Z",
+    "executed_at": "2025-11-02T08:05:00Z",
+    "operator": "testerB",
+    "environment": { "furnace": "HT-900", "temp": 820.5, "duration_min": 45 },
+    "test_item_sn": "SN-0202",
+    "assembly_bom_id": "ASSY-009-R2",
+    "ebom_node_id": "EBN-ASSY-009-112",
+    "attachments": ["F-IMG-010"]
   }
 ]

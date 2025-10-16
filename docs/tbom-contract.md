@@ -1,113 +1,172 @@
-# 试验BOM（TBOM）最小上载契约 v0.1
+# 试验 BOM（TBOM）最小上载契约 v0.2
 
-> 日期：2025-10-15｜适用范围：前端原型数据导入与演示｜状态：草案
+> 版本：v0.2（2025-10-16）｜适用阶段：TBOM MVP 原型与 Mock 服务｜状态：冻结  
+> 变更说明：补齐字段定义、跨域追溯键、Mock 样例与校验原则；新增第二套示例数据。
 
-本契约用于在未对接真源系统前，以 CSV/JSON 包的形式为“试验 BOM（TBOM）”提供最小可用数据。目标是：
-- 支撑 TBOM 结构导航（Type → Project → Test → Run）；
-- 展示运行详情（过程记录、结果数据、事件、附件）；
-- 形成与需求/设计/仿真的跨域可追溯键；
-- 为 Compare 与查看器统一口径（单位/信号代号）。
+本契约规定在尚未接入真实 BFF 之前，如何通过一组 JSON/CSV 文件为“试验 BOM（TBOM）”提供最小可用数据以驱动前端原型。目标：
 
----
-
-## 1. 层级与标识
-- TestType（试验类型）
-- TestProject（试验项目）
-- Test（XX 试验）
-- TestRun（XX 次上台/试车）
-
-统一标识与版本：`type_id`, `project_id`, `test_id`, `run_id`, `version`, `baseline_id`。
-时间与执行信息：`planned_at`, `executed_at`, `operator`。
-工况：`environment`（JSON，可包含温度/平台/设备等）。
-
-挂接到产品结构树节点（EBOM Node）：
-- `ebom_node_id`（结构节点 ID，必填，建议在 Test 层级给出，Run 可覆盖）；
-- `ebom_path`（可选，便于 UI 直接显示路径，如 `ASSY-001/COMP-123/SUB-45`）。
+- 支撑 TBOM 结构导航（类型 → 项目 → 试验 → 运行）。
+- 输出运行详情（过程记录、结果数据、事件、附件）与 Compare 所需原子数据。
+- 保持与需求、EBOM、仿真等域的追溯键可用。
+- 统一频率/单位口径，为后续校核与真源接入提供基线。
 
 ---
 
-## 2. 文件构成（最小集）
-- `tbom_project.json`：项目（Project）主档
-- `tbom_test.json`：试验（Test）主档
-- `tbom_run.json`：运行（Run）主档
-- `result_timeseries.csv`：时序数据（多通道）
-- `process_event.csv`：过程事件/故障
-- `test_card.csv`：试验卡片（参数表）
-- `attachments.csv`：附件索引（图片/视频/文件）
+## 1. 层级模型与标识
 
-可选：`result_psd.csv`（频谱/PSD）、`result_frf.csv`（FRF/相干）
+| 层级        | 描述                     | 主键字段        | 关键引用                                 |
+|-------------|--------------------------|-----------------|------------------------------------------|
+| TestType    | 试验类型（逻辑分类）     | `type_id`       | 可选：与 PRD/里程碑映射                  |
+| TestProject | 试验项目（Project）      | `project_id`    | `relations` 中挂接需求/EBOM/仿真         |
+| Test        | 具体试验（Test）         | `test_id`       | `project_id`、`ebom_node_id`             |
+| TestRun     | 单次运行（Run）          | `run_id`        | `test_id`、`attachments[]`、`environment`|
 
----
-
-## 3. 字段定义（摘要）
-
-### 3.1 tbom_project.json（数组）
-- `project_id` string
-- `type` string（试验类型）
-- `title` string
-- `objectives` string
-- `input_docs` string[]（技术要求/大纲/评审记录/项目方案）
-- `baseline_id` string
-- `relations` object[]（`{ kind: 'requirement'|'ebom'|'simulation', ref_id: string }`）
-
-### 3.2 tbom_test.json（数组）
-- `test_id` string, `project_id` string
-- `name` string, `purpose` string
-- `spec_refs` string[]（标准/方法）
-- `ebom_node_id` string（挂接的产品结构树节点 ID，必填）
-- `ebom_path` string（可选：结构路径显示）
-
-### 3.3 tbom_run.json（数组）
-- `run_id` string, `test_id` string, `run_index` number
-- `planned_at` ISO8601, `executed_at` ISO8601, `operator` string
-- `environment` object（温度/台架/设备/方向等）
-- `test_item_sn` string（实物 BOM SN）
-- `assembly_bom_id` string（试验件本次装配 BOM）
-- `attachments` string[]（与 attachments.csv 交叉引用的 `file_id`）
-- `ebom_node_id` string（可选：若与 Test 不同，可在 Run 覆盖挂接节点）
-
-### 3.4 result_timeseries.csv（宽表）
-- 列：`ts`（ISO8601 或相对秒）+ 多通道列（见第 4 节“通道字典”）
-
-### 3.5 process_event.csv
-- 列：`event_id`, `run_id`, `category`（fault/anomaly/note）, `severity`, `start_ts`, `end_ts`, `desc`, `code`
-
-### 3.6 test_card.csv
-- 列：`param_name`, `value`, `unit`, `source`
-
-### 3.7 attachments.csv
-- 列：`file_id`, `type`（image/video/file）, `path`, `ts`, `desc`, `run_id`
+**时间字段**（`planned_at`, `executed_at`, `start_ts`, `end_ts` 等）采用 ISO8601，UTC 时区或含时区偏移。  
+**工况字段**（`environment`）为键值对象，允许字符串/数值/布尔/null。  
+**EBOM 追溯**：`ebom_node_id` 必填；`ebom_path` 为显示用字符串（如 `ASSY-0001/FRAME-02/TOP-PLATE`）。
 
 ---
 
-## 4. 通道字典（结构振动试验·样例）
+## 2. 文件清单
 
-为统一 Compare 与查看器口径，建议以下代号/单位（结合行业常见做法：随机振动 PSD 使用 `g^2/Hz`；模态试验 FRF 常见为加速度/力的比值等）。
+| 文件名                       | 格式 | 作用                                         |
+|------------------------------|------|----------------------------------------------|
+| `tbom_project.json`          | JSON | 项目主档（数组）                             |
+| `tbom_test.json`             | JSON | 试验主档（数组）                             |
+| `tbom_run.json`              | JSON | 运行主档（数组）                             |
+| `result_timeseries*.csv`     | CSV  | 时序数据（多通道；按 runId 分文件）          |
+| `process_event*.csv`         | CSV  | 过程事件记录                                 |
+| `test_card.csv`              | CSV  | 试验卡片（参数/工况设定）                    |
+| `attachments.csv`            | CSV  | 附件索引                                     |
 
-- 输入/控制
-  - `FORCE_IN`（N）：激振力（力锤/力传感器/拉杆测力计）
-  - `CTRL_ACC`（g 或 m/s^2）：控制加速度（随机/正弦控制点）
-- 响应（加速度/速度/位移，按需派生）
-  - `ACC_<LOC>_[X|Y|Z]`（g 或 m/s^2）：测点加速度
-  - `VEL_<LOC>`（mm/s 或 m/s）：（可由加速度积分得到）
-  - `DISP_<LOC>`（mm）：（可由速度再积分得到）
-- 频域与派生
-  - `PSD_<LOC>`（g^2/Hz）：随机振动功率谱密度
-  - `FRF_ACC_<LOC>`（m/s^2/N 或 g/N）：加速度-力 FRF（Accelerance/H1）
-  - `COH_<LOC>`（0..1）：相干函数
-- 监测/环境
-  - `TEMP_<LOC>`（°C）、`STRAIN_<LOC>`（με）
-  - `SR`（Hz，采样率，作为元数据或列）
-
-说明与参考：
-- MIL‑STD‑810（Method 514.x）与 NASA GEVS 均以 `g^2/Hz` 表达随机振动 PSD，常见频带 5/10–2000 Hz，RMS 由积分得到。
-- 模态/结构试验常用 FRF（加速度/力、速度/力或位移/力），常配合相干函数用于质量评估。
+可选扩展：`result_psd.csv`, `result_frf.csv` 等频域数据；保留同等字段规范。
 
 ---
 
-## 5. 示例（节选）
+## 3. 字段定义
 
-### 5.1 tbom_project.json
+### 3.1 `tbom_project.json`
+
+JSON 数组，每个元素遵循：
+
+| 字段           | 类型              | 必填 | 说明                                             |
+|----------------|-------------------|------|--------------------------------------------------|
+| `project_id`   | string            | ✔    | 项目标识                                         |
+| `type`         | string            | ✔    | 试验类型描述（如“结构振动”）                    |
+| `title`        | string            | ✔    | 项目标题                                         |
+| `objectives`   | string            | ✔    | 试验目标                                         |
+| `input_docs`   | string[]          | ✔    | 输入资料清单                                     |
+| `baseline_id`  | string            | ✔    | 版本基线编号                                    |
+| `relations`    | {kind, ref_id}[]  | ✖    | 跨域追溯清单；kind 可取 `requirement`/`ebom`/`simulation` 等 |
+
+### 3.2 `tbom_test.json`
+
+| 字段          | 类型     | 必填 | 说明                                             |
+|---------------|----------|------|--------------------------------------------------|
+| `test_id`     | string   | ✔    | 试验标识                                         |
+| `project_id`  | string   | ✔    | 对应项目 ID                                      |
+| `name`        | string   | ✔    | 试验名称                                         |
+| `purpose`     | string   | ✔    | 试验目的                                         |
+| `spec_refs`   | string[] | ✖    | 参考标准                                         |
+| `ebom_node_id`| string   | ✔    | 关联的 EBOM 节点                                 |
+| `ebom_path`   | string   | ✖    | 展示用路径                                       |
+
+### 3.3 `tbom_run.json`
+
+| 字段            | 类型                    | 必填 | 说明                                                  |
+|-----------------|-------------------------|------|-------------------------------------------------------|
+| `run_id`        | string                  | ✔    | 运行标识                                              |
+| `test_id`       | string                  | ✔    | 所属试验                                              |
+| `run_index`     | number                  | ✔    | 运行序号                                              |
+| `planned_at`    | string (ISO8601)        | ✔    | 计划时间                                              |
+| `executed_at`   | string (ISO8601)        | ✖    | 实际执行时间                                          |
+| `operator`      | string                  | ✖    | 操作员                                                |
+| `environment`   | Record<string, value>   | ✖    | 环境参数（如温度、台架、方向）                        |
+| `test_item_sn`  | string                  | ✖    | 被测件序列号                                          |
+| `assembly_bom_id`| string                 | ✖    | 装配 BOM 标识                                         |
+| `attachments`   | string[]                | ✖    | 与附件索引关系                                        |
+| `ebom_node_id`  | string                  | ✖    | 若与试验不同，可覆盖 EBOM 节点                        |
+
+### 3.4 时序 CSV
+
+CSV 每列代表通道，必备列：
+
+| 列名         | 单位          | 描述                                 |
+|--------------|---------------|--------------------------------------|
+| `ts`         | ISO8601       | 时间戳                               |
+| `FORCE_IN`   | N             | 激振力                               |
+| `CTRL_ACC`   | g 或 m/s²     | 控制加速度                           |
+| `ACC_*`      | g 或 m/s²     | 各测点加速度                         |
+| `PSD_*`      | g²/Hz         | 可选：随机振动 PSD                   |
+| `SR`         | Hz            | （可选）采样率列                     |
+
+每个 `run_id` 单独一个文件 `result_timeseries_<runId>.csv`。
+
+### 3.5 `process_event_*.csv`
+
+| 列名       | 说明                                         |
+|------------|----------------------------------------------|
+| `event_id` | 事件 ID                                      |
+| `run_id`   | 对应运行                                    |
+| `category` | `fault` / `anomaly` / `note` 等              |
+| `severity` | `minor` / `major` / `critical`               |
+| `start_ts` | ISO8601 开始时间                             |
+| `end_ts`   | ISO8601 结束时间                             |
+| `desc`     | 描述                                         |
+| `code`     | 事件/告警码                                  |
+
+### 3.6 `test_card.csv`
+
+| 列名         | 说明                           |
+|--------------|--------------------------------|
+| `run_id`     | 所属运行                       |
+| `param_name` | 参数名                         |
+| `value`      | 参数值                         |
+| `unit`       | 单位                           |
+| `source`     | 来源                           |
+
+### 3.7 `attachments.csv`
+
+| 列名    | 说明                                     |
+|---------|------------------------------------------|
+| `file_id` | 附件标识                               |
+| `type`    | `image` / `video` / `file`             |
+| `path`    | 静态文件路径                           |
+| `ts`      | 捕获时间                               |
+| `desc`    | 描述                                   |
+| `run_id`  | 关联运行                               |
+
+---
+
+## 4. 跨域追溯与规则
+
+| 目标域 | 字段              | 说明                                        |
+|--------|-------------------|---------------------------------------------|
+| 需求   | `relations[].ref_id`（kind=`requirement`） | 与需求矩阵对接         |
+| EBOM   | `ebom_node_id`, `ebom_path`               | 结构树定位             |
+| 仿真   | `relations[].ref_id`（kind=`simulation`） | 仿真案例或结果 ID      |
+| 实物   | `test_item_sn`, `attachments[].run_id`    | 实物件、附件关联       |
+
+校验要点：
+- `project_id` ↔ `test.project_id` ↔ `run.test_id` 必须整合。
+- `run.attachments[]` 中的 ID 必须出现在 `attachments.csv`.
+- CSV 中所有 `run_id` 必须存在于 `tbom_run.json`.
+- 时间/采样单位需与通道字典一致；字段缺失时保留列头并置空值。
+
+---
+
+## 5. 错误与校验策略
+
+- **结构缺失**：对于缺失 `run_id` 的请求返回 404 + `{ "error": "RUN_NOT_FOUND" }`。
+- **文件缺失**：Route Handler 捕获 IO 异常并返回 500 + `{ "error": "MOCK_INTERNAL_ERROR", "reason": ... }`。
+- **Zod 校验**：服务层对 JSON 响应执行 schema parsing；失败时抛出含 `issues` 的错误，前端应记录。
+- **字段可选策略**：可选字段省略时 Zod schema 提供默认值（空对象/数组）。
+
+---
+
+## 6. 示例数据（v0.2）
+
+### 项目（`tbom_project.json`，节选）
 ```json
 [
   {
@@ -127,11 +186,26 @@
       { "kind": "ebom", "ref_id": "EBOM-ASSY-456" },
       { "kind": "simulation", "ref_id": "SIM-CSE-789" }
     ]
+  },
+  {
+    "project_id": "P-EX-002",
+    "type": "热结构耦合",
+    "title": "尾喷管热-力联合验证",
+    "objectives": "评估热载荷对尾喷管结构的影响并验证加强方案",
+    "input_docs": [
+      "docs/incoming/尾喷管热结构需求.pdf",
+      "docs/incoming/试验方案_v0.8.docx"
+    ],
+    "baseline_id": "BL-2025-11",
+    "relations": [
+      { "kind": "requirement", "ref_id": "REQ-458" },
+      { "kind": "ebom", "ref_id": "EBOM-ASSY-009" }
+    ]
   }
 ]
 ```
 
-### 5.2 tbom_test.json
+### 试验（`tbom_test.json`，节选）
 ```json
 [
   {
@@ -139,12 +213,23 @@
     "project_id": "P-EX-001",
     "name": "整机随机+正弦扫描+模态",
     "purpose": "随机验证环境耐受，正弦扫频识别共振，模态提取 FRF",
-    "spec_refs": ["MIL-STD-810H 514.8", "NASA GEVS", "B&K Modal Testing"]
+    "spec_refs": ["MIL-STD-810H 514.8", "NASA GEVS", "B&K Modal Testing"],
+    "ebom_node_id": "EBN-ASSY-0001-003",
+    "ebom_path": "ASSY-0001/FRAME-02/TOP-PLATE"
+  },
+  {
+    "test_id": "T-EX-002",
+    "project_id": "P-EX-002",
+    "name": "尾喷管热环境模拟",
+    "purpose": "复现极端高温工况并校核热应力响应",
+    "spec_refs": ["HB 6168-2016", "GE-Aero-Heat-Guide"],
+    "ebom_node_id": "EBN-ASSY-009-112",
+    "ebom_path": "ASSY-009/NOZZLE-CORE/HOT-SECTION"
   }
 ]
 ```
 
-### 5.3 tbom_run.json
+### 运行（`tbom_run.json`，节选）
 ```json
 [
   {
@@ -157,60 +242,58 @@
     "environment": { "table": "shaker-A", "axes": "Z", "temp": 23.5 },
     "test_item_sn": "SN-0001",
     "assembly_bom_id": "ASSY-0001-R1",
-    "attachments": ["F-IMG-001", "F-LOG-001"]
+    "attachments": ["F-IMG-001", "F-LOG-001"],
+    "ebom_node_id": "EBN-ASSY-0001-003"
+  },
+  {
+    "run_id": "R-EX-002",
+    "test_id": "T-EX-002",
+    "run_index": 1,
+    "planned_at": "2025-11-02T07:30:00Z",
+    "executed_at": "2025-11-02T08:05:00Z",
+    "operator": "testerB",
+    "environment": { "furnace": "HT-900", "temp": 820.5, "duration_min": 45 },
+    "test_item_sn": "SN-0202",
+    "assembly_bom_id": "ASSY-009-R2",
+    "attachments": ["F-IMG-010"],
+    "ebom_node_id": "EBN-ASSY-009-112"
   }
 ]
 ```
 
-### 5.4 result_timeseries.csv（示例行）
-```csv
-ts,FORCE_IN,CTRL_ACC,ACC_BASE_X,ACC_TOP_Z
-2025-10-20T10:00:00.000Z,12.3,0.51,0.12,0.08
-2025-10-20T10:00:00.005Z,11.9,0.49,0.13,0.10
-```
+对应 CSV 文件命名：`result_timeseries_R-EX-001.csv`、`result_timeseries_R-EX-002.csv`、`process_event_R-EX-001.csv`、`process_event_R-EX-002.csv` 等。
 
-### 5.5 process_event.csv（示例行）
-```csv
-event_id,run_id,category,severity,start_ts,end_ts,desc,code
-E1,R-EX-001,fault,major,2025-10-20T10:05:10Z,2025-10-20T10:05:13Z,传感器短时过载,SAT
-```
+---
 
-### 5.6 test_card.csv（示例行）
-```csv
-param_name,value,unit,source
-扫频范围,5-2000,Hz,试验卡片
-控制RMS,7.7,g,控制器
-```
+## 7. 校验脚本建议
 
-### 5.7 attachments.csv（示例行）
-```csv
-file_id,type,path,ts,desc,run_id
-F-IMG-001,image,/files/run1/photo1.jpg,2025-10-20T10:02:00Z,样机布置照片,R-EX-001
-F-LOG-001,file,/files/run1/controller.log,2025-10-20T10:15:10Z,控制日志导出,R-EX-001
+> `scripts/verify-tbom-data.ts`（Story 1.4 实现）调用 `services/tbom.ts`：
+1. 输出全部项目与试验统计。
+2. `groupRunsByProject(projectId)`：按项目聚合运行列表。
+3. `listRunsByEbomNode(ebomNodeId)`：验证跨域追溯键。
+4. 访问不存在 runId 时捕获 `RUN_NOT_FOUND`。
+
+脚本需在 README 中描述执行方式，例如：
+```bash
+pnpm tsx scripts/verify-tbom-data.ts
 ```
 
 ---
 
-## 6. 校验规则（要点）
-- ID 参照完整性：所有 `*_id` 必须可在其父层级找到引用；
-- 时间格式：ISO8601；
-- 单位与口径：加速度统一 `g` 或 `m/s^2`，随机 PSD 统一 `g^2/Hz`；FRF 建议 `m/s^2/N` 或 `g/N`；
-- 采样率与频带：在元数据中声明（或列 `SR`），与时序/PSD 文件一致；
-- 空值策略：缺失列以空列呈现，不删除列头。
+## 8. 单位与频率口径
+
+- 随机振动 PSD：`g^2/Hz`，频带可含 5/10–2000 Hz。
+- FRF（Accelerance）：`m/s^2/N` 或 `g/N`。
+- 温度：`°C`；压力：`kPa`；应变：`με`。
+- 默认采样率：以 `SR` 列或元数据说明。
 
 ---
 
-## 7. 与其他域的关联
-- 需求：`requirement_id`（用于需求验证矩阵）
-- 设计/EBOM：`ebom_node_id`（结构树节点）、`ebom_path`（可选显示）、`ebom_item_id`（物料项，含配置/版本）
-- 仿真：`simulation_case_id` / `simulation_result_id`
-- 实物 BOM：`physical_bom_sn`
+## 9. 变更历史
 
----
+| 版本 | 日期       | 描述                                       |
+|------|------------|--------------------------------------------|
+| v0.2 | 2025-10-16 | 补齐字段表、第二套样例、校验策略与脚本指引 |
+| v0.1 | 2025-10-15 | 初版草案                                   |
 
-## 8. 参考与口径对齐
-- NASA GEVS（GSFC‑STD‑7000）：环境验证与随机振动 PSD 单位/频带的行业通行写法。 
-- MIL‑STD‑810（Method 514.x）：运输/作战环境振动方法与示例谱。
-- Brüel & Kjær（Modal Analysis/FRF）：模态试验中 FRF 与相干函数等概念与用法。
-
-> 本契约为原型阶段文件，后续对接 BFF/真源时以服务契约为准。
+> 后续若接入真实服务契约，请更新此文档并同步变更到 Change Log。

@@ -1,4 +1,7 @@
-param_name,value,unit,source
-扫频范围,5-2000,Hz,试验卡片
-控制RMS,7.7,g,控制器
-驻留规则,3dB/Oct,-,试验卡片
+run_id,param_name,value,unit,source
+R-EX-001,扫频范围,5-2000,Hz,试验卡片
+R-EX-001,控制RMS,7.7,g,控制器
+R-EX-001,驻留规则,3dB/Oct,-,试验卡片
+R-EX-002,燃烧室温度设定,820,°C,试验方案
+R-EX-002,热流密度目标,150,kW/m2,仿真回传
+R-EX-002,保压时间,45,min,试验指令
