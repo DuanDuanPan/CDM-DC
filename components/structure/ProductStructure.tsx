@@ -25,6 +25,10 @@ import { simulationJumpTargets, SIMULATION_JUMP_UNMAPPED, type SimulationJumpTar
 import ProductDefinitionPanel from './definition/ProductDefinitionPanel';
 import EbomDetailPanel from './ebom/EbomDetailPanel';
 import { EBOM_BASELINES } from './ebom/data';
+import { TestingTreePanel } from './testing/TestingTreePanel';
+import { TestingContentPanel } from './testing/TestingContentPanel';
+import { TEST_STRUCTURE_TREE, TEST_PROJECTS, TEST_TYPES } from './testing/data';
+import { useTestingExplorerState } from './testing/useTestingExplorerState';
 
 interface BomNode {
   id: string;
@@ -400,6 +404,7 @@ export default function ProductStructure() {
   const pushSimulationWarning = useCallback((message: string) => {
     setSimulationWarningToast({ type: 'warning', message, timestamp: Date.now() });
   }, []);
+
   
   // 添加缺失的状态变量
   const [showInputDataForm, setShowInputDataForm] = useState(false);
@@ -562,6 +567,15 @@ export default function ProductStructure() {
   const [isDimensionManagerOpen, setIsDimensionManagerOpen] = useState(false);
   const dimensionManagerAnchorRef = useRef<HTMLButtonElement | null>(null);
 
+  const [testingState, testingActions] = useTestingExplorerState(TEST_PROJECTS);
+  const {
+    selectNode: selectTestingNode,
+    toggleExpand: toggleTestingNode,
+    selectProjectById: selectTestingProject,
+    selectItemById: selectTestingItem,
+    reset: resetTestingState
+  } = testingActions;
+
   const toggleDimensionManager = useCallback(() => {
     setIsDimensionManagerOpen(prev => !prev);
   }, []);
@@ -619,6 +633,7 @@ export default function ProductStructure() {
   }, [activeTab, selectedBomType, simulationState.selectedNode, currentSimulationFiles]);
 
   const isSimulationBom = selectedBomType === 'simulation';
+  const isTestBom = selectedBomType === 'test';
   const activeDimensionsForTree = isSimulationBom ? simulationState.activeDimensions : NON_SIMULATION_DIMENSIONS;
 
   useEffect(() => {
@@ -2070,6 +2085,9 @@ export default function ProductStructure() {
       setPreviewSimulationFile(null);
       setCompareToast(null);
       simulationDispatch({ type: 'RESET' });
+    } else if (bomTypeId === 'test') {
+      setActiveTab('structure');
+      resetTestingState();
     } else if (bomTypeId === 'requirement') {
       setActiveTab('requirement');
       setExpandedNodes(['REQ-ENGINE-001']);
@@ -2082,7 +2100,7 @@ export default function ProductStructure() {
       setActiveTab('structure');
       setExpandedNodes([]);
     }
-  }, [selectedBomType, clearJumpHistory, simulationDispatch]);
+  }, [selectedBomType, clearJumpHistory, simulationDispatch, resetTestingState]);
 
   // 读取对比中心写入的 EBOM 定位指令（一次性消费）
   useEffect(() => {
@@ -2669,7 +2687,7 @@ const buildNodeTags = (node: BomNode) => {
     return (
       <div key={node.id}>
         <div
-          className={`relative flex items-start gap-3 rounded-lg border border-transparent px-3 py-2 transition-colors hover:bg-slate-50 ${
+          className={`relative flex items-start gap-3 rounded-lg border border-transparent px-3 py-2 text-sm leading-5 transition-colors hover:bg-slate-50 ${
             isSelected ? 'border-blue-300 bg-white shadow-sm' : ''
           }`}
           style={{ marginLeft: `${node.level * 20}px` }}
@@ -2702,7 +2720,7 @@ const buildNodeTags = (node: BomNode) => {
 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-sm font-medium text-gray-900">{primaryName || node.name}</span>
+              <span className="truncate font-medium text-gray-900">{primaryName || node.name}</span>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-medium tracking-wide text-slate-400">{node.id}</span>
@@ -4486,27 +4504,35 @@ const buildNodeTags = (node: BomNode) => {
           </div>
 
           {/* BOM树结构 */}
-          <div className="flex-1 overflow-y-auto p-4" ref={treeContainerRef}>
-            {isSimulationBom && activeTab === 'simulation' ? (
+          <div className="flex-1 overflow-y-auto p-4" ref={isTestBom ? undefined : treeContainerRef}>
+            {isTestBom ? (
+              <TestingTreePanel
+                structure={TEST_STRUCTURE_TREE}
+                projects={testingState.projects}
+                selectedNode={testingState.selectedNode}
+                expandedNodeIds={testingState.expandedNodeIds}
+                onSelectNode={selectTestingNode}
+                onToggleExpand={toggleTestingNode}
+                testTypes={TEST_TYPES}
+              />
+            ) : isSimulationBom && activeTab === 'simulation' ? (
               renderSimulationNavTree()
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-3">
-                  <div className="space-y-1">
-                    {bomStructureData.map(node => renderTreeNode(node))}
-                  </div>
+                  <div className="space-y-1">{bomStructureData.map(node => renderTreeNode(node))}</div>
                 </div>
               </div>
             )}
           </div>
 
           {/* 角色选择 - 仅方案BOM显示 */}
-          {selectedBomType === 'solution' && (
-            <div className="p-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">角色视图</h3>
-              <div className="flex space-x-1">
-                {roles.map((role) => (
-                  <button
+      {selectedBomType === 'solution' && (
+        <div className="p-4 border-t border-gray-200">
+          <h3 className="text-sm font-medium text-gray-900 mb-2">角色视图</h3>
+          <div className="flex space-x-1">
+            {roles.map((role) => (
+              <button
                     key={role.id}
                     onClick={() => setSelectedRole(role.id)}
                     className={`flex-1 flex items-center justify-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
@@ -4698,15 +4724,29 @@ const buildNodeTags = (node: BomNode) => {
                 </div>
               )}
               {activeTab === 'structure' && selectedBomType !== 'design' && (
-                <div
-                  className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500"
-                  role="tabpanel"
-                  id="panel-structure"
-                  aria-labelledby="tab-structure"
-                >
-                  <i className="ri-node-tree text-4xl mb-2"></i>
-                  <p>结构视图内容</p>
-                </div>
+                selectedBomType === 'test' ? (
+                  <div role="tabpanel" id="panel-structure" aria-labelledby="tab-structure">
+                    <TestingContentPanel
+                      projects={testingState.projects}
+                      stats={testingState.stats}
+                      selectedNode={testingState.selectedNode}
+                      selectedProject={testingState.selectedProject}
+                      selectedItem={testingState.selectedItem}
+                      onSelectProject={selectTestingProject}
+                      onSelectItem={selectTestingItem}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500"
+                    role="tabpanel"
+                    id="panel-structure"
+                    aria-labelledby="tab-structure"
+                  >
+                    <i className="ri-node-tree text-4xl mb-2"></i>
+                    <p>结构视图内容</p>
+                  </div>
+                )
               )}
 
               {selectedBomType === 'design' && (activeTab === 'structure' || activeTab === 'cockpit') && (
