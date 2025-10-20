@@ -14,6 +14,20 @@
     "attachments": ["F-IMG-001", "F-LOG-001"]
   },
   {
+    "run_id": "R-EX-004",
+    "test_id": "T-EX-001",
+    "run_index": 2,
+    "status": "executing",
+    "planned_at": "2025-10-22T08:00:00Z",
+    "executed_at": "2025-10-22T08:35:00Z",
+    "operator": "testerC",
+    "environment": { "table": "shaker-A", "axes": "Z", "temp": 65.0 },
+    "test_item_sn": "SN-0002",
+    "assembly_bom_id": "ASSY-0001-R2",
+    "ebom_node_id": "EBN-ASSY-0001-003",
+    "attachments": ["F-IMG-004", "F-LOG-004"]
+  },
+  {
     "run_id": "R-EX-002",
     "test_id": "T-EX-002",
     "run_index": 1,

@@ -49,6 +49,7 @@ Done
 | 2025-10-20 | v0.1 | 初稿：Story 1.6 运行详情页需求与实施清单 | Scrum Master |
 | 2025-10-20 | v1.0 | 实现运行详情浮层、Compare 对接、Mock API 扩展与文档/测试更新 | Dev Agent |
 | 2025-10-20 | v1.1 | 修复 CompareCenter 同页 payload 不刷新问题，新增广播监听与回归测试 | Dev Agent |
+| 2025-10-20 | v1.2 | 将运行详情入口整合进 XBOM 试验 BOM 视图，支持直接在结构导航中打开时间线与 Compare | Dev Agent |
 
 ## Dev Agent Record
 ### Agent Model Used
@@ -65,6 +66,7 @@ Done
 - 扩展 TBOM 服务与 Mock：抽取 CSV 解析工具、补充 `/tbom/attachments/:runId`、`/tbom/test-card/:runId` JSON 接口，前端统一处理 CSV 空/错态。
 - Compare 对接通过 `localStorage.tbomComparePayload` 写入运行上下文，Compare 页面监听 storage 并展示提示卡。
 - CompareCenter 引入 `tbom-compare:payload-updated` 自定义事件监听，同页即可呈现新的 Compare payload 并补充单测验证。
+- XBOM 试验 BOM 面板新增“查看运行详情”按钮，调用 TBOM 数据并弹出 Story 1.6 浮层，避免跳转独立 TBOM 页。
 - 更新 `docs/ui-architecture.md` 与 `docs/changelog.md` 描述运行详情实现、懒加载策略与测试矩阵；补充 RTL 单测覆盖加载/空/错路径。
 
 ### File List
@@ -73,12 +75,22 @@ Done
 - components/compare/CompareCenter.tsx
 - components/compare/__tests__/CompareCenter.test.tsx
 - components/structure/testing/TestingContentPanel.tsx
+- components/structure/ProductStructure.tsx
+- components/structure/testing/data.ts
+- components/structure/testing/types.ts
 - components/tbom/detail/TbomNodeDetail.tsx
 - components/tbom/detail/TbomRunDetail.tsx
 - components/tbom/detail/__tests__/TbomRunDetail.test.tsx
 - docs/changelog.md
+- docs/mocks/tbom/attachments.csv
 - docs/ui-architecture.md
 - docs/stories/STORY-1.6-run-detail-experience.md
+- docs/mocks/tbom/process_event_R-EX-004.csv
+- docs/mocks/tbom/result_timeseries_R-EX-004.csv
+- docs/mocks/tbom/test_card.csv
+- docs/mocks/tbom/tbom_run.json
+- app/api/mock/tbom/events/[runId]/route.ts
+- app/api/mock/tbom/timeseries/[runId]/route.ts
 - services/tbom.ts
 - utils/csv.ts
 

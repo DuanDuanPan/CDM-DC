@@ -1,0 +1,3 @@
+event_id,run_id,category,severity,start_ts,end_ts,desc,code
+E10,R-EX-004,fault,major,2025-10-22T08:27:30Z,2025-10-22T08:27:35Z,传感器接口抖动告警,SAT
+E11,R-EX-004,note,minor,2025-10-22T08:31:00Z,2025-10-22T08:31:00Z,调整激振器输出相位,NOTE

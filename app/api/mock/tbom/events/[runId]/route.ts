@@ -4,6 +4,7 @@ import { notFound, readTextFile, serverError } from '../../utils';
 const EVENT_MAP: Record<string, string> = {
   'R-EX-001': 'process_event_R-EX-001.csv',
   'R-EX-002': 'process_event_R-EX-002.csv',
+  'R-EX-004': 'process_event_R-EX-004.csv',
 };
 
 export const dynamic = 'force-static';

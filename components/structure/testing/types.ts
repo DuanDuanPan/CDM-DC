@@ -72,6 +72,7 @@ export interface TestItem {
   metrics: TestItemMetric[];
   attachments: TestAttachment[];
   remarks?: string;
+  tbomRefs?: TestItemTbomRef[];
 }
 
 export interface TestInsight {
@@ -125,4 +126,10 @@ export interface TestingNodeReference {
   typeId?: string;
   projectId?: string;
   itemId?: string;
+}
+
+export interface TestItemTbomRef {
+  projectId: string;
+  testId: string;
+  runId: string;
 }

@@ -1,4 +1,6 @@
 file_id,type,path,ts,desc,run_id
 F-IMG-001,image,/files/run1/photo1.jpg,2025-10-20T10:02:00Z,样机布置照片,R-EX-001
 F-LOG-001,file,/files/run1/controller.log,2025-10-20T10:15:10Z,控制日志导出,R-EX-001
+F-IMG-004,image,/files/run4/photo1.jpg,2025-10-22T08:20:00Z,谐响应测点示意图,R-EX-004
+F-LOG-004,file,/files/run4/harmonic.log,2025-10-22T08:34:40Z,谐响应控制日志,R-EX-004
 F-IMG-010,image,/files/run2/nozzle_thermal.jpg,2025-11-02T07:45:12Z,尾喷管热像仪截图,R-EX-002

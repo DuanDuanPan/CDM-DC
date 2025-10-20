@@ -4,6 +4,7 @@ import { notFound, readTextFile, serverError } from '../../utils';
 const TIMESERIES_MAP: Record<string, string> = {
   'R-EX-001': 'result_timeseries_R-EX-001.csv',
   'R-EX-002': 'result_timeseries_R-EX-002.csv',
+  'R-EX-004': 'result_timeseries_R-EX-004.csv',
 };
 
 export const dynamic = 'force-static';

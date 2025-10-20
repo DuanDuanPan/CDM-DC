@@ -30,6 +30,10 @@ import { TestingTreePanel } from './testing/TestingTreePanel';
 import { TestingContentPanel } from './testing/TestingContentPanel';
 import { TEST_STRUCTURE_TREE, TEST_PROJECTS, TEST_TYPES } from './testing/data';
 import { useTestingExplorerState } from './testing/useTestingExplorerState';
+import TbomRunDetail from '@/components/tbom/detail/TbomRunDetail';
+import type { TbomProject, TbomRun, TbomTest } from '@/components/tbom/types';
+import { listProjects as listTbomProjects, listRuns as listTbomRuns, listTests as listTbomTests } from '@/services/tbom';
+import type { TestItemTbomRef } from './testing/types';
 import ProductStructureHome from './ProductStructureHome';
 
 interface BomNode {
@@ -578,6 +582,81 @@ export default function ProductStructure() {
     selectItemById: selectTestingItem,
     reset: resetTestingState
   } = testingActions;
+  const tbomDataPromiseRef = useRef<Promise<{ projects: TbomProject[]; tests: TbomTest[]; runs: TbomRun[] }> | null>(null);
+  const [tbomData, setTbomData] = useState<{ projects: TbomProject[]; tests: TbomTest[]; runs: TbomRun[] } | null>(null);
+  const [runDetailContext, setRunDetailContext] = useState<{ project: TbomProject; test: TbomTest; run: TbomRun } | null>(null);
+  const [isRunDetailLoading, setIsRunDetailLoading] = useState(false);
+  const [runDetailError, setRunDetailError] = useState<string | null>(null);
+
+  const ensureTbomData = useCallback(async () => {
+    if (tbomData) {
+      return tbomData;
+    }
+
+    if (!tbomDataPromiseRef.current) {
+      tbomDataPromiseRef.current = (async () => {
+        try {
+          const [projects, tests, runs] = await Promise.all([
+            listTbomProjects(),
+            listTbomTests(),
+            listTbomRuns(),
+          ]);
+          const data = { projects, tests, runs };
+          setTbomData(data);
+          return data;
+        } catch (error) {
+          tbomDataPromiseRef.current = null;
+          throw error;
+        }
+      })();
+    }
+
+    return tbomDataPromiseRef.current!;
+  }, [tbomData]);
+
+  const handleOpenRunDetail = useCallback(async (ref: TestItemTbomRef) => {
+    setRunDetailError(null);
+    setIsRunDetailLoading(true);
+
+    try {
+      const data = await ensureTbomData();
+      const project = data.projects.find((item) => item.project_id === ref.projectId);
+      const test = data.tests.find((item) => item.test_id === ref.testId);
+      const run = data.runs.find((item) => item.run_id === ref.runId);
+
+      if (!project || !test || !run) {
+        setRunDetailError('未找到对应的运行数据');
+        return;
+      }
+
+      setRunDetailContext({ project, test, run });
+    } catch (error) {
+      console.error('[ProductStructure] 加载 TBOM 运行数据失败', error);
+      setRunDetailError(error instanceof Error ? error.message : '加载运行详情失败');
+    } finally {
+      setIsRunDetailLoading(false);
+    }
+  }, [ensureTbomData]);
+
+  const closeRunDetail = useCallback(() => {
+    setRunDetailContext(null);
+    setRunDetailError(null);
+  }, []);
+
+  useEffect(() => {
+    setRunDetailError(null);
+  }, [testingState.selectedItem]);
+
+  useEffect(() => {
+    if (selectedBomType !== 'test') {
+      setRunDetailContext(null);
+      return;
+    }
+
+    ensureTbomData().catch((error) => {
+      console.error('[ProductStructure] 预加载 TBOM 数据失败', error);
+    });
+  }, [selectedBomType, ensureTbomData]);
 
   const toggleDimensionManager = useCallback(() => {
     setIsDimensionManagerOpen(prev => !prev);
@@ -4795,6 +4874,9 @@ const buildNodeTags = (node: BomNode) => {
                       selectedItem={testingState.selectedItem}
                       onSelectProject={selectTestingProject}
                       onSelectItem={selectTestingItem}
+                      onOpenRunDetail={handleOpenRunDetail}
+                      runDetailLoading={isRunDetailLoading}
+                      runDetailError={runDetailError}
                     />
                   </div>
                 ) : (
@@ -4986,6 +5068,14 @@ const buildNodeTags = (node: BomNode) => {
           </div>
         </div>
       </div>
+      {runDetailContext ? (
+        <TbomRunDetail
+          run={runDetailContext.run}
+          test={runDetailContext.test}
+          project={runDetailContext.project}
+          onClose={closeRunDetail}
+        />
+      ) : null}
     </div>
   );
 }

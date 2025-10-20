@@ -295,7 +295,10 @@ export const TEST_PROJECTS: TestProject[] = [
             owner: '李工'
           })
         ],
-        remarks: '三阶固有频率偏差偏大，需联动仿真团队核查边界约束建模。'
+        remarks: '三阶固有频率偏差偏大，需联动仿真团队核查边界约束建模。',
+        tbomRefs: [
+          { projectId: 'P-EX-001', testId: 'T-EX-001', runId: 'R-EX-001' }
+        ]
       }),
       item({
         id: 'TEST-ITEM-002',
@@ -327,7 +330,10 @@ export const TEST_PROJECTS: TestProject[] = [
             owner: '热控小组'
           })
         ],
-        remarks: '阻尼比偏低，计划追加涂层状态检查。'
+        remarks: '阻尼比偏低，计划追加涂层状态检查。',
+        tbomRefs: [
+          { projectId: 'P-EX-001', testId: 'T-EX-001', runId: 'R-EX-004' }
+        ]
       })
     ],
     insights: [
@@ -403,7 +409,10 @@ export const TEST_PROJECTS: TestProject[] = [
         },
         metrics: [],
         attachments: [],
-        remarks: '需在试前完成热源系统精度复验。'
+        remarks: '需在试前完成热源系统精度复验。',
+        tbomRefs: [
+          { projectId: 'P-EX-002', testId: 'T-EX-002', runId: 'R-EX-002' }
+        ]
       })
     ],
     insights: [

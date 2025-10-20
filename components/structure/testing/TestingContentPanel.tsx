@@ -1,6 +1,13 @@
 import { Fragment, useMemo } from 'react';
 import type { ReactElement } from 'react';
-import type { TestItem, TestProject, TestTypeDescriptor, TestingNodeReference, TestingStats } from './types';
+import type {
+  TestItem,
+  TestItemTbomRef,
+  TestProject,
+  TestTypeDescriptor,
+  TestingNodeReference,
+  TestingStats,
+} from './types';
 import {
   TEST_STRUCTURE_INDEX,
   collectProjectsByTypeAtStructure,
@@ -16,6 +23,9 @@ interface TestingContentPanelProps {
   selectedItem: TestItem | null;
   onSelectProject: (projectId: string) => void;
   onSelectItem: (projectId: string, itemId: string) => void;
+  onOpenRunDetail?: (ref: TestItemTbomRef) => void;
+  runDetailLoading?: boolean;
+  runDetailError?: string | null;
 }
 
 const statusLabel: Record<TestProject['status'], string> = {
@@ -186,7 +196,10 @@ export function TestingContentPanel({
   selectedProject,
   selectedItem,
   onSelectProject,
-  onSelectItem
+  onSelectItem,
+  onOpenRunDetail,
+  runDetailLoading = false,
+  runDetailError = null
 }: TestingContentPanelProps) {
   const breadcrumbs = useMemo(() => {
     const path = selectedNode?.structurePath ?? [];
@@ -440,6 +453,39 @@ export function TestingContentPanel({
                 状态：{selectedItem.status === 'scheduled' ? '排程' : statusLabel[selectedItem.status as TestProject['status']] ?? selectedItem.status}
               </span>
             </div>
+            {selectedItem.tbomRefs?.length ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {selectedItem.tbomRefs.map((ref, index) => {
+                  const label = selectedItem.tbomRefs && selectedItem.tbomRefs.length > 1
+                    ? `查看运行 ${ref.runId}`
+                    : '查看运行详情';
+                  return (
+                    <button
+                      key={`${ref.projectId}-${ref.runId}-${index}`}
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => {
+                        if (!onOpenRunDetail || runDetailLoading) return;
+                        onOpenRunDetail(ref);
+                      }}
+                      disabled={!onOpenRunDetail || runDetailLoading}
+                    >
+                      <i className="ri-route-line text-sm" aria-hidden />
+                      {label}
+                    </button>
+                  );
+                })}
+                {runDetailLoading ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-blue-600" role="status">
+                    <i className="ri-loader-4-line animate-spin" />
+                    加载运行详情…
+                  </span>
+                ) : null}
+                {!runDetailLoading && runDetailError ? (
+                  <span className="text-xs text-rose-600" role="alert">{runDetailError}</span>
+                ) : null}
+              </div>
+            ) : null}
             <div className="mt-2 grid gap-2 text-xs text-blue-900 md:grid-cols-2">
               <span>试验方法：{selectedItem.method}</span>
               <span>夹具：{selectedItem.fixture}</span>
