@@ -23,8 +23,7 @@ const buildInitialExpanded = (projects: TestProject[]): string[] => {
   });
   const firstProject = projects[0];
   if (firstProject) {
-    firstProject.structurePath.forEach(id => expanded.add(`structure:${id}`));
-    expanded.add(`type:${firstProject.structurePath.join('/')}:${firstProject.typeId}`);
+    firstProject.structurePath.slice(0, 2).forEach(id => expanded.add(`structure:${id}`));
   }
   return Array.from(expanded);
 };

@@ -1,8 +1,8 @@
 
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Dashboard from '../components/dashboard/Dashboard';
@@ -25,13 +25,23 @@ export default function Home() {
 
 function HomeContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const fromEbom = searchParams.get('from') === 'ebom';
   const deepLinkNode = searchParams.get('node');
+  const deepLinkPath = searchParams.get('path');
   const [activeModule, setActiveModule] = useState(
     fromEbom ? 'structure' : 'dashboard',
   );
   const [selectedProject, setSelectedProject] = useState('航空发动机项目');
   const badgeCount = deepLinkNode ? 3 : 0;
+
+  const tbomHref = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('from', 'ebom');
+    if (deepLinkNode) params.set('node', deepLinkNode);
+    if (deepLinkPath) params.set('path', deepLinkPath);
+    return `/tbom${params.toString() ? `?${params.toString()}` : ''}`;
+  }, [deepLinkNode, deepLinkPath]);
 
   useEffect(() => {
     if (fromEbom) {
@@ -87,8 +97,21 @@ function HomeContent() {
                   <p className="text-xs text-blue-700">
                     当前节点：{deepLinkNode ?? '未指定'}
                   </p>
+                  <p className="mt-2 text-xs text-blue-700">
+                    已推出新的试验 BOM 页面，可直接在专用视图中完成筛选与深链。
+                  </p>
                 </div>
-                <NodeTestBadge count={badgeCount} />
+                <div className="flex flex-col items-start gap-2 md:items-end">
+                  <NodeTestBadge count={badgeCount} />
+                  <button
+                    type="button"
+                    onClick={() => router.push(tbomHref)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
+                  >
+                    <i className="ri-external-link-line" />
+                    打开 TBOM 结构导航
+                  </button>
+                </div>
               </div>
             </section>
           )}

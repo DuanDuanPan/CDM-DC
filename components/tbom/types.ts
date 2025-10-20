@@ -34,11 +34,13 @@ export const TbomTestSchema = z.object({
   ebom_path: z.string().optional(),
 });
 
+export const TBOM_RUN_STATUSES = ['planned', 'executing', 'completed', 'aborted'] as const;
+
 export const TbomRunSchema = z.object({
   run_id: z.string(),
   test_id: z.string(),
   run_index: z.number(),
-  status: z.enum(['planned', 'executing', 'completed', 'aborted']),
+  status: z.enum(TBOM_RUN_STATUSES),
   planned_at: z.string(),
   executed_at: z.string().optional(),
   operator: z.string().optional(),
@@ -76,6 +78,7 @@ export type TbomRelation = z.infer<typeof TbomRelationSchema>;
 export type TbomProject = z.infer<typeof TbomProjectSchema>;
 export type TbomTest = z.infer<typeof TbomTestSchema>;
 export type TbomRun = z.infer<typeof TbomRunSchema>;
+export type TbomRunStatus = (typeof TBOM_RUN_STATUSES)[number];
 export type TbomAttachment = z.infer<typeof TbomAttachmentSchema>;
 export type TbomTestCardRow = z.infer<typeof TbomTestCardRowSchema>;
 export type TbomTimeseriesPoint = z.infer<typeof TbomTimeseriesPointSchema>;

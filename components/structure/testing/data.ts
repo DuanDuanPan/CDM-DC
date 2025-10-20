@@ -32,23 +32,7 @@ export const TEST_STRUCTURE_TREE: TestStructureNode[] = [
                 name: '机匣结构',
                 level: 3,
                 description: '涵盖高压、中压、低压机匣',
-                children: [
-                  {
-                    id: 'case-complete',
-                    name: '结构整栋',
-                    level: 4,
-                    description: '整机匣装配体',
-                    children: [
-                      {
-                        id: 'case-component',
-                        name: '机匣组件',
-                        level: 5,
-                        description: '机匣组件级别',
-                        children: []
-                      }
-                    ]
-                  }
-                ]
+                children: []
               },
               {
                 id: 'rotor-structure',
@@ -226,7 +210,7 @@ export const TEST_PROJECTS: TestProject[] = [
     id: 'TEST-PJT-001',
     code: 'T-2025-ENG-STR-001',
     name: '机匣组件结构振动评估',
-    structurePath: ['engine', 'propulsion-system', 'structural-system', 'case-structure', 'case-complete', 'case-component'],
+    structurePath: ['engine', 'propulsion-system', 'structural-system', 'case-structure'],
     typeId: 'structural-dynamic',
     status: 'in-progress',
     owner: '王向阳',

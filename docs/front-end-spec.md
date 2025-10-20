@@ -4,6 +4,9 @@
 > 信息来源：docs/brief.md（2025-10-14）、docs/prd.md（评审基线 v0.2 冻结，2025-10-15）、现有前端代码（Next.js 15 App Router，Tailwind，组件目录）
 > 版本：评审基线 v0.2（冻结）｜日期：2025-10-15
 
+参考资料：
+- 《数字线索 · 角色体系与 XBOM 关系》：docs/digital-thread-roles-xbom.md（面向型号总师与工业软件方案）
+
 ---
 
 ## 1. Introduction
@@ -52,6 +55,7 @@
 | 2025-10-15 | v0.1-draft | 初始化引言与 UX 目标/原则（结合现有代码与 PRD v0.2） | UX Expert |
 | 2025-10-15 | v0.2-draft | 增补 IA 2.2/2.3、User Flows 3.1–3.3、视觉/可达性/响应式/动效/性能/下一步 | UX Expert |
 | 2025-10-15 | v0.2（冻结） | 冻结评审基线：1–9 章成稿；与 PRD v0.2/NFR 对齐；不含代码改动 | UX Expert |
+| 2025-10-16 | v0.3-draft | 调整试验BOM嵌入策略：XBOM Test Tab 呈现、深链/Tab 切换流程更新 | Product Owner |
 
 ---
 
@@ -75,7 +79,7 @@ graph TD
   D --> D3[Validation Matrix / Reviews]
 
   D1 --> D1a[Node Detail: KPIs • Docs • Params • 3D • Links]
-  D1 --> D1b[Jump: TestBOM (reserved)]
+  D1 --> D1b[Switch Tab → Test (Trial BOM)]
 
   E --> E1[Scheme Compare]
   E --> E2[Condition Compare]
@@ -83,7 +87,7 @@ graph TD
   E --> E4[Design vs Requirement]
   E --> E5[EBOM Baseline Diff]
 
-  D1b -.-> T[TBOM (Planned)]
+  D1b -.-> T[Trial BOM View (XBOM Test Tab)]
   T --> T1[Structure: Type→Project→Test→Run]
   T --> T2[Run Detail: Records/Results/Events]
   T --> T3[Import Wizard]
@@ -96,9 +100,10 @@ graph TD
   - Dashboard｜Data Explorer｜Product Structure (XBOM)｜Compare｜Upload｜Completion｜Relation Graph｜Settings
 
 - Secondary Navigation（模块内）
-  - Product Structure（XBOM）
+- Product Structure（XBOM）
     - 左：树（EBOM/仿真入口）｜右：详情面板（基础信息、KPI、多视图、文档清单、知识轨、时间线、评审、影响分析、迷你树对比等）
-    - 节点详情内预留“跳转 试验BOM”按钮（过渡方案），用于承载 TBOM 深链参数
+    - 顶部 Tab：Overview｜Definition｜Design｜Simulation｜Test｜Process｜Management（Trial BOM 以 `Test` Tab 呈现）
+    - 节点详情内“跳转 试验BOM”按钮切换到 `Test` Tab，并携带深链参数驱动试验视图聚焦
   - Compare Center
     - Compare Modes：方案｜工况｜试验/仿真｜设计/需求｜EBOM 基线
     - Data Types：参数｜曲线｜模型｜图片｜文档
@@ -107,7 +112,7 @@ graph TD
 ### 2.3 Rationale（权衡与假设）
 
 - 侧边栏主导航 + 模块内二级导航与现有代码一致，降低学习成本。
-- TBOM 暂标注为 Planned，通过 XBOM 已预留入口承载深链参数，便于渐进式上线与回滚。
+- TBOM 作为 XBOM 的 `Test` Tab 直接呈现，复用现有导航结构而不另起路由；通过 Feature Flag 渐进启用，必要时可回退到原有摘要视图。
 - Compare 模式与数据类型沿用现状，后续仅在模式层扩展“试验维度”，减少 UI 变化范围。
 - 待确认：XBOM 详情面板默认展开策略（KPI/文档/知识/时间线/评审等）。
 
@@ -116,44 +121,44 @@ graph TD
 ## 3. User Flows
 
 ### 3.1 从 XBOM 节点跳转到 TBOM（深链过滤）
-用户目标：从 EBOM 树节点出发，在 TBOM 中自动按结构节点过滤，查看挂接试验及运行。
+用户目标：在产品结构(XBOM) 中直接切换到试验视图，按结构节点自动过滤并查看挂接试验/运行。
 
-对接点：`components/structure/ebom/EbomDetailPanel.tsx`（“跳转 试验BOM”）；`components/structure/ProductStructure.tsx`；`components/compare/CompareCenter.tsx`。
+对接点：`components/structure/ebom/EbomDetailPanel.tsx`（“跳转 试验BOM”按钮）；`components/structure/ProductStructure.tsx`（Tab 切换与状态管理）；`components/tbom/*`（树/详情/关联）。
 
 主要步骤：
 1. 在 XBOM 左侧树选择节点，右侧详情展示节点信息与操作。
-2. 点击“跳转 试验BOM”。
-3. 构造深链参数：`?from=ebom&node=<ebom_node_id>&path=<ebom_path>`。
-4. 进入 TBOM，读取参数并启用“按结构节点过滤”，聚焦相关 Test/TestRun。
-5. 用户继续筛选（类型/时间/状态），进入运行详情。
+2. 点击“跳转 试验BOM”按钮。
+3. 构造/更新查询参数：`?from=ebom&node=<ebom_node_id>&path=<ebom_path>`，并将 `selectedBomType` 与 `activeTab` 设置为 `test`。
+4. XBOM `Test` Tab 渲染试验视图组件，读取参数并应用结构节点过滤，高亮相关 Test/TestRun。
+5. 用户继续筛选（类型/时间/状态）或展开运行详情。
 
-分支/边界：无挂接试验（空态引导）；参数不完整（回退默认视图并提示）；权限受限（仅计数/受限标签）。
+分支/边界：无挂接试验（空态引导）；参数缺失（回退默认视图并提示）；权限受限（仅显示计数/受限标记）。
 
-可达性：按钮可键盘激活；进入 TBOM 后焦点置于过滤条并朗读条件。
+可达性：按钮支持键盘激活；切换 Tab 后焦点落在筛选条并通过 `aria-live` 朗读当前过滤条件。
 
 ```mermaid
 flowchart LR
   U[User] -->|select node| X[EBOM Detail]
-  X -->|click 跳转 试验BOM| DL[Build Deep Link\n?from=ebom&node&path]
-  DL --> T[TBOM Entry]
-  T -->|read params| F[Apply EBOM-node Filter]
+  X -->|click 跳转 试验BOM| DL[Build Deep Link\nupdate query]
+  DL --> SW[Switch Tab → Test]
+  SW -->|render TBOM view| F[Apply EBOM Filter]
   F --> L[List Tests/Runs]
   L --> D[Run Detail]
 ```
 
 ---
 
-### 3.2 最小上载导入向导（CSV/JSON → TBOM）
-用户目标：通过最小契约数据包快速导入，立即在 TBOM 结构与运行详情可见。
+### 3.2 最小上载导入向导（CSV/JSON → 试验视图）
+用户目标：通过最小契约数据包快速导入，立即在 XBOM `Test` Tab 的结构与运行详情可见。
 
-对接点：TBOM 模块顶部工具区（规范先行）；复用 `components/common/*`、导出工具参考 `components/structure/ebom/exportUtils.ts`。
+对接点：XBOM `Test` Tab 顶部工具区（规范先行）；复用 `components/common/*`、导出工具参考 `components/structure/ebom/exportUtils.ts`。
 
 主要步骤：
 1. 点击“导入数据包” → 选择类型（JSON/CSV/ZIP）。
 2. 客户端校验（schema/ID 参照/单位采样率口径）。
 3. 映射确认（自动映射为主；异常字段高亮并建议修正）。
 4. 提交导入 → 展示结果摘要（计数/警告/错误/忽略项），支持错误行/日志下载。
-5. 跳转 TBOM 结构视图并高亮新增/更新的 Project/Test/Run。
+5. 切换/保持在 XBOM `Test` Tab，自动高亮新增或更新的 Project/Test/Run。
 
 策略选项：增量 vs 覆盖；严格 vs 容错。
 
@@ -168,7 +173,7 @@ flowchart LR
   CV --> MAP[Auto Map Fields\n+ Suggestions]
   MAP --> IMP[Import & Index]
   IMP --> SUM[Summary\ncounts/warnings/errors]
-  SUM --> TB[TBOM View\nhighlight new/updated]
+  SUM --> TB[Test Tab View\nhighlight new/updated]
 ```
 
 ---
@@ -179,7 +184,7 @@ flowchart LR
 对接点：Compare 模式 `components/compare/CompareCenter.tsx`；导出工具 `components/structure/ebom/exportUtils.ts`；查看器 `components/common/*`。
 
 主要步骤：
-1. 在 TBOM 运行详情中勾选对比通道（`ACC_*` / `PSD_*` / `FRF_*` / `COH_*`）。
+1. 在 XBOM `Test` Tab 的运行详情中勾选对比通道（`ACC_*` / `PSD_*` / `FRF_*` / `COH_*`）。
 2. 点击“送入 Compare（试验/仿真）”，构造 compare payload（`run_id`、通道与单位/采样率元数据）。
 3. Compare 载入试验通道；用户选择一个仿真结果（`simulation_result_id`），系统自动对齐单位/采样率（必要时提示转换/重采样）。
 4. 进行图表交互分析（缩放/区间/光标对齐/读数），可导出 CSV/PNG。
@@ -370,7 +375,8 @@ flowchart LR
 - Secondary Navigation（模块内）
   - Product Structure（XBOM）
     - 左：树（EBOM/仿真入口）｜右：详情面板（基础信息、KPI、多视图、文档清单、知识轨、时间线、评审、影响分析、迷你树对比等）
-    - 节点详情内预留“跳转 试验BOM”按钮（过渡方案），用于承载 TBOM 深链参数
+    - 顶部 Tab：Overview｜Definition｜Design｜Simulation｜Test｜Process｜Management（Trial BOM 以 `Test` Tab 呈现）
+    - 节点详情内“跳转 试验BOM”按钮切换到 `Test` Tab，并携带深链参数驱动试验视图聚焦
   - Compare Center
     - Compare Modes：方案｜工况｜试验/仿真｜设计/需求｜EBOM 基线
     - Data Types：参数｜曲线｜模型｜图片｜文档
@@ -378,12 +384,12 @@ flowchart LR
 
 - Breadcrumb Strategy
   - XBOM：在 EBOM 详情区域显示“树路径”作为面包屑（示例：根/子系统/组件）
-  - TBOM（规划中）：`EBOM 节点路径 → TBOM` 作为反向导航的面包屑
+- 试验视图（Test Tab）：`EBOM 节点路径 → Test` 作为反向导航的面包屑
 
 ### 2.3 Rationale（权衡与假设）
 
 - 选择保持“侧边栏主导航 + 模块内二级导航”的结构，与现有代码一致，避免引入新的导航范式；可降低学习成本。
-- 将 TBOM 标注为“Planned”，并通过 XBOM 的已预留入口承载深链参数，保证渐进式上线、可回滚。
+- TBOM 作为 XBOM 的 `Test` Tab 直接呈现，复用现有导航结构而不另起路由；通过 Feature Flag 渐进启用，必要时可回退到原有摘要视图。
 - Compare 的模式与数据类型沿用现状，后续增加“试验维度”仅在模式层扩展，减少 UI 变更范围。
 - TODO（需评审确认）：XBOM 详情面板的分区与标签是否需要精简（KPI/文档/知识/时间线/评审等项的默认展开策略）。
 
@@ -392,30 +398,30 @@ flowchart LR
 ## 3. User Flows
 
 ### 3.1 从 XBOM 节点跳转到 TBOM（深链过滤）
-**用户目标**：从 EBOM 树节点出发，在 TBOM 中自动按结构节点过滤，查看挂接试验及运行。
+**用户目标**：在产品结构(XBOM) 中直接切换到试验视图，按结构节点自动过滤并查看挂接试验/运行。
 
 **相关代码位置（参考）**：
-- 入口按钮（过渡方案已预留）：`components/structure/ebom/EbomDetailPanel.tsx` 附近“跳转 试验BOM”
-- XBOM 模块外层：`components/structure/ProductStructure.tsx`
-- Compare 模式清单：`components/compare/CompareCenter.tsx`
+- 入口按钮：`components/structure/ebom/EbomDetailPanel.tsx`“跳转 试验BOM”
+- Tab 状态切换：`components/structure/ProductStructure.tsx`
+- 试验视图组件：`components/tbom/*`
 
 **主要步骤（标准路径）**：
 1. 在 XBOM 左侧树选择节点，右侧详情展示节点信息与操作。
-2. 点击“跳转 试验BOM”。
-3. 构造深链参数：`?from=ebom&node=<ebom_node_id>&path=<ebom_path>`。
-4. 进入 TBOM，读取参数并启用“按结构节点过滤”，聚焦相关 Test/TestRun。
-5. 用户继续筛选（类型/时间/状态），进入运行详情。
+2. 点击“跳转 试验BOM”按钮。
+3. 构造/更新查询参数：`?from=ebom&node=<ebom_node_id>&path=<ebom_path>`，同时将 `selectedBomType` / `activeTab` 设置为 `test`。
+4. XBOM `Test` Tab 渲染试验视图组件，应用结构节点过滤并高亮相关 Test/TestRun。
+5. 用户继续筛选（类型/时间/状态）或展开运行详情。
 
-**分支/边界**：无挂接试验（空态引导）；参数不完整（回退默认视图并提示）；权限受限（仅计数/受限标签）。
+**分支/边界**：无挂接试验（空态引导）；参数缺失（回退默认视图并提示）；权限受限（仅显示计数/受限标记）。
 
-**可达性**：按钮可键盘激活；进入 TBOM 后焦点置于过滤条并朗读条件。
+**可达性**：按钮支持键盘激活；切换 Tab 后焦点落在筛选条并通过 `aria-live` 朗读当前过滤条件。
 
 ```mermaid
 flowchart LR
   U[User] -->|select node| X[EBOM Detail]
-  X -->|click 跳转 试验BOM| DL[Build Deep Link\n?from=ebom&node&path]
-  DL --> T[TBOM Entry]
-  T -->|read params| F[Apply EBOM-node Filter]
+  X -->|click 跳转 试验BOM| DL[Build Deep Link\nupdate query]
+  DL --> SW[Switch Tab → Test]
+  SW -->|render TBOM view| F[Apply EBOM Filter]
   F --> L[List Tests/Runs]
   L --> D[Run Detail]
 ```
@@ -426,7 +432,7 @@ flowchart LR
 **用户目标**：通过最小契约数据包快速导入，立即在 TBOM 结构与运行详情可见。
 
 **对接点**：
-- 导入入口：TBOM 模块顶部工具区（规范先行）。
+- 导入入口：XBOM `Test` Tab 顶部工具区（规范先行）。
 - 复用组件：PDF/Image 预览（`components/common/*`）、导出工具（参考 `components/structure/ebom/exportUtils.ts`）。
 
 **主要步骤**：
@@ -434,7 +440,7 @@ flowchart LR
 2. 客户端校验（schema/ID 参照/单位采样率口径）。
 3. 映射确认（自动映射为主；异常字段高亮并建议修正）。
 4. 提交导入 → 展示结果摘要（计数/警告/错误/忽略项），支持错误行/日志下载。
-5. 跳转 TBOM 结构视图并高亮新增/更新的 Project/Test/Run。
+5. 切换/保持在 XBOM `Test` Tab，自动高亮新增或更新的 Project/Test/Run。
 
 **策略选项**：增量 vs 覆盖；严格 vs 容错。
 
@@ -449,5 +455,5 @@ flowchart LR
   CV --> MAP[Auto Map Fields\n+ Suggestions]
   MAP --> IMP[Import & Index]
   IMP --> SUM[Summary\ncounts/warnings/errors]
-  SUM --> TB[TBOM View\nhighlight new/updated]
+  SUM --> TB[Test Tab View\nhighlight new/updated]
 ```

@@ -118,7 +118,7 @@ export default function Header({ selectedProject, onProjectChange }: HeaderProps
             </div>
             <h1 className="text-xl font-semibold text-gray-900">产品过程数据中心</h1>
           </div>
-          
+
           <div className="relative">
             <button
               onClick={() => setShowProjects(!showProjects)}

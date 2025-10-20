@@ -2,6 +2,14 @@
 
 > 项目：产品过程数据中心 · 试验BOM增强｜维护：文档基线
 
+## 2025-10-16 · v0.3 · Draft（进行中）
+### 2025-10-20 · 文档更新（角色与 XBOM）
+- 新增《数字线索 · 角色体系与 XBOM 关系》（docs/digital-thread-roles-xbom.md），从型号总师与工业软件方案视角，梳理角色职责、读写边界、与 XBOM 的映射契约与度量体系，并提出交互落地建议（模块首页、XBOM 视图、角色化入口、证据统一抽屉）。
+- `/tbom` 结构导航页上线：通过深链或直接访问进入，大纲支持类型/状态筛选、深链自动展开与 aria-live 公告；左侧导航暂不展示独立入口。
+- 新增移动端抽屉式“关联与跳转”面板，桌面端保留三列布局；错误态提供重试按钮并记录 `console.warn`。
+- `app/page.tsx` 在接收 `?from=ebom` 深链时提示并引导跳转到 `/tbom` 专用页面。
+- `docs/ui-architecture.md` 更新状态管理章节，补充 `/tbom` 布局、深链与错误处理说明。
+
 ## 2025-10-15 · v0.2 · 冻结（Frozen）
 - PRD（docs/prd.md）升级为“评审基线 v0.2（冻结）”，并结构化扩展：
   - 将 Story 1.9（EBOM 结构视图：试验挂接入口与徽标）归位到第 8 章，与 1.1–1.8 并列。
@@ -43,7 +51,7 @@
 - 新增 docs/front-end-spec.md 并冻结为评审基线 v0.2：
   - IA：站点地图、导航结构（侧边栏主导航 + 模块内二级导航）、权衡与假设。
   - User Flows：
-    - 3.1 XBOM→TBOM 深链过滤（Mermaid）
+    - 3.1 XBOM→Test Tab 深链过滤（Mermaid）
     - 3.2 最小上载导入向导（Mermaid）
     - 3.3 运行详情→Compare（试验/仿真）→证据导出（Mermaid）
   - 视觉系统：色板/排版/图标/间距（对齐 Tailwind 使用）。
@@ -52,6 +60,7 @@
   - 动效与微交互：原则与关键动效建议。
   - 性能：目标与设计策略（分块/抽稀/Worker/虚拟滚动等）。
   - 下一步：线框任务清单与交接检查表。
+- 2025-10-16 更新（v0.3-draft）：试验BOM 视图内嵌 XBOM `Test` Tab，调整导航/用户流程/导入向导与深链说明，Mermaid 流程同步更新。
 
 ### Frontend Architecture（UI Architecture） · v0.2 · 冻结（Frozen）
 - 新增 docs/ui-architecture.md 并冻结为评审基线 v0.2：
@@ -59,6 +68,7 @@
   - 2 技术栈（补充 fetch+Zod、Visualization 重库懒加载/路由级拆分、HTTP 轻封装）。
   - 3–10 章节：项目结构、状态管理、API 封装、路由与拆分边界、样式约定、测试矩阵、环境变量、开发者规范。
   - 不含代码改动，仅文档更新；与 PRD v0.2 与 front-end-spec v0.2 协同一致。
+- 2025-10-16 更新：路由章节改为 XBOM 单页内 Tab 嵌入试验视图，明确深链参数与 Feature Flag 回滚策略。
 
 ### ADR（Architecture Decision Records） · 新建索引与草案
 - 新建 `docs/architecture/adr-000-index.md`（索引）。

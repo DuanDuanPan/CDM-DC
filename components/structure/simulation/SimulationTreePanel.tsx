@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import Tooltip from '@/components/common/Tooltip';
+import type { ReactNode } from 'react';
 import { SIMULATION_DIMENSION_DESCRIPTORS, SIMULATION_TYPE_DICTIONARY, getSimulationTypeInfo } from './dimensions';
 import { SIMULATION_STRUCTURE_TREE, type SimulationStructureDefinition } from './structureTree';
 import type { SimulationCategory, SimulationDimension, SimulationInstance } from './types';
@@ -120,6 +121,36 @@ const updateBadges = (nodes: TreeNode[]) => {
       updateBadges(node.children);
     }
   });
+};
+
+const buildSimulationTooltip = (node: TreeNode) => {
+  const hasMeta = Boolean(node.meta);
+  const hasSubtitle = Boolean(node.subtitle);
+  const badgeInfo = node.badge;
+  const countInfo = typeof node.instanceCount === 'number' ? node.instanceCount : undefined;
+
+  if (!hasMeta && !hasSubtitle && !badgeInfo && countInfo === undefined) {
+    return null;
+  }
+
+  return (
+    <div className="max-w-[240px] space-y-1.5 text-[11px] leading-relaxed text-slate-100">
+      {badgeInfo ? (
+        <div className="flex items-center justify-between">
+          <span className="text-slate-300">标记</span>
+          <span>{badgeInfo}</span>
+        </div>
+      ) : null}
+      {countInfo !== undefined ? (
+        <div className="flex items-center justify-between">
+          <span className="text-slate-300">包含实例</span>
+          <span>{countInfo}</span>
+        </div>
+      ) : null}
+      {hasSubtitle ? <p className="text-slate-200">{node.subtitle}</p> : null}
+      {hasMeta ? <p className="text-slate-200">{node.meta}</p> : null}
+    </div>
+  );
 };
 
 const sortTreeNodes = (nodes: TreeNode[]) => {
@@ -366,6 +397,7 @@ const SimulationTreePanel = ({
       const expanded = expandedNodeIds.includes(node.id);
       const hasChildren = node.children.length > 0;
       const selected = isSelected(node);
+      const tooltipContent = buildSimulationTooltip(node);
 
       return (
         <div key={node.id} className="space-y-1">
@@ -377,24 +409,39 @@ const SimulationTreePanel = ({
             }`}
             style={{ paddingLeft: `${Math.min(node.depth, 6) * 12}px` }}
           >
-            <button
-              className={`flex items-center gap-2 ${hasChildren ? 'text-left flex-1' : 'text-left flex-1'}`}
-              onClick={() => {
-                if (hasChildren) {
-                  onToggleExpand(node.id);
-                }
-                onSelectNode(node.reference);
-              }}
-              type="button"
-            >
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <button
+                className={`flex min-w-0 flex-1 items-center gap-2 ${hasChildren ? 'text-left' : 'text-left'}`}
+                onClick={() => {
+                  if (hasChildren) {
+                    onToggleExpand(node.id);
+                  }
+                  onSelectNode(node.reference);
+                }}
+                type="button"
+              >
               {hasChildren && (
                 <span className="text-[10px] text-gray-400">
                   <i className={`ri-arrow-${expanded ? 'down' : 'right'}-s-line`} />
                 </span>
               )}
               {node.icon && <i className={`${node.icon} text-sm text-gray-400`} />}
-              <span className="truncate font-medium text-gray-700">{node.label}</span>
-            </button>
+                <span className="truncate font-medium text-gray-700">{node.label}</span>
+              </button>
+              {tooltipContent ? (
+                <Tooltip content={tooltipContent}>
+                  <button
+                    type="button"
+                    onClick={(event) => event.stopPropagation()}
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:text-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
+                    aria-label={`查看${node.label}详情`}
+                  >
+                    <i className="ri-information-line text-xs" />
+                    <span className="sr-only">查看{node.label}详情</span>
+                  </button>
+                </Tooltip>
+              ) : null}
+            </div>
             {node.badge && (
               <span
                 className={`inline-flex min-w-[40px] justify-center rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap flex-shrink-0 ${node.badgeClass}`}
@@ -403,14 +450,6 @@ const SimulationTreePanel = ({
               </span>
             )}
           </div>
-          {node.meta && (
-          <div
-            className="ml-[calc(12px*var(--depth))] pl-6 pr-2 text-[10px] text-gray-400"
-            style={{ '--depth': Math.min(node.depth, 6) } as CSSProperties}
-          >
-              {node.meta}
-            </div>
-          )}
           {expanded && hasChildren && (
             <div className="ml-3 border-l border-dashed border-gray-200 pl-2">{renderNodes(node.children)}</div>
           )}

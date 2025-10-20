@@ -2,6 +2,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Tooltip from '@/components/common/Tooltip';
 import { requirementRoles, requirementRoleInsights } from './data/requirementRoles';
 import { requirementsByNode } from './data/requirements';
 import RequirementDetailPanel from './RequirementDetailPanel';
@@ -29,6 +30,7 @@ import { TestingTreePanel } from './testing/TestingTreePanel';
 import { TestingContentPanel } from './testing/TestingContentPanel';
 import { TEST_STRUCTURE_TREE, TEST_PROJECTS, TEST_TYPES } from './testing/data';
 import { useTestingExplorerState } from './testing/useTestingExplorerState';
+import ProductStructureHome from './ProductStructureHome';
 
 interface BomNode {
   id: string;
@@ -38,6 +40,7 @@ interface BomNode {
   unitType?: string;
   nodeCategory?: string;
   schemeType?: string;
+  description?: string;
   // 扩展字段：用于专业视图判定
   subsystemType?: string; // e.g., 'compressor', 'combustor'
   children?: BomNode[];
@@ -331,7 +334,7 @@ export default function ProductStructure() {
   const [selectedRole, setSelectedRole] = useState('system');
   const [selectedRequirementRole, setSelectedRequirementRole] = useState<RequirementRoleKey>('system-team');
   const [selectedVersion, setSelectedVersion] = useState('v2.1');
-  const [activeTab, setActiveTab] = useState('requirement');
+  const [activeTab, setActiveTab] = useState('module-home');
   const [showDetailedReport, setShowDetailedReport] = useState(false);
   const [activePhase, setActivePhase] = useState('concept');
   const [requirementsInView, setRequirementsInView] = useState(false);
@@ -2102,6 +2105,17 @@ export default function ProductStructure() {
     }
   }, [selectedBomType, clearJumpHistory, simulationDispatch, resetTestingState]);
 
+  const handleHomeNavigate = useCallback(
+    (target: { bomType: 'solution' | 'simulation' | 'test' | 'design' | 'requirement'; tab?: string }) => {
+      autoTransitionRef.current = true;
+      handleBomTypeChange(target.bomType);
+      if (target.tab) {
+        setActiveTab(target.tab);
+      }
+    },
+    [handleBomTypeChange, setActiveTab]
+  );
+
   // 读取对比中心写入的 EBOM 定位指令（一次性消费）
   useEffect(() => {
     try {
@@ -2477,7 +2491,7 @@ export default function ProductStructure() {
 
     const storedTab = getStoredTabPreference(selectedBomType);
     const normalizedTab = storedTab === 'solution' ? 'overview' : storedTab;
-    const availableTabs = selectedBomType === 'solution'
+    const typeTabs = selectedBomType === 'solution'
       ? ['overview', 'definition', 'design', 'simulation', 'test', 'process', 'management']
       : selectedBomType === 'simulation'
       ? ['simulation']
@@ -2487,21 +2501,21 @@ export default function ProductStructure() {
       ? ['structure', 'cockpit']
       : ['structure'];
 
+    const availableTabs = ['module-home', ...typeTabs];
+
     if (normalizedTab && availableTabs.includes(normalizedTab)) {
       setActiveTab(normalizedTab);
       return;
     }
 
-    if (selectedBomType === 'solution') {
-      setActiveTab('overview');
-    } else if (selectedBomType === 'simulation') {
-      setActiveTab('simulation');
-    } else if (selectedBomType === 'requirement') {
-      setActiveTab('requirement');
-    } else if (selectedBomType === 'design') {
-      setActiveTab('structure');
+    if (activeTab === 'module-home') {
+      return;
+    }
+
+    if (typeTabs.length > 0) {
+      setActiveTab(typeTabs[0]);
     } else {
-      setActiveTab('structure');
+      setActiveTab('module-home');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBomType]);
@@ -2522,7 +2536,7 @@ export default function ProductStructure() {
   }, [selectedBomType, clearJumpHistory]);
 
   useEffect(() => {
-    if (selectedBomType === 'requirement' && activeTab !== 'requirement' && !autoTransitionRef.current) {
+    if (selectedBomType === 'requirement' && activeTab !== 'requirement' && activeTab !== 'module-home' && !autoTransitionRef.current) {
       clearJumpHistory();
     }
     previousActiveTabRef.current = activeTab;
@@ -2683,11 +2697,30 @@ const buildNodeTags = (node: BomNode) => {
     const iconTone = getNodeTone(node);
     const tags = buildNodeTags(node);
     const primaryName = node.name.replace(/\s*\(.*?\)\s*/g, '').trim();
+    const nodeTooltip = (
+      <div className="max-w-[240px] space-y-1.5 text-[11px] leading-relaxed text-slate-100">
+        <div className="flex items-center justify-between">
+          <span className="text-slate-300">节点 ID</span>
+          <span className="font-mono">{node.id}</span>
+        </div>
+        {node.description ? <p className="text-slate-200">{node.description}</p> : null}
+        {tags.length ? (
+          <div>
+            <div className="text-slate-300">标签</div>
+            <ul className="mt-1 space-y-0.5 text-slate-100">
+              {tags.map((tag) => (
+                <li key={`${node.id}-${tag.label}`}>{tag.label}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    );
 
     return (
       <div key={node.id}>
         <div
-          className={`relative flex items-start gap-3 rounded-lg border border-transparent px-3 py-2 text-sm leading-5 transition-colors hover:bg-slate-50 ${
+          className={`relative flex items-start gap-3 rounded-lg border border-transparent px-3 py-1.5 text-xs leading-5 transition-colors hover:bg-slate-50 ${
             isSelected ? 'border-blue-300 bg-white shadow-sm' : ''
           }`}
           style={{ marginLeft: `${node.level * 20}px` }}
@@ -2714,13 +2747,24 @@ const buildNodeTags = (node: BomNode) => {
             )}
           </div>
 
-          <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md ${iconTone.bg} ${iconTone.text}`}>
-            <i className={`${getNodeIcon(node)} text-base`}></i>
+          <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md ${iconTone.bg} ${iconTone.text}`}>
+            <i className={`${getNodeIcon(node)} text-sm`}></i>
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-w-0 items-center gap-2">
               <span className="truncate font-medium text-gray-900">{primaryName || node.name}</span>
+              <Tooltip content={nodeTooltip}>
+                <button
+                  type="button"
+                  onClick={(event) => event.stopPropagation()}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:text-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
+                  aria-label={`查看${primaryName || node.name}详情`}
+                >
+                  <i className="ri-information-line text-xs" />
+                  <span className="sr-only">查看{primaryName || node.name}详情</span>
+                </button>
+              </Tooltip>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-medium tracking-wide text-slate-400">{node.id}</span>
@@ -2738,6 +2782,7 @@ const buildNodeTags = (node: BomNode) => {
               ) : null}
             </div>
           </div>
+
         </div>
 
         {hasChildren && isExpanded && (
@@ -4465,7 +4510,8 @@ const buildNodeTags = (node: BomNode) => {
     <div className="h-full bg-slate-50">
       <div className="flex h-full gap-6 px-6 py-6">
         {/* 左侧产品结构区域 */}
-        <div className="w-80 flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
+        {activeTab !== 'module-home' && (
+        <div className="w-[26rem] min-w-[24rem] flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
           {/* 版本和BOM类型选择 - 缩小区域 */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between mb-3">
@@ -4489,7 +4535,7 @@ const buildNodeTags = (node: BomNode) => {
                 <button
                   key={bomType.id}
                   onClick={() => handleBomTypeChange(bomType.id)}
-                  className={`flex-1 flex items-center space-x-1 px-2 py-1 rounded text-xs transition-colors ${
+                  className={`flex-1 flex items-center space-x-1 px-3 py-1 rounded text-xs transition-colors ${
                     selectedBomType === bomType.id
                       ? 'bg-blue-600 text-white'
                       : 'bg-white hover:bg-gray-50 border border-gray-200 text-gray-700'
@@ -4514,6 +4560,7 @@ const buildNodeTags = (node: BomNode) => {
                 onSelectNode={selectTestingNode}
                 onToggleExpand={toggleTestingNode}
                 testTypes={TEST_TYPES}
+                density="compact"
               />
             ) : isSimulationBom && activeTab === 'simulation' ? (
               renderSimulationNavTree()
@@ -4549,6 +4596,7 @@ const buildNodeTags = (node: BomNode) => {
             </div>
           )}
         </div>
+        )}
 
         {/* 右侧内容区域 */}
         <div className="flex-1 flex flex-col">
@@ -4556,7 +4604,9 @@ const buildNodeTags = (node: BomNode) => {
           <div className={`border-b border-gray-200 bg-white px-6 py-4 transition-shadow ${contentScrolled ? 'shadow-sm' : ''}`}>
             <div className="flex space-x-8" role="tablist" aria-label="方案视图">
               {(() => {
-                const tabs: Array<{ id: string; name: string; icon: string }> = [];
+                const tabs: Array<{ id: string; name: string; icon: string }> = [
+                  { id: 'module-home', name: '首页', icon: 'ri-home-5-line' },
+                ];
                 if (selectedBomType === 'solution') {
                   tabs.push(
                     { id: 'overview', name: '概览', icon: 'ri-compass-3-line' },
@@ -4571,7 +4621,7 @@ const buildNodeTags = (node: BomNode) => {
                   tabs.push({ id: 'simulation', name: '仿真验证', icon: 'ri-computer-line' });
                 } else if (selectedBomType === 'requirement') {
                   tabs.push(
-                    { id: 'requirement', name: '需求详情', icon: 'ri-file-list-2-line' }
+                    { id: 'requirement', name: 'XBOM', icon: 'ri-node-tree' }
                   );
                 } else if (selectedBomType === 'design') {
                   tabs.push(
@@ -4612,8 +4662,19 @@ const buildNodeTags = (node: BomNode) => {
           className="flex-1 overflow-y-auto pr-1 pt-4 md:pt-6 pb-0 scroll-pt-20"
           onScroll={(e) => setContentScrolled((e.currentTarget as HTMLDivElement).scrollTop > 0)}
         >
+          {activeTab === 'module-home' ? (
+            <div
+              role="tabpanel"
+              id="panel-module-home"
+              aria-labelledby="tab-module-home"
+              className="h-full"
+            >
+              <ProductStructureHome currentBomType={selectedBomType} onQuickNavigate={handleHomeNavigate} />
+            </div>
+          ) : (
+            <>
             {/* 次级工具条：在内容顶部形成层级分隔，可放筛选/导出等操作 */}
-            {selectedBomType === 'requirement' && (
+            {selectedBomType === 'requirement' && activeTab === 'requirement' && (
               <div className="sticky top-0 z-10 px-6 py-2 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-gray-100">
                 <div className="flex flex-col gap-2">
                   {isRequirementJumpContext && latestJump && (
@@ -4920,6 +4981,8 @@ const buildNodeTags = (node: BomNode) => {
                 </div>
               )}
             </div>
+            </>
+          )}
           </div>
         </div>
       </div>

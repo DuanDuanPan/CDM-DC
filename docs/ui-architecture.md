@@ -4,6 +4,9 @@
 > 信息来源：docs/prd.md（v0.2 冻结）、docs/front-end-spec.md（v0.2 冻结）、当前代码（Next.js 15 App Router / TS / Tailwind）
 > 版本：评审基线 v0.2（冻结）｜日期：2025-10-15
 
+参考资料：
+- 《数字线索 · 角色体系与 XBOM 关系》：docs/digital-thread-roles-xbom.md（角色职责/读写边界/映射契约与度量体系）
+
 ---
 
 ## 1. Template and Framework Selection
@@ -23,6 +26,7 @@
 |---|---|---|---|
 | 2025-10-15 | v0.1 | 初始化：基于现有代码确定框架与模板策略 | Architect |
 | 2025-10-15 | v0.2（冻结） | 冻结评审基线：新增 3–10 章（结构/状态/API/路由/样式/测试/环境/规范） | Architect |
+| 2025-10-16 | v0.2.1-draft | 调整路由章节：XBOM Test Tab 内嵌试验视图、深链参数与 Feature Flag 回滚策略 | Product Owner |
 
 ---
 
@@ -35,7 +39,7 @@
 | Framework | Next.js (App Router) | 15.3.2 | 路由/SSR/编译管线 | 与现有项目一致；Server/Client 组件分层；生态成熟 |
 | UI Library | 自研组件 + Remix Icon | — | 视图与图标 | 无第三方 UI 套件，减少冲突与包体 |
 | State Management | React Hooks/Context | React 19 | 局部/提升状态 | 复杂度可控；避免额外依赖与水合负担 |
-| Routing | Next.js App Router | 15.x | 文件路由/并行/拦截 | 与现有结构一致，易扩展 TBOM 路由段 |
+| Routing | Next.js App Router | 15.x | 文件路由/并行/拦截 | 与现有结构一致，试验视图通过 XBOM Tab 切换实现 |
 | Build Tool | Next Build（SWC/Turbopack） | 15.x | Dev/Build | 官方工具链，构建稳定；Dev 热更快 |
 | Styling | TailwindCSS | 3.4.x | 原子化样式 | 统一设计语言；与现有文件风格一致 |
 | Testing | RTL + Playwright（拟引入） | 最新 LTS | 组件/端到端 | 契合 App Router 测试实践；未来接入 CI |
@@ -100,9 +104,12 @@ docs/
 ## 4. State Management（最小状态模板）
 
 目标：不引入全局状态库，利用 URL 参数 + 轻量本地缓存 + Hooks/Context 实现 TBOM 过滤、深链与 Compare 载荷传递。
+- `/tbom` 路由承载三栏布局（左：类型-项目-试验-运行树， 中：节点详情卡，右：关联面板），`sm` 堆叠、`md` 双列、`lg` 三列；小屏幕通过抽屉显示关联面板。
+- 左侧主导航暂不暴露 TBOM 入口；需通过 XBOM 深链按钮或直接访问 `/tbom?from=ebom&node&path` 进入试验视图。产品结构页面在切换到“试验BOM”时，左侧导航区域动态替换为 TBOM 筛选与树面板，右侧呈现详情与关联信息，并在进入后自动展开节点与聚焦搜索框。
+- 错误态在导航面板顶部提示，并通过 `aria-live` 宣告；重试按钮调用 `router.refresh()`，同步输出 `console.warn` 便于排查。
 
 约定：
-- URL 参数：`from=ebom&node=<ebom_node_id>&path=<ebom_path>`；TBOM 读取后应用“按结构节点过滤”。
+- URL 参数：`from=ebom&node=<ebom_node_id>&path=<ebom_path>`；ProductStructure 的 `Test` Tab 读取后应用“按结构节点过滤”。
 - 本地缓存键：`tbom.filters`（JSON）、`tbom.lastNode`；保留最近选择，便于刷新场景。
 
 示例（仅文档，供实现时参考）：
@@ -187,9 +194,9 @@ export async function listProjects(): Promise<TbomProject[]> {
 现状：app/page.tsx 以内嵌模块切换为主（单页模式）。本迭代不强制改路由，仅规定深链参数与动态拆分边界。
 
 约束：
-- 深链与返回：XBOM → TBOM 使用 `?from=ebom&node&path`；TBOM 顶部显示面包屑并支持返回 XBOM 定位节点（UI 规范已述）。
+- 深链与返回：XBOM → 试验视图使用 `?from=ebom&node&path`；在 `ProductStructure.tsx` 内切换到 `Test` Tab 并保留返回 XBOM 节点的按钮/面包屑（见 UI 规范）。
 - 动态拆分：凡涉及 3D/大文件预览/图表重渲染的组件，必须使用 `import("…")` 动态引入；严禁在顶层静态 import 重库。
-- 未来路由演进建议（占位）：`app/tbom/page.tsx` 作为独立入口，便于首屏按需加载（非本迭代范围）。
+- 路由演进：当前迭代保持单页模式；如未来需要独立 `/tbom` 首屏或懒加载再评估 ADR，默认仍以内嵌 Tab 为主。
 
 ---
 
@@ -215,7 +222,7 @@ export async function listProjects(): Promise<TbomProject[]> {
 覆盖目标：
 - RTL（组件/Hook）：空/错/加载态、键盘可达、aria-live 提示、动态导入组件的回退。
 - Playwright（端到端）：
-  1) XBOM→TBOM 深链过滤；
+  1) XBOM→Test Tab 深链过滤；
   2) 导入向导（成功/错误行回退）；
   3) 运行详情→Compare→导出 CSV/PNG/ZIP（占位验证）。
 
@@ -235,7 +242,7 @@ test('显示计数与可键盘激活', async () => {
 ```ts
 // e2e/tbom.spec.ts (Playwright)
 import { test, expect } from '@playwright/test';
-test('XBOM→TBOM 深链过滤', async ({ page }) => {
+test('XBOM→Test Tab 深链过滤', async ({ page }) => {
   await page.goto('/?from=ebom&node=EBN-ASSY-0001-003');
   await expect(page.getByText('按结构节点过滤')).toBeVisible();
 });
@@ -248,7 +255,7 @@ test('XBOM→TBOM 深链过滤', async ({ page }) => {
 约定（.env.local，勿入库）：
 - `NEXT_PUBLIC_API_BASE`：前端调用基础地址（原型可指向 `/api/mock`）。
 - `NEXT_PUBLIC_MOCK_MODE`：`true|false`，是否启用本地样例包。
-- `NEXT_PUBLIC_ENABLE_TBOM`：`true|false`，渐进开启 TBOM UI。
+- `NEXT_PUBLIC_ENABLE_TBOM`：`true|false`，渐进开启 XBOM `Test` Tab 试验视图。
 - `NEXT_PUBLIC_3D_ASSETS_BASE`：3D 资产路径（例如 `/3dviewer`）。
 
 ---
@@ -277,16 +284,15 @@ test('XBOM→TBOM 深链过滤', async ({ page }) => {
 - 文档基线：`docs/prd.md`、`docs/front-end-spec.md`、`docs/ui-architecture.md` 均为 v0.2（冻结）。
 - 启动：`npm run dev`（仅本地评审）。
 
-### A.2 主线 1：XBOM → TBOM 深链
-- 步骤：在浏览器打开 `/?from=ebom&node=EBN-ASSY-0001-003&path=ASSY-0001/FRAME-02/TOP-PLATE`；在 XBOM 节点详情处验证“跳转 试验BOM”入口与参数；进入 TBOM 验证“按结构节点过滤”。
+### A.2 主线 1：XBOM → Test Tab 深链
+- 步骤：在浏览器打开 `/?from=ebom&node=EBN-ASSY-0001-003&path=ASSY-0001/FRAME-02/TOP-PLATE`；在 XBOM 节点详情处验证“跳转 试验BOM”入口与参数；点击后切换到 `Test` Tab 并校验“按结构节点过滤”。
 - 期望：过滤生效；面包屑显示节点路径；键盘可达（焦点至过滤条并朗读）；无错误弹窗、无明显卡顿。
 
 ### A.3 主线 2：最小上载导入向导（前端校验）
 - 步骤：依次选择 `tbom_project.json`、`tbom_test.json`、`tbom_run.json`、`process_event.csv`、`attachments.csv`，可选 `result_timeseries.csv`；查看映射/校验并提交；再做负例（改错列头）。
 - 期望：合法文件通过并高亮新增/更新的 Project/Test/Run；负例出现可读错误（列头/行号）；可下载错误行；全流程可键盘完成并有 aria-live 提示。
 
-### A.4 主线 3：运行详情 → Compare（试验/仿真） → 证据导出
-- 步骤：在 TBOM 选中运行 `R-EX-001`，勾选 `ACC_*`/`PSD_*`/`FRF_*`/`COH_*`；送入 Compare；缩放/区间/光标对齐；导出 CSV/PNG；导出证据包。
+- 步骤：在 `Test` Tab 选中运行 `R-EX-001`，勾选 `ACC_*`/`PSD_*`/`FRF_*`/`COH_*`；送入 Compare；缩放/区间/光标对齐；导出 CSV/PNG；导出证据包。
 - 期望：单位/采样率不一致有对齐提示（可统一/跳过并标注）；交互流畅（大数据占位 P95 < 120ms）；Zip 内含结构清单 JSON、图表 PNG、区间统计 JSON、事件 CSV、附件索引。
 
 ### A.5 非功能性核查

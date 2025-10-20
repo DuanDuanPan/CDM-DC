@@ -10,6 +10,19 @@ import type {
 } from './types';
 import { simulationCategories } from './data';
 
+const buildInitialExpandedNodes = (categories: SimulationCategory[]): string[] => {
+  const expanded = new Set<string>();
+  categories.forEach(category => {
+    category.instances.forEach(instance => {
+      const structurePath = Array.isArray(instance.structurePath) ? instance.structurePath : [];
+      structurePath.slice(0, 2).forEach(structureId => {
+        expanded.add(`dimension:structure:${structureId}`);
+      });
+    });
+  });
+  return Array.from(expanded);
+};
+
 type NodeType = 'category' | 'instance' | 'folder' | 'file' | 'dimension';
 
 export interface TreeNodeReference {
@@ -232,7 +245,7 @@ const createInitialState = (): ExplorerState => {
   return {
     categories: simulationCategories,
     selectedNode: null,
-    expandedNodeIds: [],
+    expandedNodeIds: buildInitialExpandedNodes(simulationCategories),
     navVisibleCount: NAV_PAGE_SIZE,
     navPageSize: NAV_PAGE_SIZE,
     activeDimensions: ['structure'],
