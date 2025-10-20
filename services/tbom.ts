@@ -1,6 +1,24 @@
 import { z } from 'zod';
-import type { TbomProject, TbomRun, TbomTest } from '../components/tbom/types';
-import { TbomProjectListSchema, TbomRunListSchema, TbomTestListSchema } from '../components/tbom/types';
+import { parseCsvRecords } from '@/utils/csv';
+import type {
+  TbomAttachment,
+  TbomProject,
+  TbomRun,
+  TbomRunEvent,
+  TbomTest,
+  TbomTestCardRow,
+  TbomTimeseriesChannel,
+  TbomTimeseriesSample,
+} from '../components/tbom/types';
+import {
+  TbomAttachmentListSchema,
+  TbomProjectListSchema,
+  TbomRunEventListSchema,
+  TbomRunListSchema,
+  TbomTestCardRowSchema,
+  TbomTestListSchema,
+  TbomTimeseriesSampleSchema,
+} from '../components/tbom/types';
 import { api } from './http';
 
 const projectsResponseSchema = z.object({
@@ -13,6 +31,14 @@ const testsResponseSchema = z.object({
 
 const runsResponseSchema = z.object({
   data: TbomRunListSchema,
+});
+
+const attachmentsResponseSchema = z.object({
+  data: TbomAttachmentListSchema,
+});
+
+const testCardResponseSchema = z.object({
+  data: z.array(TbomTestCardRowSchema),
 });
 
 const TBOM_BASE_PATH = '/tbom';
@@ -58,6 +84,93 @@ export async function fetchEvents(runId: string): Promise<string> {
   return api(`${TBOM_BASE_PATH}/events/${encodeURIComponent(runId)}`, {
     parseAs: 'text',
   });
+}
+
+export async function listRunAttachments(runId: string): Promise<TbomAttachment[]> {
+  const response = await api(`${TBOM_BASE_PATH}/attachments/${encodeURIComponent(runId)}`, {
+    schema: attachmentsResponseSchema,
+  });
+  return response.data;
+}
+
+export async function listRunTestCard(runId: string): Promise<TbomTestCardRow[]> {
+  const response = await api(`${TBOM_BASE_PATH}/test-card/${encodeURIComponent(runId)}`, {
+    schema: testCardResponseSchema,
+  });
+  return response.data.map((item) => ({
+    ...item,
+    unit: item.unit?.trim() || undefined,
+    source: item.source?.trim() || undefined,
+  }));
+}
+
+export async function getRunEvents(runId: string): Promise<TbomRunEvent[]> {
+  const csv = await fetchEvents(runId);
+  const records = parseCsvRecords(csv);
+  return TbomRunEventListSchema.parse(records);
+}
+
+export async function getRunTimeseries(runId: string): Promise<TbomTimeseriesChannel[]> {
+  const csv = await fetchTimeseries(runId);
+  const records = parseCsvRecords(csv);
+  if (!records.length) {
+    return [];
+  }
+
+  const channels = Object.keys(records[0]).filter((key) => key !== 'ts');
+  const channelSamples = new Map<string, TbomTimeseriesSample[]>();
+
+  records.forEach((record) => {
+    const timestamp = record.ts;
+    channels.forEach((channel) => {
+      const rawValue = record[channel];
+      const value = Number.parseFloat(rawValue);
+      if (Number.isNaN(value)) {
+        return;
+      }
+      const sample: TbomTimeseriesSample = TbomTimeseriesSampleSchema.parse({
+        ts: timestamp,
+        value,
+      });
+      const list = channelSamples.get(channel) ?? [];
+      list.push(sample);
+      channelSamples.set(channel, list);
+    });
+  });
+
+  const firstTwo = records.slice(0, 2).map((item) => Date.parse(item.ts));
+  const intervalMs =
+    firstTwo.length === 2 && Number.isFinite(firstTwo[0]) && Number.isFinite(firstTwo[1])
+      ? Math.abs(firstTwo[1] - firstTwo[0])
+      : null;
+  const sampleRate = intervalMs && intervalMs > 0 ? Number((1000 / intervalMs).toFixed(2)) : null;
+
+  return channels.map((channel) => ({
+    channel,
+    unit: guessUnit(channel),
+    sampleRate,
+    samples: channelSamples.get(channel) ?? [],
+  }));
+}
+
+function guessUnit(channel: string): string | undefined {
+  const upper = channel.toUpperCase();
+  if (upper.startsWith('ACC')) {
+    return 'g';
+  }
+  if (upper.includes('FORCE')) {
+    return 'kN';
+  }
+  if (upper.includes('TEMP') || upper.includes('THERM')) {
+    return '°C';
+  }
+  if (upper.includes('PRESS')) {
+    return 'MPa';
+  }
+  if (upper.includes('FLOW')) {
+    return 'kg/s';
+  }
+  return undefined;
 }
 
 export type RunsByProject = {

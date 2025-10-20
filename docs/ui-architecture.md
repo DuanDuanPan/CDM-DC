@@ -107,6 +107,7 @@ docs/
 - `/tbom` 路由承载三栏布局（左：类型-项目-试验-运行树， 中：节点详情卡，右：关联面板），`sm` 堆叠、`md` 双列、`lg` 三列；小屏幕通过抽屉显示关联面板。
 - 左侧主导航暂不暴露 TBOM 入口；需通过 XBOM 深链按钮或直接访问 `/tbom?from=ebom&node&path` 进入试验视图。产品结构页面在切换到“试验BOM”时，左侧导航区域动态替换为 TBOM 筛选与树面板，右侧呈现详情与关联信息，并在进入后自动展开节点与聚焦搜索框。
 - 错误态在导航面板顶部提示，并通过 `aria-live` 宣告；重试按钮调用 `router.refresh()`，同步输出 `console.warn` 便于排查。
+- 运行详情浮层（`components/tbom/detail/TbomRunDetail`）在 Client 侧通过局部状态启动，打开时锁定 `document.body` 滚动并广播 `aria-live` 状态；与 Compare 对接通过 `localStorage.tbomComparePayload` 传递运行上下文（通道/单位/采样率/统计），Compare 模块监听 storage 事件动态展现上下文卡片。
 
 约定：
 - URL 参数：`from=ebom&node=<ebom_node_id>&path=<ebom_path>`；ProductStructure 的 `Test` Tab 读取后应用“按结构节点过滤”。
@@ -181,11 +182,15 @@ export type TbomProject = z.infer<typeof TbomProject>;
 
 export async function listProjects(): Promise<TbomProject[]> {
   const base = process.env.NEXT_PUBLIC_API_BASE || '/api/mock';
-  return api(`${base}/tbom/projects`, undefined, z.array(TbomProject));
+ return api(`${base}/tbom/projects`, undefined, z.array(TbomProject));
 }
 ```
 
 说明：原型阶段可从 `docs/mocks/tbom/*.json` 读取并由 BFF 伪装为 REST；迁移到真源时仅替换 base 与 schema。
+- Mock API 扩展：
+  - `GET /tbom/attachments/:runId`、`GET /tbom/test-card/:runId` 直接返回 JSON（服务端读取 CSV 并解析），前端通过 `services/tbom.ts` 对应方法提供缓存与错误处理。
+  - `GET /tbom/events/:runId`、`GET /tbom/timeseries/:runId` 继续返回 CSV 文本；前端统一使用 `utils/csv.parseCsvRecords` 将文本解析为结构化对象，并推导单位/采样率/统计信息。
+  - 所有接口对 404 返回 `{ error: 'RUN_NOT_FOUND' }`，前端视为空态处理并通过 `aria-live` 宣告可重试或缺失数据说明。
 
 ---
 

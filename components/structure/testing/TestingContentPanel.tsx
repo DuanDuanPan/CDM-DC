@@ -1,4 +1,5 @@
 import { Fragment, useMemo } from 'react';
+import type { ReactElement } from 'react';
 import type { TestItem, TestProject, TestTypeDescriptor, TestingNodeReference, TestingStats } from './types';
 import {
   TEST_STRUCTURE_INDEX,
@@ -470,7 +471,7 @@ export function TestingContentPanel({
     </div>
   );
 
-  let body: JSX.Element = renderFallback();
+  let body: ReactElement = renderFallback();
   if (!selectedNode) {
     body = renderProjectList(projects, onSelectProject);
   } else if (selectedNode.type === 'structure') {

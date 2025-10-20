@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { parseCsvRecords } from '@/utils/csv';
 
 const MOCK_ROOT = path.join(process.cwd(), 'docs', 'mocks', 'tbom');
 
@@ -21,6 +22,11 @@ export async function readTextFile(fileName: string): Promise<string> {
   } catch (error) {
     throw new MockDataError(`无法读取文本 Mock 文件: ${fileName}`, { cause: error });
   }
+}
+
+export async function readCsvRecords(fileName: string): Promise<Record<string, string>[]> {
+  const content = await readTextFile(fileName);
+  return parseCsvRecords(content);
 }
 
 export function notFound(message: string) {

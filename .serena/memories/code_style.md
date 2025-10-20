@@ -1,5 +1,10 @@
-- TypeScript + React 函数组件使用 PascalCase 导出；默认 App Router 服务器组件，只有需要浏览器交互时添加 "use client" 并将客户端逻辑下沉到叶子节点。
-- 2 空格缩进、尾随分号、JSX 属性按需要分行；Tailwind 按布局→间距→排版→颜色顺序组织，复杂 className 用 clsx/classnames。
-- 组件按业务域归档在 components/ 下，复用型原子放在 components/common/（如需新建）。
-- 严格遵循无冗余注释、仅为复杂逻辑加简短说明；保持语义化 HTML、无内联样式（除非 Tailwind 不支持）。
-- 数据契约放置在模块级 types.ts，mock 数据和设计文档同步维护 docs/。
+# Code Style & Conventions
+- TypeScript throughout; React components exported as PascalCase functions.
+- Next.js App Router defaults to server components; only add `"use client"` for browser-only logic and keep client code to leaf nodes.
+- 2-space indentation, trailing semicolons, separate JSX props when clarity improves.
+- Tailwind utility ordering: layout → spacing → typography → color; rely on Tailwind over inline styles; use `clsx`/`classnames` for composition.
+- Group components by domain (`components/<domain>/`); shared primitives live in `components/common/` (introduce if missing rather than duplicating UI).
+- Accessibility first: semantic elements, keyboard focus, aria annotations, reuse accessible button/link patterns.
+- Performance: memoize expensive logic, lazily load heavy libs (pdfjs, online-3d-viewer, vtk.js, rhino3dm, occt-import-js, web-ifc) via dynamic import at leaf components.
+- Data contracts typed via module-level `types.ts` and Zod schemas; keep mock data and docs in sync (`docs/`).
+- Documentation updates required when flows change (`docs/front-end-spec.md`, `docs/prd/`, etc.).

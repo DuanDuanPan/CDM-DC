@@ -1,6 +1,8 @@
 'use client';
+import { useEffect, useState } from 'react';
 import type { TbomSelection } from '@/components/tbom/TbomExplorerClient';
-import type { TbomRun, TbomTest } from '@/components/tbom/types';
+import type { TbomProject, TbomRun, TbomTest } from '@/components/tbom/types';
+import TbomRunDetail from '@/components/tbom/detail/TbomRunDetail';
 
 type TbomNodeDetailProps = {
   selection: TbomSelection | null;
@@ -34,12 +36,38 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetailProps) {
+  const [runDetailPayload, setRunDetailPayload] = useState<{
+    run: TbomRun;
+    test: TbomTest;
+    project: TbomProject;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!runDetailPayload) return;
+    if (!selection || selection.level !== 'run') {
+      setRunDetailPayload(null);
+      return;
+    }
+    if (selection.run.run_id !== runDetailPayload.run.run_id) {
+      setRunDetailPayload(null);
+    }
+  }, [selection, runDetailPayload]);
   if (!selection) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-sm text-slate-500 space-y-2">
-        <i className="ri-mind-map text-3xl text-slate-400"></i>
-        <p>请选择左侧树中的项目 / 试验 / 运行查看详情。</p>
-      </div>
+      <>
+        <div className="h-full flex flex-col items-center justify-center text-sm text-slate-500 space-y-2">
+          <i className="ri-mind-map text-3xl text-slate-400"></i>
+          <p>请选择左侧树中的项目 / 试验 / 运行查看详情。</p>
+        </div>
+        {runDetailPayload ? (
+          <TbomRunDetail
+            run={runDetailPayload.run}
+            test={runDetailPayload.test}
+            project={runDetailPayload.project}
+            onClose={() => setRunDetailPayload(null)}
+          />
+        ) : null}
+      </>
     );
   }
 
@@ -47,7 +75,8 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
     const projectTests = tests.filter((test) => test.project_id === selection.project.project_id);
     const projectRuns = runs.filter((run) => projectTests.some((test) => test.test_id === run.test_id));
     return (
-      <div className="p-6 space-y-6">
+      <>
+        <div className="p-6 space-y-6">
         <div className="space-y-2">
           <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
             项目
@@ -103,7 +132,16 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
             </ul>
           )}
         </Section>
-      </div>
+        </div>
+        {runDetailPayload ? (
+          <TbomRunDetail
+            run={runDetailPayload.run}
+            test={runDetailPayload.test}
+            project={runDetailPayload.project}
+            onClose={() => setRunDetailPayload(null)}
+          />
+        ) : null}
+      </>
     );
   }
 
@@ -114,7 +152,8 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
       .sort((a, b) => new Date(b.executed_at ?? '').getTime() - new Date(a.executed_at ?? '').getTime())[0];
 
     return (
-      <div className="p-6 space-y-6">
+      <>
+        <div className="p-6 space-y-6">
         <div className="space-y-2">
           <span className="inline-flex items-center rounded-md bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-700">
             试验
@@ -170,7 +209,16 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
             </div>
           </div>
         </Section>
-      </div>
+        </div>
+        {runDetailPayload ? (
+          <TbomRunDetail
+            run={runDetailPayload.run}
+            test={runDetailPayload.test}
+            project={runDetailPayload.project}
+            onClose={() => setRunDetailPayload(null)}
+          />
+        ) : null}
+      </>
     );
   }
 
@@ -179,7 +227,8 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
   const environmentEntries = Object.entries(run.environment ?? {});
 
   return (
-    <div className="p-6 space-y-6">
+    <>
+      <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
           运行
@@ -232,14 +281,23 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
-          disabled
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-500 cursor-not-allowed"
-          title="运行详情页将在 Story 1.6 实现"
+          aria-haspopup="dialog"
+          onClick={() => setRunDetailPayload({ run, test: selection.test, project: selection.project })}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
         >
           <i className="ri-time-line" />
-          查看运行详情（预计 Story 1.6）
+          查看运行详情
         </button>
       </div>
-    </div>
+      </div>
+      {runDetailPayload ? (
+        <TbomRunDetail
+          run={runDetailPayload.run}
+          test={runDetailPayload.test}
+          project={runDetailPayload.project}
+          onClose={() => setRunDetailPayload(null)}
+        />
+      ) : null}
+    </>
   );
 }

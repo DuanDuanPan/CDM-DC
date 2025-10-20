@@ -1,3 +1,7 @@
-- 提交前运行 `npm run lint` 并修复所有问题；必要时补充/更新 docs/ 下的产品或数据说明。
-- 自测：本地浏览主要路由（尤其 EBOM 相关页面）确认关键交互。
-- 代码评审备注需包括影响模块、UI 截图（如变动界面）与关联文档链接；遵循 Conventional Commits。
+# Task Completion Checklist
+- Run `npm run lint` and resolve issues; do not suppress rules.
+- Execute relevant tests: `npm run test` for unit coverage, `npm run test:e2e` when changes affect flows; run `npm run verify:tbom` if touching TBOM contracts.
+- Update docs in `docs/` (PRD, UX spec, architecture) to reflect new flows or contracts.
+- Capture release notes/impacts and coordinate with QA/ops before deploy; ensure smoke test plan and rollback strategy are defined.
+- Ensure environment variables (`.env.local`) updated/documented when introducing new configs.
+- Follow Conventional Commits for PRs and include references/screenshots when UI changes occur.

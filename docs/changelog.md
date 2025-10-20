@@ -2,6 +2,12 @@
 
 > 项目：产品过程数据中心 · 试验BOM增强｜维护：文档基线
 
+## 2025-10-20 · Story 1.6 · Run Detail Experience
+- 前端实现：新增 `components/tbom/detail/TbomRunDetail` 浮层组件，承载运行元数据卡、迷你曲线预览、异常事件时间轴以及附件懒加载预览；`TbomNodeDetail` 改为以按钮打开浮层并保持键盘可达与 `aria-live` 提示。
+- 数据与服务：扩展 Mock Route（`/tbom/attachments/:runId`、`/tbom/test-card/:runId`）返回 JSON，前端通过 `services/tbom.ts` 解析 CSV（events/timeseries）并推导单位/采样率统计；抽取 `utils/csv.ts` 复用 CSV 解析逻辑。
+- Compare 对接：运行详情将所选通道写入 `localStorage.tbomComparePayload`，`CompareCenter` 监听 storage 事件并展示“来自 TBOM 的运行上下文”提示卡，可刷新与清除载荷。
+- 文档更新：`docs/ui-architecture.md` 增补运行详情浮层与 Compare 载荷传递方案、Mock API 扩展说明；`docs/changelog.md` 记录 Story 1.6 进展。
+
 ## 2025-10-16 · v0.3 · Draft（进行中）
 ### 2025-10-20 · 文档更新（角色与 XBOM）
 - 新增《数字线索 · 角色体系与 XBOM 关系》（docs/digital-thread-roles-xbom.md），从型号总师与工业软件方案视角，梳理角色职责、读写边界、与 XBOM 的映射契约与度量体系，并提出交互落地建议（模块首页、XBOM 视图、角色化入口、证据统一抽屉）。

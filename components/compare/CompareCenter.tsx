@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EBOM_BASELINES } from '../structure/ebom/data';
 import type { EbomTreeNode } from '../structure/ebom/types';
 import EbomMiniTreeDiff from './EbomMiniTreeDiff';
-import { useRef } from 'react';
 import { exportDomToPng } from '../structure/ebom/exportUtils';
 import { useEbomCompareState } from '../structure/ebom/useEbomCompareState';
 
@@ -19,6 +18,22 @@ interface CompareItem {
   category: 'design' | 'simulation' | 'test' | 'requirement';
   dataType: 'parameter' | 'curve' | 'model' | 'image' | 'document';
 }
+
+const TBOM_COMPARE_EVENT = 'tbom-compare:payload-updated';
+
+type TbomComparePayload = {
+  runId: string;
+  projectId: string;
+  testId: string;
+  channels: Array<{
+    channel: string;
+    unit?: string;
+    sampleRate?: number;
+    min: number | null;
+    max: number | null;
+  }>;
+  generatedAt?: string;
+};
 
 export default function CompareCenter() {
   const [compareItems, setCompareItems] = useState<CompareItem[]>([
@@ -46,6 +61,46 @@ export default function CompareCenter() {
 
   const [activeTab, setActiveTab] = useState('parameter');
   const [compareMode, setCompareMode] = useState('scheme');
+  const [tbomPayload, setTbomPayload] = useState<TbomComparePayload | null>(null);
+
+  const loadTbomPayload = useCallback(() => {
+    try {
+      const raw = window.localStorage.getItem('tbomComparePayload');
+      if (!raw) {
+        setTbomPayload(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as TbomComparePayload;
+      setTbomPayload(parsed);
+    } catch (error) {
+      console.warn('[CompareCenter] 无法读取 tbomComparePayload', error);
+      setTbomPayload(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTbomPayload();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'tbomComparePayload') {
+        loadTbomPayload();
+      }
+    };
+    const handleBroadcast = (event: Event) => {
+      if (event.type !== TBOM_COMPARE_EVENT) return;
+      const customEvent = event as CustomEvent<TbomComparePayload | undefined>;
+      if (customEvent.detail) {
+        setTbomPayload(customEvent.detail);
+        return;
+      }
+      loadTbomPayload();
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(TBOM_COMPARE_EVENT, handleBroadcast as EventListener);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(TBOM_COMPARE_EVENT, handleBroadcast as EventListener);
+    };
+  }, [loadTbomPayload]);
 
   const compareModes = [
     { id: 'scheme', name: '方案对比', icon: 'ri-git-branch-line', desc: '不同设计方案的对比分析' },
@@ -82,6 +137,19 @@ export default function CompareCenter() {
       dataType: 'parameter'
     };
     setCompareItems(prev => [...prev, newItem]);
+  };
+
+  const clearTbomPayload = () => {
+    try {
+      window.localStorage.removeItem('tbomComparePayload');
+    } catch (error) {
+      console.warn('[CompareCenter] 无法清除 tbomComparePayload', error);
+    }
+    setTbomPayload(null);
+  };
+
+  const refreshTbomPayload = () => {
+    loadTbomPayload();
   };
 
   const getItemIcon = (category: string, dataType: string) => {
@@ -190,6 +258,75 @@ export default function CompareCenter() {
 
   return (
     <div className="h-full bg-white flex flex-col">
+      {tbomPayload ? (
+        <div className="mx-6 mt-6 mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-800 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+              <i className="ri-compasses-2-line" /> 来自 TBOM 的运行上下文
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={refreshTbomPayload}
+                className="inline-flex items-center gap-1 rounded-full border border-blue-200 px-3 py-1 text-blue-600 hover:bg-blue-100"
+              >
+                <i className="ri-refresh-line" /> 刷新
+              </button>
+              <button
+                type="button"
+                onClick={clearTbomPayload}
+                className="inline-flex items-center gap-1 rounded-full border border-blue-200 px-3 py-1 text-blue-500 hover:bg-blue-100"
+              >
+                <i className="ri-close-line" /> 清除
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 text-xs text-blue-800 sm:grid-cols-2 lg:grid-cols-3">
+            <div>运行 ID：<span className="font-semibold text-blue-900">{tbomPayload.runId}</span></div>
+            <div>试验 ID：<span className="font-semibold text-blue-900">{tbomPayload.testId}</span></div>
+            <div>项目 ID：<span className="font-semibold text-blue-900">{tbomPayload.projectId}</span></div>
+            <div>载入时间：<span className="font-semibold text-blue-900">{tbomPayload.generatedAt ? new Date(tbomPayload.generatedAt).toLocaleString() : '—'}</span></div>
+            <div>通道数量：<span className="font-semibold text-blue-900">{tbomPayload.channels.length}</span></div>
+          </div>
+          {tbomPayload.channels.length ? (
+            <div className="mt-3 rounded-lg bg-white/80 px-3 py-2 text-xs text-blue-700">
+              <div className="font-semibold text-blue-900">通道概况</div>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {tbomPayload.channels.slice(0, 6).map((channel) => (
+                  <li
+                    key={channel.channel}
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] text-blue-700"
+                  >
+                    {channel.channel}
+                    {channel.unit ? (
+                      <span className="text-blue-500">· {channel.unit}</span>
+                    ) : null}
+                  </li>
+                ))}
+                {tbomPayload.channels.length > 6 ? (
+                  <li className="inline-flex items-center rounded-full bg-blue-100/70 px-2 py-0.5 text-[11px] text-blue-600">
+                    +{tbomPayload.channels.length - 6} 更多
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mx-6 mt-6 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 px-4 py-3 text-xs text-blue-600">
+          <div className="flex items-center gap-2">
+            <i className="ri-navigation-line" />
+            <span>可从运行详情一键送入 Compare；点击刷新以读取最新的上下文。</span>
+          </div>
+          <button
+            type="button"
+            onClick={refreshTbomPayload}
+            className="inline-flex items-center gap-1 rounded-full border border-blue-200 px-3 py-1 text-blue-600 hover:bg-blue-100"
+          >
+            <i className="ri-refresh-line" /> 刷新上下文
+          </button>
+        </div>
+      )}
       {/* 对比模式选择 */}
       <div className="border-b border-gray-200 bg-gray-50/50 p-6">
         <div className="flex items-center justify-between mb-4">
