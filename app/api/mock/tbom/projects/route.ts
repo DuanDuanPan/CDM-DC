@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server';
-import { readJsonFile, serverError } from '../utils';
+import { readJsonDataset, serverError } from '../utils';
+import type { TbomProject } from '@/components/tbom/types';
 
-type Project = {
-  project_id: string;
-};
-
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const projects = await readJsonFile<Project[]>('tbom_project.json');
+    const projects = await readJsonDataset<TbomProject[]>('tbom_project');
     return NextResponse.json({ data: projects });
   } catch (error) {
     return serverError(error);

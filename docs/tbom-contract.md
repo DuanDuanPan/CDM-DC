@@ -1,7 +1,7 @@
-# 试验 BOM（TBOM）最小上载契约 v0.3
+# 试验 BOM（TBOM）最小上载契约 v0.4
 
-> 版本：v0.3（2025-10-16）｜适用阶段：TBOM MVP 原型与 Mock 服务｜状态：冻结  
-> 变更说明：补齐字段定义、跨域追溯键、Mock 样例与校验原则；新增第二套示例数据。v0.3 新增 `run.status` 字段及取值说明，用于运行状态筛选。
+> 版本：v0.4（2025-10-21）｜适用阶段：TBOM MVP 原型与 Mock 服务｜状态：冻结  
+> 变更说明：补充导入向导流程、错误码与日志契约，明确 ZIP 包结构与本地日志缓存；同步 Mock 导入 API 与 UI 向导。
 
 本契约规定在尚未接入真实 BFF 之前，如何通过一组 JSON/CSV 文件为“试验 BOM（TBOM）”提供最小可用数据以驱动前端原型。目标：
 
@@ -266,6 +266,66 @@ CSV 每列代表通道，必备列：
 
 对应 CSV 文件命名：`result_timeseries_R-EX-001.csv`、`result_timeseries_R-EX-002.csv`、`process_event_R-EX-001.csv`、`process_event_R-EX-002.csv` 等。
 
+## 6. 导入流程、错误码与日志样例
+
+### 6.1 导入流程（客户端 + Mock API）
+1. 选择契约类型：目前提供“最小上载包 v0.4”，与向导第一步一致。
+2. 上传文件：向导支持 JSON/CSV/ZIP 混合拖拽；ZIP 将在浏览器内解压，统一执行结构校验。
+3. 客户端校验：基于 `components/tbom/hooks/useTbomImportState`，使用 Zod + CSV 解析检查必填字段、引用完整性与列头。
+4. 映射确认：与现有 TBOM 数据比对，统计新增/更新/冲突，选择增量或覆盖策略。
+5. 导入执行：向 Mock Route `POST /api/mock/tbom/import` 提交多文件 FormData + manifest（差异摘要 + 策略）；服务端合并内存数据并返回导入摘要。
+6. 导入摘要与日志：向导展示 counters、错误明细与可下载的错误 CSV，同时将最近日志缓存在 `localStorage.tbom.import.logs`（保留 7 天）。
+
+> 限制：单次导入最多 80 个文件，总体积不超过 120 MB；ZIP 仅支持 JSON/CSV，且会拦截包含 `..`、`:`、`\` 等可疑路径的条目，避免解析压缩炸弹。
+
+### 6.2 错误码清单（节选）
+| Code | 级别 | 场景 | 修复建议 |
+|------|------|------|----------|
+| `CSV_COLUMN_MISSING` | error | CSV 缺少必填列（如 `ts`、`run_id`） | 确认列头拼写与契约一致；从示例包复制表头 |
+| `REFERENCE_MISSING_PROJECT` | error | `tbom_test.json` 引用不存在的项目 | 补齐 `project_id` 或先导入缺失项目 |
+| `REFERENCE_MISSING_TEST` | error | `tbom_run.json` 引用不存在的试验 | 确认 `test_id` 一致；必要时调整导入顺序 |
+| `IMPORT_CONFLICT` | error | 导入试验/运行与现有数据存在归属冲突 | 在映射步骤选择正确策略或修复源数据 |
+| `IMPORT_UPDATED` | warning | 导入内容覆盖现有条目 | 留档后执行覆盖或改用增量策略 |
+
+### 6.3 ZIP 包结构示例
+```text
+tbom_minimum_package.zip
+├── tbom_project.json
+├── tbom_test.json
+├── tbom_run.json
+├── attachments.csv
+├── test_card.csv (可选)
+├── process_event_R-EX-001.csv
+├── process_event_R-EX-002.csv
+├── result_timeseries_R-EX-001.csv
+└── result_timeseries_R-EX-002.csv
+```
+
+> 建议保持文件名小写加下划线，便于脚本匹配。大型时序文件可按 run 拆分。
+
+### 6.4 导入日志示例（保存在 localStorage 与 Mock 响应中）
+```json
+{
+  "logId": "LOG-20251021-001",
+  "contractType": "minimum-package",
+  "strategy": "incremental",
+  "completedAt": "2025-10-21T12:40:05.123Z",
+  "counters": {
+    "project": { "imported": 1, "updated": 0, "skipped": 0, "failed": 0 },
+    "test": { "imported": 2, "updated": 1, "skipped": 0, "failed": 0 },
+    "run": { "imported": 3, "updated": 0, "skipped": 0, "failed": 1 },
+    "attachment": { "imported": 5, "updated": 0, "skipped": 0, "failed": 0 },
+    "event": { "imported": 12, "updated": 0, "skipped": 0, "failed": 0 },
+    "timeseries": { "imported": 6, "updated": 0, "skipped": 0, "failed": 0 }
+  },
+  "errors": [
+    { "code": "IMPORT_CONFLICT", "message": "运行 R-EX-005 指向未知试验 T-EX-099" }
+  ]
+}
+```
+
+客户端通过 `tbom.import.logs` 读取最近日志，并在导入工具栏展示“最近一次导入”摘要。
+
 ---
 
 ## 7. 校验脚本建议
@@ -296,6 +356,7 @@ pnpm tsx scripts/verify-tbom-data.ts
 
 | 版本 | 日期       | 描述                                       |
 |------|------------|--------------------------------------------|
+| v0.4 | 2025-10-21 | 补充导入向导流程、错误码、日志样例与 ZIP 结构 |
 | v0.3 | 2025-10-16 | 新增 `run.status` 字段，供状态筛选使用       |
 | v0.2 | 2025-10-16 | 补齐字段表、第二套样例、校验策略与脚本指引 |
 | v0.1 | 2025-10-15 | 初版草案                                   |

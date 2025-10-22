@@ -31,6 +31,8 @@ import { TestingContentPanel } from './testing/TestingContentPanel';
 import { TEST_STRUCTURE_TREE, TEST_PROJECTS, TEST_TYPES } from './testing/data';
 import { useTestingExplorerState } from './testing/useTestingExplorerState';
 import TbomRunDetail from '@/components/tbom/detail/TbomRunDetail';
+import TbomImportWizard from '@/components/tbom/import/TbomImportWizard';
+import { useTbomImportState } from '@/components/tbom/hooks/useTbomImportState';
 import type { TbomProject, TbomRun, TbomTest } from '@/components/tbom/types';
 import { listProjects as listTbomProjects, listRuns as listTbomRuns, listTests as listTbomTests } from '@/services/tbom';
 import type { TestItemTbomRef } from './testing/types';
@@ -65,6 +67,17 @@ const mapBomType = (nodes: BomNode[], nextType: string): BomNode[] =>
     bomType: nextType,
     children: node.children ? mapBomType(node.children, nextType) : undefined
   }));
+
+const TBOM_FEATURE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_TBOM !== 'false';
+
+const formatImportTimestamp = (iso: string): string => {
+  try {
+    const value = new Date(iso);
+    return `${value.toLocaleDateString()} ${value.toLocaleTimeString()}`;
+  } catch {
+    return iso;
+  }
+};
 
 interface Version {
   id: string;
@@ -613,6 +626,29 @@ export default function ProductStructure() {
 
     return tbomDataPromiseRef.current!;
   }, [tbomData]);
+
+  const tbomImport = useTbomImportState({
+    loadExistingData: ensureTbomData,
+    onDataMutated: (data) => {
+      setTbomData(data);
+      tbomDataPromiseRef.current = Promise.resolve(data);
+    },
+  });
+  const { state: tbomImportState, actions: tbomImportActions } = tbomImport;
+  const latestImportLog = tbomImportState.logs[0] ?? null;
+  const latestImportStats = useMemo(() => {
+    if (!latestImportLog) {
+      return null;
+    }
+    return Object.values(latestImportLog.counters).reduce(
+      (acc, counter) => ({
+        imported: acc.imported + counter.imported,
+        updated: acc.updated + counter.updated,
+        failed: acc.failed + counter.failed,
+      }),
+      { imported: 0, updated: 0, failed: 0 },
+    );
+  }, [latestImportLog]);
 
   const handleOpenRunDetail = useCallback(async (ref: TestItemTbomRef) => {
     setRunDetailError(null);
@@ -4866,6 +4902,62 @@ const buildNodeTags = (node: BomNode) => {
               {activeTab === 'structure' && selectedBomType !== 'design' && (
                 selectedBomType === 'test' ? (
                   <div role="tabpanel" id="panel-structure" aria-labelledby="tab-structure">
+                    {TBOM_FEATURE_ENABLED ? (
+                      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-1 items-start gap-3">
+                          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                            <i className="ri-inbox-unarchive-line text-lg" aria-hidden />
+                          </span>
+                          <div className="space-y-1">
+                            <div className="text-sm font-semibold text-blue-900">导入 TBOM 数据包</div>
+                            <p className="text-xs text-blue-700">
+                              支持 JSON / CSV / ZIP，导入成功后自动刷新 TBOM 树、运行详情与 Compare 缓存。
+                            </p>
+                            {latestImportLog && latestImportStats ? (
+                              <p className="text-xs text-blue-600">
+                                上次导入 {formatImportTimestamp(latestImportLog.completedAt)} · 新增
+                                {' '}
+                                {latestImportStats.imported}
+                                {' '}
+                                · 更新
+                                {' '}
+                                {latestImportStats.updated}
+                                {' '}
+                                · 失败
+                                {' '}
+                                {latestImportStats.failed}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-blue-600">尚未执行导入，可上传示例数据包体验完整流程。</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          {latestImportLog ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                tbomImportActions.open();
+                                tbomImportActions.goToStep('logs');
+                                tbomImportActions.showLog(latestImportLog.logId);
+                              }}
+                              className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 shadow-sm transition hover:border-blue-300 hover:text-blue-700"
+                            >
+                              <i className="ri-history-line text-sm" aria-hidden />
+                              查看导入日志
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => tbomImportActions.open()}
+                            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-blue-700"
+                          >
+                            <i className="ri-upload-2-line" aria-hidden />
+                            导入数据包
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                     <TestingContentPanel
                       projects={testingState.projects}
                       stats={testingState.stats}
@@ -5075,6 +5167,9 @@ const buildNodeTags = (node: BomNode) => {
           project={runDetailContext.project}
           onClose={closeRunDetail}
         />
+      ) : null}
+      {TBOM_FEATURE_ENABLED ? (
+        <TbomImportWizard state={tbomImportState} actions={tbomImportActions} />
       ) : null}
     </div>
   );

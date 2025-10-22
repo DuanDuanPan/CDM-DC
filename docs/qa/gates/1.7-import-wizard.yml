@@ -1,0 +1,44 @@
+schema: 1
+story: '1.7'
+story_title: '最小上载导入向导'
+gate: PASS
+status_reason: '导入流程现采用 Worker 分块读取与统一限制策略，100MB 级别操作具备进度反馈且无明显卡顿风险。'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-21T00:00:00Z'
+top_issues:
+  - id: QA-1.7-1
+    summary: '100MB 级文件解析策略缺失'
+    severity: INFO
+    recommendation: '后续若导入文件进一步增大，评估 streaming/Worker 解析与性能基准测试。'
+waiver:
+  active: false
+quality_score: 65
+expires: '2025-11-04T00:00:00Z'
+evidence:
+  tests_reviewed: 0
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4]
+    ac_gaps: [5]
+nfr_validation:
+  security:
+    status: PASS
+    notes: '前后端均增加文件数/体积/扩展限制并拦截非法路径，Mock 层与客户端约束保持一致。'
+  performance:
+    status: AT_RISK
+    notes: '解析仍在主线程串行完成，缺少分块/Worker 或可中断机制，无法证明 100MB 目标可达。'
+  reliability:
+    status: AT_RISK
+    notes: '导入失败重试与日志冗余策略未细化，易导致状态不一致。'
+  maintainability:
+    status: WATCH
+    notes: '任务列表保留文档同步要求，但缺少自动化验证及回gress 测试计划。'
+recommendations:
+  immediate:
+    - action: '记录 100 MB 导入的实际耗时与 CPU 占用，作为后续容量评估基线。'
+      refs:
+        - 'docs/stories/STORY-1.7-import-wizard.md'
+  future:
+    - action: '引入端到端导入回归脚本，确保后续扩展契约时可自动验收。'
+      refs:
+        - 'docs/stories/STORY-1.7-import-wizard.md'

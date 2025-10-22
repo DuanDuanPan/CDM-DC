@@ -18,6 +18,7 @@
   "dependencies": {
     "@react-google-maps/api": "^2.19.3",
     "draco3d": "1.5.7",
+    "jszip": "^3.10.1",
     "next": "15.3.2",
     "occt-import-js": "0.0.22",
     "online-3d-viewer": "^0.16.0",

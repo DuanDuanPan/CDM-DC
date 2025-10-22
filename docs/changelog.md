@@ -2,6 +2,13 @@
 
 > 项目：产品过程数据中心 · 试验BOM增强｜维护：文档基线
 
+## 2025-10-21 · Story 1.7 · Import Wizard
+- 前端实现：新增 `components/tbom/import/TbomImportWizard` 导入向导、`useTbomImportState` 状态钩子与工具栏入口，覆盖契约选择、文件校验、映射确认、导入摘要与日志回看。
+- 服务与 Mock：新增 `services/tbom-import.ts` 封装导入接口，Mock Route `/api/mock/tbom/import` 支持 FormData 上传、内存合并与导入日志返回；Mock 读取函数引入覆盖写入能力。
+- UI 集成：`components/structure/ProductStructure` 注入“导入数据包”工具面板、最近日志摘要与向导挂载；运行详情在导入成功后刷新 TBOM 数据。
+- 文档与样例：`docs/tbom-contract.md` 升级至 v0.4，补充导入流程、错误码、ZIP 结构与日志示例；`docs/changelog.md` 记录 Story 1.7，Mock 数据说明同步更新。
+- 测试：新增 `components/tbom/__tests__/TbomImportWizard.test.tsx` 覆盖向导基础交互，确保契约选择与步骤跳转可用。
+
 ## 2025-10-20 · Story 1.6 · Run Detail Experience
 - 前端实现：新增 `components/tbom/detail/TbomRunDetail` 浮层组件，承载运行元数据卡、迷你曲线预览、异常事件时间轴以及附件懒加载预览；`TbomNodeDetail` 改为以按钮打开浮层并保持键盘可达与 `aria-live` 提示。
 - 数据与服务：扩展 Mock Route（`/tbom/attachments/:runId`、`/tbom/test-card/:runId`）返回 JSON，前端通过 `services/tbom.ts` 解析 CSV（events/timeseries）并推导单位/采样率统计；抽取 `utils/csv.ts` 复用 CSV 解析逻辑。

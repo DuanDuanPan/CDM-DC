@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server';
-import { readJsonFile, serverError } from '../utils';
+import { readJsonDataset, serverError } from '../utils';
+import type { TbomRun } from '@/components/tbom/types';
 
-type TbomRun = {
-  run_id: string;
-};
-
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const runs = await readJsonFile<TbomRun[]>('tbom_run.json');
+    const runs = await readJsonDataset<TbomRun[]>('tbom_run');
     return NextResponse.json({ data: runs });
   } catch (error) {
     return serverError(error);
