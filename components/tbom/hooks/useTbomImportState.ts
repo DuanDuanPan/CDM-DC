@@ -590,7 +590,10 @@ export const useTbomImportState = ({ loadExistingData, onDataMutated }: UseTbomI
         const { data, issues: parseIssues } = await parseJson(file, TbomProjectListSchema, readFileText);
         issues.push(...parseIssues);
         if (data) {
-          projects = data;
+          projects = data.map((project) => ({
+            ...project,
+            relations: project.relations ?? [],
+          }));
           inspected.push({
             name: file.name,
               kind: 'project',
@@ -602,7 +605,10 @@ export const useTbomImportState = ({ loadExistingData, onDataMutated }: UseTbomI
         const { data, issues: parseIssues } = await parseJson(file, TbomTestListSchema, readFileText);
         issues.push(...parseIssues);
         if (data) {
-          tests = data;
+          tests = data.map((test) => ({
+            ...test,
+            spec_refs: test.spec_refs ?? [],
+          }));
           inspected.push({
             name: file.name,
               kind: 'test',
@@ -614,7 +620,11 @@ export const useTbomImportState = ({ loadExistingData, onDataMutated }: UseTbomI
         const { data, issues: parseIssues } = await parseJson(file, TbomRunListSchema, readFileText);
         issues.push(...parseIssues);
         if (data) {
-          runs = data;
+          runs = data.map((run) => ({
+            ...run,
+            attachments: run.attachments ?? [],
+            environment: run.environment ?? {},
+          }));
           inspected.push({
             name: file.name,
               kind: 'run',

@@ -2,12 +2,14 @@
 import { useEffect, useState } from 'react';
 import type { TbomSelection } from '@/components/tbom/TbomExplorerClient';
 import type { TbomProject, TbomRun, TbomTest } from '@/components/tbom/types';
+import type { TbomFilterSnapshot } from '@/components/tbom/relations/types';
 import TbomRunDetail from '@/components/tbom/detail/TbomRunDetail';
 
 type TbomNodeDetailProps = {
   selection: TbomSelection | null;
   tests: TbomTest[];
   runs: TbomRun[];
+  filters?: TbomFilterSnapshot | null;
 };
 
 function formatDate(value?: string) {
@@ -35,7 +37,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetailProps) {
+export default function TbomNodeDetail({ selection, tests, runs, filters = null }: TbomNodeDetailProps) {
   const [runDetailPayload, setRunDetailPayload] = useState<{
     run: TbomRun;
     test: TbomTest;
@@ -64,6 +66,7 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
             run={runDetailPayload.run}
             test={runDetailPayload.test}
             project={runDetailPayload.project}
+            filters={filters}
             onClose={() => setRunDetailPayload(null)}
           />
         ) : null}
@@ -138,6 +141,7 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
             run={runDetailPayload.run}
             test={runDetailPayload.test}
             project={runDetailPayload.project}
+            filters={filters}
             onClose={() => setRunDetailPayload(null)}
           />
         ) : null}
@@ -295,6 +299,7 @@ export default function TbomNodeDetail({ selection, tests, runs }: TbomNodeDetai
           run={runDetailPayload.run}
           test={runDetailPayload.test}
           project={runDetailPayload.project}
+          filters={filters}
           onClose={() => setRunDetailPayload(null)}
         />
       ) : null}

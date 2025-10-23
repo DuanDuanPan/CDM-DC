@@ -2,6 +2,13 @@
 
 > 项目：产品过程数据中心 · 试验BOM增强｜维护：文档基线
 
+## 2025-10-23 · Story 1.8 · Cross-Domain Traceability
+- TBOM 关联：新增 `components/tbom/relations/` 模块，统一 chips 映射、可达性公告与跨域导航上下文持久化；`TbomRelationPanel`、`TbomRunDetail` 复用 chips 并支持空/错态提示。
+- 跨域联动：`app/page.tsx` 支持 `module/domain` 深链，`ProductStructure`、`CompareCenter`、`Dashboard` 接收 TBOM link 并提供返回入口、仿真/实物流转与试验列表；Compare 自动加载 TBOM payload。
+- 状态恢复：`useTbomCrossDomainNavigation` 写入 `tbom.context`/`tbom.filters`，`TbomExplorerClient` 在 `restore` 深链下还原筛选、节点与运行光标。
+- 文档更新：`docs/tbom-contract.md` 新增“4.1 指标口径与映射约定”描述需求/设计/仿真/实物字段映射；`docs/changelog.md` 纪录 Story 1.8 交付。
+- Run 详情补丁：传递活跃 `filterSnapshot` 至 `TbomRunDetail`/chips，确保跨域导航往返后筛选上下文还原，并新增 RTL（`TbomRunDetail.test.tsx`）与 Playwright 跑通 run-detail→结构→返回流程。
+
 ## 2025-10-21 · Story 1.7 · Import Wizard
 - 前端实现：新增 `components/tbom/import/TbomImportWizard` 导入向导、`useTbomImportState` 状态钩子与工具栏入口，覆盖契约选择、文件校验、映射确认、导入摘要与日志回看。
 - 服务与 Mock：新增 `services/tbom-import.ts` 封装导入接口，Mock Route `/api/mock/tbom/import` 支持 FormData 上传、内存合并与导入日志返回；Mock 读取函数引入覆盖写入能力。

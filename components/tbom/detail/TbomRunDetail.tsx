@@ -22,6 +22,9 @@ import {
 } from 'recharts';
 import ImageViewer from '@/components/common/ImageViewer';
 import PdfViewer from '@/components/common/PdfViewer';
+import TbomRelationChips from '@/components/tbom/relations/TbomRelationChips';
+import type { TbomSelection } from '@/components/tbom/TbomExplorerClient';
+import type { TbomFilterSnapshot } from '@/components/tbom/relations/types';
 import type {
   TbomAttachment,
   TbomProject,
@@ -52,6 +55,7 @@ type TbomRunDetailProps = {
   run: TbomRun;
   test: TbomTest;
   project: TbomProject;
+  filters?: TbomFilterSnapshot | null;
   onClose: () => void;
 };
 
@@ -225,7 +229,7 @@ function classifySeverity(severity: string) {
   }
 }
 
-export default function TbomRunDetail({ run, test, project, onClose }: TbomRunDetailProps) {
+export default function TbomRunDetail({ run, test, project, filters = null, onClose }: TbomRunDetailProps) {
   const [mounted, setMounted] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -240,6 +244,16 @@ export default function TbomRunDetail({ run, test, project, onClose }: TbomRunDe
   const [highlightRange, setHighlightRange] = useState<HighlightRange | null>(null);
 
   useBodyScrollLock(true);
+
+  const selectionForRelations = useMemo<TbomSelection>(
+    () => ({
+      level: 'run',
+      project,
+      test,
+      run,
+    }),
+    [project, run, test],
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -471,6 +485,24 @@ export default function TbomRunDetail({ run, test, project, onClose }: TbomRunDe
               </div>
             ) : (
               <>
+                <section className="space-y-3 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-slate-900">跨域关联导航</h3>
+                    <span className="text-xs text-slate-500">
+                      支持 Ctrl/⌘ + 点击在新标签打开。
+                    </span>
+                  </div>
+                  <TbomRelationChips
+                    selection={selectionForRelations}
+                    filters={filters}
+                    runOverride={run}
+                    dense
+                  />
+                  <p className="text-xs text-slate-500">
+                    点击 chips 可同步 Compare/仿真上下文并保留 TBOM 筛选，下方概览会实时刷新。
+                  </p>
+                </section>
+
                 <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm">
                   <h3 className="text-base font-semibold text-slate-900">运行概览</h3>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

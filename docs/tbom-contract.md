@@ -148,6 +148,19 @@ CSV 每列代表通道，必备列：
 | 仿真   | `relations[].ref_id`（kind=`simulation`） | 仿真案例或结果 ID      |
 | 实物   | `test_item_sn`, `attachments[].run_id`    | 实物件、附件关联       |
 
+## 4.1 指标口径与映射约定
+
+| 目标域 | TBOM 字段 | 对应系统字段 | 单位/口径说明 | 同步规则 |
+| --- | --- | --- | --- | --- |
+| 需求 | `relations[].ref_id` (`kind=requirement`) | 需求管理矩阵 `requirements[].id` | 需求编号保持字符串一致，不做零填充 | 需求基线变更后由需求平台推送最新 ID，TBOM 仅接受增量并记录更新时间 |
+| 设计/EBOM | `ebom_node_id`, `ebom_path` | XBOM 节点 `node.id` 与 `node.path` | `ebom_path` 使用 `/` 分隔级次，节点 ID 按照 XBOM 数据字典 | XBOM 发布新基线时同步节点 ID；TBOM 持久化旧值并在回流时覆盖 |
+| 仿真 | `relations[].ref_id` (`kind=simulation`), `timeseries[].unit`, `timeseries[].sampleRate` | 仿真库 `simulations[].id`；曲线字段字典 `channel.unit`、`channel.sample_rate` | 所有曲线默认 SI 单位；采样率以 Hz 表示，保留两位小数 | 仿真导出时写入 TBOM；若单位不符需在导出前转换后再写入 TBOM |
+| 实物 | `test_item_sn`, `assembly_bom_id` | 资产台账 `asset.sn`，工装装配 `assembly.id` | `test_item_sn` 需要全局唯一；装配 ID 与 EBOM 一致 | 实物盘点/导入后写入 TBOM；Compare/仪表盘按最近一次同步时间展示 |
+
+- `relations[].kind` 必须与上述四类枚举一致，若新增域需在契约内附录声明。
+- 任何单位换算需在写入 TBOM 前完成，TBOM 仅存储目标单位，不记录换算因子。
+- 处理增量时应使用“最后写入优先”策略，并在 `tbom_changelog` 表中记录来源系统与时间戳。
+
 校验要点：
 - `project_id` ↔ `test.project_id` ↔ `run.test_id` 必须整合。
 - `run.attachments[]` 中的 ID 必须出现在 `attachments.csv`.

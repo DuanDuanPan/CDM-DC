@@ -6,6 +6,14 @@ import type { TbomAttachment, TbomRunEvent, TbomTestCardRow, TbomTimeseriesChann
 import type { TbomProject, TbomRun, TbomTest } from '@/components/tbom/types';
 import { ApiError } from '@/services/http';
 
+const pushMock = jest.fn();
+
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
+}));
+
 jest.mock('next/dynamic', () => () => {
   const Component = () => null;
   Component.displayName = 'DynamicCompareMock';
@@ -220,5 +228,38 @@ describe('TbomRunDetail', () => {
       expect(mockGetRunEvents).toHaveBeenCalledTimes(2);
     });
     expect(await screen.findByText('样机布置照片')).toBeInTheDocument();
+  });
+
+  it('persists TBOM filters when navigating via relation chips', async () => {
+    setupSuccessMocks();
+    const filters = {
+      searchTerm: 'SN-001',
+      typeFilter: '结构振动',
+      statusFilter: ['completed' as const],
+      structureSelection: 'EBN-001',
+      expandedTreeIds: ['project:P-1'],
+    };
+
+    render(
+      <TbomRunDetail
+        run={run}
+        test={testItem}
+        project={{ ...project, relations: [{ kind: 'requirement', ref_id: 'REQ-123' }] }}
+        filters={filters}
+        onClose={() => {}}
+      />,
+    );
+
+    const chip = await screen.findByRole('button', { name: /需求关联/ });
+    await userEvent.click(chip);
+
+    await waitFor(() => expect(window.localStorage.getItem('tbom.filters')).not.toBeNull());
+    const storedFilters = JSON.parse(window.localStorage.getItem('tbom.filters') ?? '{}');
+    expect(storedFilters).toMatchObject({
+      searchTerm: filters.searchTerm,
+      statusFilter: filters.statusFilter,
+      structureSelection: filters.structureSelection,
+    });
+    expect(pushMock).toHaveBeenCalled();
   });
 });

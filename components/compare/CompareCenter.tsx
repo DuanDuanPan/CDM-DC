@@ -21,6 +21,16 @@ interface CompareItem {
 
 const TBOM_COMPARE_EVENT = 'tbom-compare:payload-updated';
 
+type CompareCenterProps = {
+  tbomLink?: {
+    from: string | null;
+    domain: string | null;
+    runId: string | null;
+    projectId: string | null;
+    testId: string | null;
+  } | null;
+};
+
 type TbomComparePayload = {
   runId: string;
   projectId: string;
@@ -35,7 +45,7 @@ type TbomComparePayload = {
   generatedAt?: string;
 };
 
-export default function CompareCenter() {
+export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
   const [compareItems, setCompareItems] = useState<CompareItem[]>([
     {
       id: 1,
@@ -62,6 +72,7 @@ export default function CompareCenter() {
   const [activeTab, setActiveTab] = useState('parameter');
   const [compareMode, setCompareMode] = useState('scheme');
   const [tbomPayload, setTbomPayload] = useState<TbomComparePayload | null>(null);
+  const highlightTbom = tbomLink?.from === 'tbom';
 
   const loadTbomPayload = useCallback(() => {
     try {
@@ -77,6 +88,14 @@ export default function CompareCenter() {
       setTbomPayload(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (highlightTbom) {
+      loadTbomPayload();
+      setCompareMode('test-sim');
+      setActiveTab('curve');
+    }
+  }, [highlightTbom, loadTbomPayload]);
 
   useEffect(() => {
     loadTbomPayload();
@@ -316,7 +335,11 @@ export default function CompareCenter() {
         <div className="mx-6 mt-6 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 px-4 py-3 text-xs text-blue-600">
           <div className="flex items-center gap-2">
             <i className="ri-navigation-line" />
-            <span>可从运行详情一键送入 Compare；点击刷新以读取最新的上下文。</span>
+            <span>
+              {highlightTbom
+                ? `等待 TBOM 运行 ${tbomLink?.runId ?? '未指定'} 的 Compare 上下文，请稍候或从 TBOM 重新发送。`
+                : '可从运行详情一键送入 Compare；点击刷新以读取最新的上下文。'}
+            </span>
           </div>
           <button
             type="button"

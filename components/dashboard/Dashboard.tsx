@@ -1,12 +1,35 @@
 
 'use client';
 
+import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import StatsGrid from './StatsGrid';
 import ActivityChart from './ActivityChart';
 import RecentAssets from './RecentAssets';
 import ProjectHealth from './ProjectHealth';
 
-export default function Dashboard() {
+type DashboardProps = {
+  tbomLink?: {
+    from: string | null;
+    domain: string | null;
+    assetSn: string | null;
+    runId: string | null;
+    testId: string | null;
+  } | null;
+};
+
+export default function Dashboard({ tbomLink = null }: DashboardProps) {
+  const router = useRouter();
+  const showTbomBanner = tbomLink?.from === 'tbom' && tbomLink.domain === 'physical';
+  const handleReturnToTbom = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('module', 'structure');
+    params.set('domain', 'ebom');
+    params.set('from', 'tbom');
+    params.set('restore', '1');
+    router.push(`/?${params.toString()}`);
+  }, [router]);
+
   return (
     <div className="p-6 space-y-6 overflow-y-auto h-full">
       <div className="flex items-center justify-between">
@@ -26,6 +49,24 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {showTbomBanner ? (
+        <section className="rounded-2xl border border-blue-100 bg-blue-50/70 px-5 py-4 text-sm text-blue-900">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">来自 TBOM 的实物追溯</p>
+              <p className="text-xs text-blue-700">试验件序列号：{tbomLink?.assetSn ?? '未提供'} · 运行 {tbomLink?.runId ?? '未提供'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleReturnToTbom}
+              className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-600 hover:border-blue-300 hover:text-blue-700"
+            >
+              <i className="ri-share-reverse-line" aria-hidden /> 返回 TBOM
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <StatsGrid />
       

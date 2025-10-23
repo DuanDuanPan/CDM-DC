@@ -29,6 +29,13 @@ export default async function TbomPage({ searchParams }: TbomPageProps) {
     node: resolvedSearchParams?.node,
     run: resolvedSearchParams?.run,
     path: resolvedSearchParams?.path,
+    domain: resolvedSearchParams?.domain,
+    requirementId: resolvedSearchParams?.requirementId,
+    simulationRef: resolvedSearchParams?.simulationRef,
+    assetSn: resolvedSearchParams?.assetSn,
+    projectId: resolvedSearchParams?.projectId,
+    testId: resolvedSearchParams?.testId,
+    restore: resolvedSearchParams?.restore,
   };
 
   return (

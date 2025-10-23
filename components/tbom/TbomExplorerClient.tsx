@@ -15,6 +15,7 @@ import {
 import TbomTree from '@/components/tbom/structure/TbomTree';
 import TbomNodeDetail from '@/components/tbom/detail/TbomNodeDetail';
 import TbomRelationPanel from '@/components/tbom/detail/TbomRelationPanel';
+import type { TbomFilterSnapshot, TbomNavigationPersistedContext } from '@/components/tbom/relations/types';
 import TbomFilterPanel, { TbomTypeStat } from '@/components/tbom/filter/TbomFilterPanel';
 
 type Selection =
@@ -48,6 +49,13 @@ type TbomExplorerClientProps = {
     node?: string | string[] | undefined;
     run?: string | string[] | undefined;
     path?: string | string[] | undefined;
+    domain?: string | string[] | undefined;
+    requirementId?: string | string[] | undefined;
+    simulationRef?: string | string[] | undefined;
+    assetSn?: string | string[] | undefined;
+    projectId?: string | string[] | undefined;
+    testId?: string | string[] | undefined;
+    restore?: string | string[] | undefined;
   };
   initialError?: string | null;
   withChrome?: boolean;
@@ -144,6 +152,7 @@ export default function TbomExplorerClient({
   const announcementRef = useRef<HTMLDivElement>(null);
   const closeDrawerButtonRef = useRef<HTMLButtonElement>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const hasRestoredRef = useRef(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -156,6 +165,20 @@ export default function TbomExplorerClient({
   const [isRefreshing, startTransition] = useTransition();
   const [isFilterPanelOpen, setFilterPanelOpen] = useState(false);
   const [structureSelectionState, setStructureSelectionState] = useState<string>(structureSelection ?? '001');
+
+  const filterSnapshot = useMemo<TbomFilterSnapshot>(() => ({
+    searchTerm,
+    typeFilter,
+    statusFilter,
+    structureSelection: structureSelectionState,
+    expandedTreeIds: Array.from(expanded),
+  }), [searchTerm, typeFilter, statusFilter, structureSelectionState, expanded]);
+
+  const shouldRestoreContext = useMemo(() => {
+    const restoreFlag = toSingle(initialParams.restore);
+    const fromValue = toSingle(initialParams.from);
+    return restoreFlag === '1' || fromValue === 'structure' || fromValue === 'dashboard';
+  }, [initialParams.from, initialParams.restore]);
 
   const projectsById = useMemo(() => {
     const map = new Map<string, TbomProject>();
@@ -223,6 +246,69 @@ export default function TbomExplorerClient({
       searchInputRef.current.focus();
     }
   }, [initialParams.from]);
+
+  useEffect(() => {
+    if (!shouldRestoreContext) return;
+    if (hasRestoredRef.current) return;
+    if (typeof window === 'undefined') return;
+
+    let parsedContext: TbomNavigationPersistedContext | null = null;
+    try {
+      const raw = window.localStorage.getItem('tbom.context');
+      if (raw) {
+        parsedContext = JSON.parse(raw) as TbomNavigationPersistedContext;
+      }
+    } catch (error) {
+      console.warn('[TBOM] 无法解析保存的上下文', error);
+    }
+    if (!parsedContext) return;
+
+    hasRestoredRef.current = true;
+
+    const { filters: storedFilters, selection: storedSelection, anchor } = parsedContext;
+
+    if (storedFilters) {
+      setSearchTerm(storedFilters.searchTerm ?? '');
+      setTypeFilter(storedFilters.typeFilter ?? 'all');
+      setStatusFilter(storedFilters.statusFilter ?? []);
+      if (storedFilters.structureSelection) {
+        setStructureSelectionState(storedFilters.structureSelection);
+      }
+      if (storedFilters.expandedTreeIds) {
+        setExpanded(new Set(storedFilters.expandedTreeIds));
+      }
+    }
+
+    if (anchor?.ebomNodeId) {
+      setStructureSelectionState(anchor.ebomNodeId);
+    }
+
+    let restoredSelection: Selection | null = null;
+    if (storedSelection) {
+      const project = projects.find((item) => item.project_id === storedSelection.projectId);
+      if (!project) {
+        return;
+      }
+      if (storedSelection.level === 'project') {
+        restoredSelection = { level: 'project', project };
+      } else if (storedSelection.level === 'test' && storedSelection.testId) {
+        const test = tests.find((item) => item.test_id === storedSelection.testId);
+        if (test) {
+          restoredSelection = { level: 'test', project, test };
+        }
+      } else if (storedSelection.level === 'run' && storedSelection.testId && storedSelection.runId) {
+        const test = tests.find((item) => item.test_id === storedSelection.testId);
+        const run = runs.find((item) => item.run_id === storedSelection.runId);
+        if (test && run) {
+          restoredSelection = { level: 'run', project, test, run };
+        }
+      }
+    }
+
+    if (restoredSelection) {
+      setSelection(restoredSelection);
+    }
+  }, [projects, runs, tests, shouldRestoreContext]);
 
   useEffect(() => {
     setLoadError(initialError ?? null);
@@ -753,7 +839,7 @@ export default function TbomExplorerClient({
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
-        <TbomNodeDetail selection={activeSelection} tests={tests} runs={runs} />
+        <TbomNodeDetail selection={activeSelection} tests={tests} runs={runs} filters={filterSnapshot} />
       </div>
       <div className="border-t border-slate-200/60 px-4 py-3 lg:hidden">
         <button
@@ -780,7 +866,7 @@ export default function TbomExplorerClient({
         <p className="text-xs text-slate-500">查看需求、设计、仿真等跨域信息，或返回产品结构。</p>
       </div>
       <div className="flex-1 overflow-y-auto">
-        <TbomRelationPanel selection={activeSelection} />
+        <TbomRelationPanel selection={activeSelection} filters={filterSnapshot} />
       </div>
     </section>
   );
@@ -831,7 +917,7 @@ export default function TbomExplorerClient({
               </button>
             </div>
             <div className="max-h-[65vh] overflow-y-auto">
-              <TbomRelationPanel selection={activeSelection} />
+              <TbomRelationPanel selection={activeSelection} filters={filterSnapshot} />
             </div>
           </div>
         </div>

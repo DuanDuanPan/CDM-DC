@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -15,6 +15,13 @@ import RelationGraph from '../components/graph/RelationGraph';
 import Settings from '../components/settings/Settings';
 import NodeTestBadge from '../components/tbom/structure/NodeTestBadge';
 
+const DOMAIN_TO_MODULE: Record<string, string> = {
+  requirement: 'structure',
+  ebom: 'structure',
+  simulation: 'structure',
+  physical: 'dashboard',
+};
+
 export default function Home() {
   return (
     <Suspense fallback={<div className="p-6 text-sm text-gray-500">正在加载深链入口…</div>}>
@@ -26,13 +33,93 @@ export default function Home() {
 function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const fromEbom = searchParams.get('from') === 'ebom';
+  const fromParam = searchParams.get('from');
+  const moduleParam = searchParams.get('module');
+  const domainParam = searchParams.get('domain');
   const deepLinkNode = searchParams.get('node');
   const deepLinkPath = searchParams.get('path');
-  const [activeModule, setActiveModule] = useState(
-    fromEbom ? 'structure' : 'dashboard',
-  );
+  const requirementParam = searchParams.get('requirementId');
+  const simulationParam = searchParams.get('simulationRef');
+  const assetParam = searchParams.get('assetSn');
+  const tbomProjectParam = searchParams.get('tbomProject');
+  const tbomTestParam = searchParams.get('tbomTest');
+  const tbomRunParam = searchParams.get('tbomRun');
+
+  const initialModule = useMemo(() => {
+    if (moduleParam) return moduleParam;
+    if (fromParam === 'tbom' && domainParam && DOMAIN_TO_MODULE[domainParam]) {
+      return DOMAIN_TO_MODULE[domainParam];
+    }
+    if (fromParam === 'ebom') return 'structure';
+    return 'dashboard';
+  }, [domainParam, fromParam, moduleParam]);
+
+  const [activeModule, setActiveModule] = useState(initialModule);
   const [selectedProject, setSelectedProject] = useState('航空发动机项目');
+
+  const deepLinkKey = useMemo(
+    () =>
+      [
+        moduleParam ?? '',
+        fromParam ?? '',
+        domainParam ?? '',
+        deepLinkNode ?? '',
+        requirementParam ?? '',
+        simulationParam ?? '',
+        assetParam ?? '',
+      ].join('|'),
+    [assetParam, domainParam, deepLinkNode, fromParam, moduleParam, requirementParam, simulationParam],
+  );
+
+  const deepLinkKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const desiredModule =
+      moduleParam ??
+      (fromParam === 'tbom' && domainParam && DOMAIN_TO_MODULE[domainParam]
+        ? DOMAIN_TO_MODULE[domainParam]
+        : undefined) ??
+      (fromParam === 'ebom' ? 'structure' : undefined);
+    if (!desiredModule) {
+      deepLinkKeyRef.current = deepLinkKey;
+      return;
+    }
+    if (deepLinkKeyRef.current !== deepLinkKey) {
+      deepLinkKeyRef.current = deepLinkKey;
+      if (desiredModule !== activeModule) {
+        setActiveModule(desiredModule);
+      }
+    }
+  }, [activeModule, deepLinkKey, domainParam, fromParam, moduleParam]);
+
+  const tbomDeepLink = useMemo(
+    () => ({
+      from: fromParam,
+      domain: domainParam,
+      node: deepLinkNode,
+      path: deepLinkPath,
+      requirementId: requirementParam,
+      simulationRef: simulationParam,
+      assetSn: assetParam,
+      projectId: tbomProjectParam,
+      testId: tbomTestParam,
+      runId: tbomRunParam,
+    }),
+    [
+      assetParam,
+      deepLinkNode,
+      deepLinkPath,
+      domainParam,
+      fromParam,
+      requirementParam,
+      simulationParam,
+      tbomProjectParam,
+      tbomRunParam,
+      tbomTestParam,
+    ],
+  );
+
+  const isFromEbom = fromParam === 'ebom';
   const badgeCount = deepLinkNode ? 3 : 0;
 
   const tbomHref = useMemo(() => {
@@ -43,22 +130,20 @@ function HomeContent() {
     return `/tbom${params.toString() ? `?${params.toString()}` : ''}`;
   }, [deepLinkNode, deepLinkPath]);
 
-  useEffect(() => {
-    if (fromEbom) {
-      setActiveModule('structure');
-    }
-  }, [fromEbom]);
+  const handleModuleChange = (module: string) => {
+    setActiveModule(module);
+  };
 
   const renderContent = () => {
     switch (activeModule) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard tbomLink={tbomDeepLink} />;
       case 'explorer':
         return <DataExplorer />;
       case 'structure':
-        return <ProductStructure />;
+        return <ProductStructure tbomLink={tbomDeepLink} />;
       case 'compare':
-        return <CompareCenter />;
+        return <CompareCenter tbomLink={tbomDeepLink} />;
       case 'upload':
         return <UploadManager />;
       case 'completion':
@@ -78,15 +163,15 @@ function HomeContent() {
         selectedProject={selectedProject} 
         onProjectChange={setSelectedProject}
       />
-      
+
       <div className="flex h-[calc(100vh-64px)]">
         <Sidebar 
           activeModule={activeModule} 
-          onModuleChange={setActiveModule} 
+          onModuleChange={handleModuleChange} 
         />
 
         <main className="flex-1 overflow-auto">
-          {fromEbom && (
+          {isFromEbom && (
             <section
               aria-label="结构节点过滤入口"
               className="border-b border-blue-100 px-6 py-4 bg-blue-50 text-blue-900"

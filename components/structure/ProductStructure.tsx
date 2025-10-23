@@ -2,6 +2,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Tooltip from '@/components/common/Tooltip';
 import { requirementRoles, requirementRoleInsights } from './data/requirementRoles';
 import { requirementsByNode } from './data/requirements';
@@ -69,6 +70,13 @@ const mapBomType = (nodes: BomNode[], nextType: string): BomNode[] =>
   }));
 
 const TBOM_FEATURE_ENABLED = process.env.NEXT_PUBLIC_ENABLE_TBOM !== 'false';
+
+const TBOM_RUN_STATUS_LABEL: Record<TbomRun['status'], string> = {
+  planned: '计划中',
+  executing: '执行中',
+  completed: '已完成',
+  aborted: '已中止',
+};
 
 const formatImportTimestamp = (iso: string): string => {
   try {
@@ -305,6 +313,23 @@ type SimulationJumpFeedback = {
   timestamp: number;
 };
 
+type TbomLinkPayload = {
+  from: string | null;
+  domain: string | null;
+  node: string | null;
+  path: string | null;
+  requirementId: string | null;
+  simulationRef: string | null;
+  assetSn: string | null;
+  projectId: string | null;
+  testId: string | null;
+  runId: string | null;
+};
+
+type ProductStructureProps = {
+  tbomLink?: TbomLinkPayload | null;
+};
+
 const BOM_TYPE_LABELS: Record<string, string> = {
   requirement: '需求 BOM',
   solution: '方案 BOM',
@@ -344,14 +369,28 @@ const primaryActionButtonClass =
 
 /* Simulation interfaces added */
 /* Component */
-export default function ProductStructure() {
-  const [selectedBomType, setSelectedBomType] = useState('requirement');
+export default function ProductStructure({ tbomLink = null }: ProductStructureProps) {
+  const router = useRouter();
+  const [selectedBomType, setSelectedBomType] = useState(() => {
+    if (!tbomLink?.domain) return 'requirement';
+    if (tbomLink.domain === 'simulation') return 'simulation';
+    if (tbomLink.domain === 'ebom') return 'test';
+    if (tbomLink.domain === 'physical') return 'test';
+    return 'requirement';
+  });
   const [expandedNodes, setExpandedNodes] = useState<string[]>(['001']);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>(tbomLink?.node ?? null);
   const [selectedRole, setSelectedRole] = useState('system');
   const [selectedRequirementRole, setSelectedRequirementRole] = useState<RequirementRoleKey>('system-team');
   const [selectedVersion, setSelectedVersion] = useState('v2.1');
-  const [activeTab, setActiveTab] = useState('module-home');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (!tbomLink?.domain) return 'module-home';
+    if (tbomLink.domain === 'requirement') return 'requirement';
+    if (tbomLink.domain === 'simulation') return 'simulation';
+    if (tbomLink.domain === 'ebom') return 'structure';
+    if (tbomLink.domain === 'physical') return 'structure';
+    return 'module-home';
+  });
   const [showDetailedReport, setShowDetailedReport] = useState(false);
   const [activePhase, setActivePhase] = useState('concept');
   const [requirementsInView, setRequirementsInView] = useState(false);
@@ -413,6 +452,50 @@ export default function ProductStructure() {
     setSimulationWarningToast(null);
   }, []);
 
+  useEffect(() => {
+    if (!tbomLink) {
+      return;
+    }
+    if (tbomLink.domain === 'requirement' && tbomLink.requirementId) {
+      setSelectedBomType('requirement');
+      setActiveTab('requirement');
+      setPendingRequirementFocus(tbomLink.requirementId);
+      const requirementNodeId = getRequirementNodeIdForRequirement(tbomLink.requirementId);
+      if (requirementNodeId) {
+        setSelectedNode(requirementNodeId);
+        setPendingTreeScrollTarget(requirementNodeId);
+      }
+      return;
+    }
+    if (tbomLink.domain === 'simulation' && tbomLink.simulationRef) {
+      const target = resolveSimulationJumpTarget(tbomLink.simulationRef, tbomLink.node);
+      if (target) {
+        setSelectedBomType('simulation');
+        setActiveTab('simulation');
+        setPendingSimulationSelection({
+          categoryId: target.categoryId,
+          instanceId: target.instanceId,
+          defaultVersion: target.defaultVersion,
+          simBomRefId: target.simBomRefId,
+          sourceNodeId: tbomLink.node ?? null,
+          sourceNodeName: tbomLink.path ?? tbomLink.node ?? null,
+        });
+      }
+      return;
+    }
+    if (tbomLink.domain === 'ebom' && tbomLink.node) {
+      setSelectedBomType((prev) => (prev === 'simulation' ? prev : 'test'));
+      setActiveTab('structure');
+      setSelectedNode(tbomLink.node);
+      setPendingTreeScrollTarget(tbomLink.node);
+      return;
+    }
+    if (tbomLink.domain === 'physical') {
+      setSelectedBomType('test');
+      setActiveTab('structure');
+    }
+  }, [getRequirementNodeIdForRequirement, tbomLink]);
+
   const dismissSimulationFeedback = useCallback(() => {
     setSimulationJumpFeedback(null);
   }, []);
@@ -424,6 +507,20 @@ export default function ProductStructure() {
   const pushSimulationWarning = useCallback((message: string) => {
     setSimulationWarningToast({ type: 'warning', message, timestamp: Date.now() });
   }, []);
+
+  const tbomTargetNode = tbomLink?.node ?? null;
+
+  const handleReturnToTbom = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set('module', 'structure');
+    params.set('domain', 'ebom');
+    params.set('from', 'tbom');
+    params.set('restore', '1');
+    if (tbomTargetNode) {
+      params.set('node', tbomTargetNode);
+    }
+    router.push(`/?${params.toString()}`);
+  }, [router, tbomTargetNode]);
 
   
   // 添加缺失的状态变量
@@ -600,6 +697,7 @@ export default function ProductStructure() {
   const [runDetailContext, setRunDetailContext] = useState<{ project: TbomProject; test: TbomTest; run: TbomRun } | null>(null);
   const [isRunDetailLoading, setIsRunDetailLoading] = useState(false);
   const [runDetailError, setRunDetailError] = useState<string | null>(null);
+  const [linkedRuns, setLinkedRuns] = useState<TbomRun[]>([]);
 
   const ensureTbomData = useCallback(async () => {
     if (tbomData) {
@@ -634,6 +732,44 @@ export default function ProductStructure() {
       tbomDataPromiseRef.current = Promise.resolve(data);
     },
   });
+
+  const linkedRunEntries = useMemo(() => {
+    if (!tbomTargetNode || !tbomData) {
+      return [] as Array<{ run: TbomRun; test: TbomTest; project: TbomProject }>;
+    }
+    const testById = new Map(tbomData.tests.map((test) => [test.test_id, test]));
+    const projectById = new Map(tbomData.projects.map((project) => [project.project_id, project]));
+    return linkedRuns
+      .map((run) => {
+        const test = testById.get(run.test_id);
+        if (!test) return null;
+        const project = projectById.get(test.project_id);
+        if (!project) return null;
+        return { run, test, project };
+      })
+      .filter((entry): entry is { run: TbomRun; test: TbomTest; project: TbomProject } => Boolean(entry));
+  }, [linkedRuns, tbomData, tbomTargetNode]);
+
+  useEffect(() => {
+    if (!tbomTargetNode) {
+      setLinkedRuns([]);
+      return;
+    }
+    let cancelled = false;
+    ensureTbomData()
+      .then((data) => {
+        if (cancelled) return;
+        const runsForNode = data.runs.filter((run) => run.ebom_node_id === tbomTargetNode);
+        setLinkedRuns(runsForNode);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLinkedRuns([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ensureTbomData, tbomTargetNode]);
   const { state: tbomImportState, actions: tbomImportActions } = tbomImport;
   const latestImportLog = tbomImportState.logs[0] ?? null;
   const latestImportStats = useMemo(() => {
@@ -4956,6 +5092,57 @@ const buildNodeTags = (node: BomNode) => {
                             导入数据包
                           </button>
                         </div>
+                      </div>
+                    ) : null}
+                    {tbomTargetNode ? (
+                      <div className="mb-4 rounded-2xl border border-blue-100 bg-white px-4 py-4 text-sm text-slate-700">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">挂接试验列表</p>
+                            <p className="text-xs text-slate-500">
+                              结构节点 {tbomTargetNode}
+                              {tbomLink?.path ? ` · ${tbomLink.path}` : ''}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleReturnToTbom}
+                            className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:border-blue-300 hover:text-blue-700"
+                          >
+                            <i className="ri-share-reverse-line" aria-hidden /> 返回 TBOM
+                          </button>
+                        </div>
+                        {linkedRunEntries.length ? (
+                          <ul className="mt-3 space-y-2">
+                            {linkedRunEntries.map(({ run, test, project }) => (
+                              <li
+                                key={run.run_id}
+                                className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between"
+                              >
+                                <div className="space-y-1">
+                                  <div className="font-medium text-slate-900">{test.name}</div>
+                                  <div className="text-slate-500">
+                                    运行 {run.run_id} · {TBOM_RUN_STATUS_LABEL[run.status]} · 序列号 {run.test_item_sn ?? '未提供'}
+                                  </div>
+                                  <div className="text-slate-400">
+                                    项目 {project.title} ({project.project_id})
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenRunDetail({ projectId: project.project_id, testId: test.test_id, runId: run.run_id })}
+                                  className="inline-flex items-center gap-2 self-start rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                                >
+                                  <i className="ri-external-link-line" aria-hidden /> 查看运行
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-xs text-slate-500">
+                            暂未查询到挂接该结构节点的运行记录，可在 TBOM 中维护后刷新查看。
+                          </p>
+                        )}
                       </div>
                     ) : null}
                     <TestingContentPanel

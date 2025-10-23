@@ -45,6 +45,14 @@ const ImportSummarySchema = z.object({
   logJson: z.string().optional(),
 });
 
+const toImportEntity = (value?: string | null): TbomImportSummary['errors'][number]['entity'] => {
+  if (!value) return undefined;
+  if (value === 'project' || value === 'test' || value === 'run' || value === 'attachment' || value === 'event' || value === 'timeseries') {
+    return value;
+  }
+  return undefined;
+};
+
 export async function importTbomPackage(form: FormData): Promise<TbomImportSummary> {
   const summary = await api('/tbom/import', {
     init: {
@@ -53,5 +61,15 @@ export async function importTbomPackage(form: FormData): Promise<TbomImportSumma
     },
     schema: ImportSummarySchema,
   });
-  return summary;
+  return {
+    ...summary,
+    errors: summary.errors.map((issue) => ({
+      ...issue,
+      entity: toImportEntity(issue.entity ?? undefined),
+    })),
+    warnings: summary.warnings.map((issue) => ({
+      ...issue,
+      entity: toImportEntity(issue.entity ?? undefined),
+    })),
+  };
 }
