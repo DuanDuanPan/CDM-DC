@@ -9,6 +9,7 @@ import SimulationPreviewContent from './SimulationPreviewContent';
 import PdfViewer from '../../common/PdfViewer';
 import { SimulationFile, SimulationCondition } from './types';
 import { CompareSyncContext, CameraStateSnapshot } from './CompareSyncContext';
+import { buildSimulationRunsFromFiles, persistSimulationRuns } from './testSimBridge';
 
 const TYPE_LABELS: Record<SimulationFile['type'], string> = {
   geometry: '几何模型',
@@ -382,6 +383,7 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
   const [curveMode, setCurveMode] = useState<'overlay' | 'grid'>('overlay');
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [lastCamera, setLastCamera] = useState<{ sourceId: string; state: CameraStateSnapshot } | undefined>(undefined);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'pending' | 'empty'; message: string } | null>(null);
 
   const updateCamera = useCallback((sourceId: string, state: CameraStateSnapshot) => {
     setLastCamera({ sourceId, state });
@@ -392,6 +394,37 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
     items.forEach(f => (f.conditions || []).forEach(c => { if (!map.has(c.id)) map.set(c.id, c); }));
     return Array.from(map.values());
   }, [items]);
+  const hasResultItems = useMemo(() => items.some(item => item.type === 'result'), [items]);
+
+  const handleSyncToCompare = useCallback(() => {
+    if (!hasResultItems) {
+      setSyncFeedback({ type: 'empty', message: '当前对比栏暂无仿真曲线，无法同步至 Compare。' });
+      return;
+    }
+    const targetConditionIds = selectedConditionIds.length
+      ? selectedConditionIds
+      : allConditions.map(condition => condition.id);
+    const runs = buildSimulationRunsFromFiles(items, allConditions, { selectedConditionIds: targetConditionIds });
+    if (!runs.length) {
+      setSyncFeedback({ type: 'empty', message: '当前所选仿真文件缺少曲线数据，暂时无法同步至 Compare。' });
+      return;
+    }
+    persistSimulationRuns(runs);
+    const hasPending = runs.some(run => run.status !== 'ready');
+    setSyncFeedback({
+      type: hasPending ? 'pending' : 'success',
+      message: hasPending
+        ? '仿真源已同步至 Compare，等待仿真结果生成后 Compare 将自动刷新。'
+        : `已同步 ${runs.length} 条仿真源至 Compare，可前往 Compare 页面查看。`,
+    });
+    setIsCollapsed(false);
+  }, [allConditions, hasResultItems, items, selectedConditionIds]);
+
+  useEffect(() => {
+    if (!items.length) {
+      setSyncFeedback(null);
+    }
+  }, [items.length]);
 
   useEffect(() => {
     if (allConditions.length && selectedConditionIds.length === 0) {
@@ -555,10 +588,21 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
     const wrapperMargin = variant === 'base' ? 'mx-4 my-2' : 'mx-6 my-4';
     const padding = variant === 'base' ? 'p-3' : 'p-4';
     const minHeightClass = items.length === 0 ? 'min-h-[220px]' : 'h-full';
+    const feedbackTone =
+      syncFeedback?.type === 'success'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+        : syncFeedback?.type === 'pending'
+        ? 'border-amber-200 bg-amber-50 text-amber-700'
+        : 'border-slate-200 bg-slate-50 text-slate-600';
     return (
       <div className={`flex-1 min-h-0 border-t border-gray-100 bg-gray-50`}> 
         {/* 允许内部滚动，避免子项内容被裁剪（例如 3D 视图底部被遮挡） */}
         <div className={`flex flex-col overflow-auto rounded-lg border border-dashed border-gray-300 bg-white ${wrapperMargin} ${padding} ${minHeightClass}`}>
+          {syncFeedback ? (
+            <div className={`mb-3 rounded-lg border px-3 py-2 text-xs ${feedbackTone}`}>
+              {syncFeedback.message}
+            </div>
+          ) : null}
           {renderCompareContent(items, {
             conditions: allConditions,
             selectedConditionIds,
@@ -625,6 +669,16 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
                   <i className={syncEnabled ? 'ri-link' : 'ri-link-unlink'}></i>
                   <span className="hidden xs:inline">同步视角</span>
                 </button>
+                {hasResultItems && (
+                  <button
+                    type="button"
+                    onClick={handleSyncToCompare}
+                    className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-2 py-1.5 text-[11px] text-blue-600 transition hover:bg-blue-50 sm:px-3 sm:text-xs"
+                  >
+                    <i className="ri-share-forward-line"></i>
+                    <span className="hidden xs:inline">同步到 Compare</span>
+                  </button>
+                )}
                 <button
                   className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1.5 text-[11px] sm:px-3 sm:text-xs hover:bg-gray-100"
                   onClick={onClear}
@@ -656,6 +710,16 @@ const SimulationCompareDrawer = ({ items, onRemove, onClear }: Props) => {
           <div className="text-xs text-gray-500">已选择 {items.length} 项 · 按 Esc 可退出全屏</div>
         </div>
         <div className="flex items-center gap-2">
+          {hasResultItems && (
+            <button
+              type="button"
+              onClick={handleSyncToCompare}
+              className="inline-flex items-center gap-1 rounded-md border border-blue-300 px-3 py-1.5 text-xs text-blue-600 transition hover:bg-blue-50"
+            >
+              <i className="ri-share-forward-line"></i>
+              同步到 Compare
+            </button>
+          )}
           <button
             className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
             onClick={onClear}

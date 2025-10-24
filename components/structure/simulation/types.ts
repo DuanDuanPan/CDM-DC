@@ -93,6 +93,13 @@ export interface SimulationFile {
   previewStatus?: SimulationPreviewStatus;
   convertedAt?: string;
   previewVersion?: string;
+  compareMeta?: {
+    categoryId?: string;
+    categoryName?: string;
+    instanceId?: string;
+    instanceName?: string;
+    version?: string;
+  };
   preview?: {
     curveData?: Array<{ x: number; y: number }[]>; // multiple curves
     meshInfo?: { nodes: number; elements: number; previewImage: string; viewerUrl?: string; format?: string };

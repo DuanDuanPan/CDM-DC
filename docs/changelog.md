@@ -9,6 +9,14 @@
 - 文档更新：`docs/tbom-contract.md` 新增“4.1 指标口径与映射约定”描述需求/设计/仿真/实物字段映射；`docs/changelog.md` 纪录 Story 1.8 交付。
 - Run 详情补丁：传递活跃 `filterSnapshot` 至 `TbomRunDetail`/chips，确保跨域导航往返后筛选上下文还原，并新增 RTL（`TbomRunDetail.test.tsx`）与 Playwright 跑通 run-detail→结构→返回流程。
 
+## 2025-10-24 · Story 1.9 · Compare 试验维度对比
+- Compare 试验模式：`components/compare/CompareCenter.tsx` 引入 Test-Sim 状态机，侦听 `tbomComparePayload`，可手动添加试验运行（`RunPickerDialog`）并加载 TBOM 时序数据。
+- 通道筛选与性能：`components/compare/testSim/TestSimControlPanel.tsx` + `TestSimChart.tsx` 提供 `ACC/PSD/FRF/COH` 快筛、可选通道、多运行叠加、抽稀/缩放/光标同步，支撑十万级数据渲染。
+- 单位/采样率对齐：`AlignmentPanel.tsx` 驱动自动对齐流程，记录日志并更新状态；当采样率不一致时自动抽样至最低频率，单位以契约映射为准。
+- 导出能力：新增 CSV/PNG 导出（`components/compare/testSim/export.ts`），导出包含对齐后的通道数据与可视化截图。
+- 测试覆盖：RTL 覆盖 Compare 试验模式（`CompareCenter.test.tsx`），Playwright 更新 run-detail→Compare→返回流程；文档更新（`docs/ui-architecture.md`、Story 1.9 记录）。
+- 仿真联动：`components/structure/simulation/SimulationCompareDrawer` 提供“同步到 Compare”桥接，写入 `localStorage.testSimSimulationRuns` 并广播事件；Compare 中新增“生成仿真示例”按钮便于 Mock 仿真源，自动加载并在缺省曲线时显示“等待仿真结果”占位，同时各通道以 `runId::channel` 唯一标识支持多运行叠加展示。
+
 ## 2025-10-21 · Story 1.7 · Import Wizard
 - 前端实现：新增 `components/tbom/import/TbomImportWizard` 导入向导、`useTbomImportState` 状态钩子与工具栏入口，覆盖契约选择、文件校验、映射确认、导入摘要与日志回看。
 - 服务与 Mock：新增 `services/tbom-import.ts` 封装导入接口，Mock Route `/api/mock/tbom/import` 支持 FormData 上传、内存合并与导入日志返回；Mock 读取函数引入覆盖写入能力。

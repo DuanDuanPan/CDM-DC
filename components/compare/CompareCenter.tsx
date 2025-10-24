@@ -7,6 +7,18 @@ import type { EbomTreeNode } from '../structure/ebom/types';
 import EbomMiniTreeDiff from './EbomMiniTreeDiff';
 import { exportDomToPng } from '../structure/ebom/exportUtils';
 import { useEbomCompareState } from '../structure/ebom/useEbomCompareState';
+import TestSimControlPanel from './testSim/TestSimControlPanel';
+import { useTestSimCompare } from './testSim/useTestSimCompare';
+import TestSimChart from './testSim/TestSimChart';
+import AlignmentPanel from './testSim/AlignmentPanel';
+import RunPickerDialog from './testSim/RunPickerDialog';
+import type { TestSimChannel, TestSimChannelKind, TestSimRun } from './testSim/types';
+import { attachRunChannelMetadata, buildTestSimChannel, CHANNEL_TAGS, makeChannelKey } from './testSim/utils';
+import { exportChannelsToCsv } from './testSim/export';
+import { getRunTimeseries } from '@/services/tbom';
+import { SIM_TEST_COMPARE_EVENT, loadSimulationRunsFromStorage, persistSimulationRuns } from '../structure/simulation/testSimBridge';
+import { createMockSimulationRuns } from './testSim/mockSimulationRuns';
+import type { TbomProject, TbomRun, TbomTest } from '@/components/tbom/types';
 
 interface CompareItem {
   id: number;
@@ -45,6 +57,12 @@ type TbomComparePayload = {
   generatedAt?: string;
 };
 
+type BoundTestSimChannel = TestSimChannel & {
+  runId: string;
+  key: string;
+  runLabel?: string;
+};
+
 export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
   const [compareItems, setCompareItems] = useState<CompareItem[]>([
     {
@@ -73,6 +91,51 @@ export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
   const [compareMode, setCompareMode] = useState('scheme');
   const [tbomPayload, setTbomPayload] = useState<TbomComparePayload | null>(null);
   const highlightTbom = tbomLink?.from === 'tbom';
+  const {
+    state: testSimState,
+    selectedRuns: selectedTestRuns,
+    setRuns: setTestSimRuns,
+    addRun: addTestSimRun,
+    toggleRun: toggleTestSimRun,
+    selectChannels: selectTestSimChannels,
+    toggleFilter: toggleTestSimFilter,
+    setLoading: setTestSimLoading,
+    setError: setTestSimError,
+    updateChannel: updateTestSimChannel,
+    updateAlignment,
+    appendLog,
+  } = useTestSimCompare();
+  const [runPickerOpen, setRunPickerOpen] = useState(false);
+  const runsRef = useRef<TestSimRun[]>([]);
+  const selectedChannelsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    runsRef.current = testSimState.runs;
+  }, [testSimState.runs]);
+
+  useEffect(() => {
+    selectedChannelsRef.current = testSimState.selectedChannels;
+  }, [testSimState.selectedChannels]);
+
+  const handleGenerateMockSimulation = useCallback(() => {
+    const decoratedMocks = createMockSimulationRuns().map(attachRunChannelMetadata);
+    persistSimulationRuns(decoratedMocks);
+    const preserved = testSimState.runs.filter((run) => run.source !== 'simulation');
+    const merged = [...preserved];
+    decoratedMocks.forEach((run) => {
+      if (!merged.some((item) => item.runId === run.runId)) {
+        merged.push(run);
+      }
+    });
+    setTestSimRuns(merged);
+    const nextChannels = new Set<string>();
+    merged.forEach((run) =>
+      run.channels.forEach((channel) => nextChannels.add(channel.key ?? makeChannelKey(run.runId, channel.channel))),
+    );
+    selectTestSimChannels(Array.from(nextChannels));
+    setCompareMode('test-sim');
+    setActiveTab('curve');
+  }, [selectTestSimChannels, setTestSimRuns, testSimState.runs]);
 
   const loadTbomPayload = useCallback(() => {
     try {
@@ -120,6 +183,39 @@ export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
       window.removeEventListener(TBOM_COMPARE_EVENT, handleBroadcast as EventListener);
     };
   }, [loadTbomPayload]);
+
+  useEffect(() => {
+    const syncSimulationRuns = () => {
+      const stored = loadSimulationRunsFromStorage().map(attachRunChannelMetadata);
+      const preserved = runsRef.current.filter((run) => run.source !== 'simulation');
+      if (!stored.length) {
+        if (preserved.length !== runsRef.current.length) {
+          setTestSimRuns(preserved);
+        }
+        return;
+      }
+      const combined = new Map<string, TestSimRun>();
+      preserved.forEach((run) => combined.set(run.runId, run));
+      stored.forEach((run) => combined.set(run.runId, run));
+      const nextRuns = Array.from(combined.values());
+      setTestSimRuns(nextRuns);
+      const channelSet = new Set(selectedChannelsRef.current);
+      stored.forEach((run) =>
+        run.channels.forEach((channel) =>
+          channelSet.add(channel.key ?? makeChannelKey(run.runId, channel.channel)),
+        ),
+      );
+      if (channelSet.size) {
+        selectTestSimChannels(Array.from(channelSet));
+      }
+    };
+
+    syncSimulationRuns();
+    window.addEventListener(SIM_TEST_COMPARE_EVENT, syncSimulationRuns);
+    return () => {
+      window.removeEventListener(SIM_TEST_COMPARE_EVENT, syncSimulationRuns);
+    };
+  }, [selectTestSimChannels, setTestSimRuns]);
 
   const compareModes = [
     { id: 'scheme', name: '方案对比', icon: 'ri-git-branch-line', desc: '不同设计方案的对比分析' },
@@ -185,6 +281,153 @@ export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
       default: return 'ri-file-3d-line';
     }
   };
+
+  const allTestSimChannels = useMemo<BoundTestSimChannel[]>(() => {
+    const list: BoundTestSimChannel[] = [];
+    selectedTestRuns.forEach((run) => {
+      run.channels.forEach((channel) => {
+        const key = channel.key ?? makeChannelKey(run.runId, channel.channel);
+        list.push({
+          ...channel,
+          runId: channel.runId ?? run.runId,
+          runLabel: channel.runLabel ?? run.label,
+          key,
+        });
+      });
+    });
+    return list;
+  }, [selectedTestRuns]);
+
+  const deriveFilterSet = useCallback(
+    (nextFilters?: TestSimChannelKind[]) => {
+      const filters = nextFilters ?? testSimState.quickFilters;
+      if (!filters.length) {
+        return new Set<TestSimChannelKind>(CHANNEL_TAGS.map((tag) => tag.id));
+      }
+      return new Set(filters);
+    },
+    [testSimState.quickFilters],
+  );
+
+  const filteredChannels = useMemo(() => {
+    const filterSet = deriveFilterSet();
+    return allTestSimChannels.filter((channel) => filterSet.has(channel.kind));
+  }, [allTestSimChannels, deriveFilterSet]);
+
+  const channelSelectionSet = useMemo(() => {
+    if (testSimState.selectedChannels.length) {
+      return new Set(testSimState.selectedChannels);
+    }
+    return new Set(filteredChannels.map((channel) => channel.key));
+  }, [filteredChannels, testSimState.selectedChannels]);
+
+  const visibleChannels = useMemo(
+    () => filteredChannels.filter((channel) => channelSelectionSet.has(channel.key)),
+    [channelSelectionSet, filteredChannels],
+  );
+
+  const alignmentNotes = useMemo(() => {
+    const notes: Record<string, string | undefined> = {};
+    Object.entries(testSimState.alignment).forEach(([, entry]) => {
+      const unitText =
+        entry.unitStatus === 'aligned'
+          ? '单位已对齐'
+          : entry.unitStatus === 'skipped'
+          ? '单位保持原值'
+          : '单位待处理';
+      const rateText =
+        entry.sampleRateStatus === 'aligned'
+          ? '采样率已对齐'
+          : entry.sampleRateStatus === 'skipped'
+          ? '采样率保持原值'
+          : '采样率待处理';
+      notes[entry.channel] = `${unitText} · ${rateText}`;
+    });
+    return notes;
+  }, [testSimState.alignment]);
+
+  const handleToggleFilter = useCallback(
+    (tagId: TestSimChannelKind) => {
+      const exists = testSimState.quickFilters.includes(tagId);
+      const nextFilters = exists
+        ? testSimState.quickFilters.filter((item) => item !== tagId)
+        : [...testSimState.quickFilters, tagId];
+      toggleTestSimFilter(tagId);
+      const filterSet = deriveFilterSet(nextFilters);
+      const nextChannels = allTestSimChannels
+        .filter((channel) => filterSet.has(channel.kind))
+        .map((channel) => channel.key);
+      selectTestSimChannels(nextChannels);
+    },
+    [allTestSimChannels, deriveFilterSet, selectTestSimChannels, testSimState.quickFilters, toggleTestSimFilter],
+  );
+
+  const handleAlignChannel = useCallback(
+    (channel: TestSimChannel) => {
+      const relatedChannels = selectedTestRuns
+        .map((run) => run.channels.find((item) => item.channel === channel.channel))
+        .filter((item): item is TestSimChannel => Boolean(item));
+      const targetSampleRate = relatedChannels.reduce<number | null>((acc, item) => {
+        const rate = item.sampleRate ?? item.originalSampleRate ?? null;
+        if (rate == null) return acc;
+        if (acc == null) return rate;
+        return Math.min(acc, rate);
+      }, channel.sampleRate ?? channel.originalSampleRate ?? null);
+
+      selectedTestRuns.forEach((run) => {
+        const match = run.channels.find((item) => item.channel === channel.channel);
+        if (!match) return;
+        let samples = match.samples;
+        if (targetSampleRate && match.sampleRate && match.sampleRate > targetSampleRate) {
+          const ratio = Math.max(1, Math.round(match.sampleRate / targetSampleRate));
+          samples = match.samples.filter((_, index) => index % ratio === 0);
+        }
+        const adjusted: TestSimChannel = {
+          ...match,
+          unit: channel.unit ?? match.unit,
+          sampleRate: targetSampleRate ?? match.sampleRate ?? null,
+          samples,
+        };
+        updateTestSimChannel(run.runId, adjusted);
+      });
+
+      const key = channel.key ?? makeChannelKey(channel.runId ?? '', channel.channel);
+      updateAlignment(key, {
+        unitStatus: 'aligned',
+        sampleRateStatus: 'aligned',
+        notes: `已对齐至 ${channel.unit ?? '原单位'} / ${channel.sampleRate ?? '原采样率'}`,
+      });
+      appendLog({
+        timestamp: new Date().toLocaleTimeString(),
+        channel: channel.runLabel ? `${channel.runLabel} · ${channel.channel}` : channel.channel,
+        message: '执行自动对齐',
+        severity: 'info',
+      });
+    },
+    [appendLog, selectedTestRuns, updateAlignment, updateTestSimChannel],
+  );
+
+  const handleSkipChannel = useCallback(
+    (channel: TestSimChannel) => {
+      const key = channel.key ?? makeChannelKey(channel.runId ?? '', channel.channel);
+      updateAlignment(key, {
+        unitStatus: 'skipped',
+        sampleRateStatus: 'skipped',
+        notes: '保持原始单位与采样率',
+      });
+      appendLog({
+        timestamp: new Date().toLocaleTimeString(),
+        channel: channel.runLabel ? `${channel.runLabel} · ${channel.channel}` : channel.channel,
+        message: '跳过对齐',
+        severity: 'warning',
+      });
+    },
+    [appendLog, updateAlignment],
+  );
+
+  const handleExportCsv = useCallback(() => {
+    exportChannelsToCsv(selectedTestRuns, visibleChannels);
+  }, [selectedTestRuns, visibleChannels]);
 
   // ——— EBOM 基线对比逻辑（简版，与 EBOM 面板一致）
   const [compareState, setCompareState] = useEbomCompareState();
@@ -266,6 +509,121 @@ export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
       padding: 32,
     });
   };
+
+  const buildRunLabel = useCallback(
+    (payload: { runId: string; testId: string; projectId: string }) =>
+      `运行 ${payload.runId} · 试验 ${payload.testId}`,
+    [],
+  );
+
+  const toTestSimRun = useCallback(
+    async (
+      payload: { runId: string; testId: string; projectId: string },
+      source: 'tbom' | 'manual',
+      channelWhitelist?: string[],
+    ): Promise<TestSimRun | null> => {
+      try {
+        const timeseries = await getRunTimeseries(payload.runId);
+        const channels: TestSimChannel[] = timeseries
+          .filter((channel) => !channelWhitelist || channelWhitelist.includes(channel.channel))
+          .map((channel) =>
+            buildTestSimChannel(
+              channel.channel,
+              channel.samples,
+              channel.unit,
+              channel.sampleRate ?? null,
+            ),
+          );
+        if (!channels.length) {
+          console.warn('[CompareCenter] 所选运行缺少时序数据', payload.runId);
+          return null;
+        }
+        const run: TestSimRun = {
+          runId: payload.runId,
+          projectId: payload.projectId,
+          testId: payload.testId,
+          label: buildRunLabel(payload),
+          recordedAt: new Date().toISOString(),
+          source,
+          channels,
+        };
+        return attachRunChannelMetadata(run);
+      } catch (error) {
+        console.warn('[CompareCenter] 加载运行时序失败', payload.runId, error);
+        return null;
+      }
+    },
+    [buildRunLabel],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrateFromPayload() {
+      if (!tbomPayload) {
+        setTestSimRuns([]);
+        setTestSimLoading(false);
+        return;
+      }
+      setTestSimLoading(true);
+      setTestSimError(null);
+      try {
+        const run = await toTestSimRun(
+          {
+            runId: tbomPayload.runId,
+            testId: tbomPayload.testId,
+            projectId: tbomPayload.projectId,
+          },
+          'tbom',
+          tbomPayload.channels.map((channel) => channel.channel),
+        );
+        if (cancelled) return;
+        if (run) {
+          setTestSimRuns([run]);
+        } else {
+          setTestSimRuns([]);
+          setTestSimError('无法加载试验运行数据，请稍后再试。');
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setTestSimError(error instanceof Error ? error.message : '加载失败');
+      } finally {
+        if (!cancelled) {
+          setTestSimLoading(false);
+        }
+      }
+    }
+    hydrateFromPayload();
+    return () => {
+      cancelled = true;
+    };
+  }, [setTestSimError, setTestSimLoading, setTestSimRuns, tbomPayload, toTestSimRun]);
+
+  const handleManualRunSelect = useCallback(
+    async ({ run, test, project }: { run: TbomRun; test: TbomTest; project: TbomProject }) => {
+      setTestSimLoading(true);
+      setTestSimError(null);
+      const runPayload = await toTestSimRun(
+        {
+          runId: run.run_id,
+          testId: test.test_id,
+          projectId: project.project_id,
+        },
+        'manual',
+      );
+      if (runPayload) {
+        addTestSimRun(runPayload);
+        const existing = new Set(testSimState.selectedChannels);
+        runPayload.channels.forEach((channel) => {
+          existing.add(channel.key ?? makeChannelKey(runPayload.runId, channel.channel));
+        });
+        selectTestSimChannels(Array.from(existing));
+      } else {
+        setTestSimError('所选运行缺少可对比的曲线数据。');
+      }
+      setTestSimLoading(false);
+    },
+    [addTestSimRun, selectTestSimChannels, setTestSimError, setTestSimLoading, testSimState.selectedChannels, toTestSimRun],
+  );
 
   const deepLinkToEbom = (nodeId: string) => {
     try {
@@ -444,6 +802,50 @@ export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
 
       {/* 对比视图内容 */}
       <div className="flex-1 overflow-hidden">
+        {compareMode === 'test-sim' ? (
+          <div className="grid gap-6 p-6 lg:grid-cols-[320px,minmax(0,1fr)]">
+            <TestSimControlPanel
+              runs={testSimState.runs}
+              selectedRunIds={testSimState.selectedRunIds}
+              selectedChannels={Array.from(channelSelectionSet)}
+              quickFilters={testSimState.quickFilters}
+              onToggleRun={toggleTestSimRun}
+              onSelectChannels={selectTestSimChannels}
+              onToggleFilter={handleToggleFilter}
+              onAddRun={() => setRunPickerOpen(true)}
+              onRefresh={tbomPayload ? refreshTbomPayload : undefined}
+              pending={testSimState.pending}
+              onGenerateMockSimulation={handleGenerateMockSimulation}
+            />
+            <div className="space-y-6">
+              {testSimState.error ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
+                  {testSimState.error}
+                </div>
+              ) : null}
+              {testSimState.pending ? (
+                <div className="flex h-16 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/70 text-sm text-slate-500">
+                  <i className="ri-loader-2-line animate-spin text-base" />
+                  <span className="ml-2">正在加载运行曲线…</span>
+                </div>
+              ) : null}
+              <TestSimChart
+                runs={selectedTestRuns}
+                channels={visibleChannels}
+                alignmentNotes={alignmentNotes}
+                onExportCsv={handleExportCsv}
+              />
+              <AlignmentPanel
+                channels={visibleChannels}
+                alignment={testSimState.alignment}
+                log={testSimState.alignmentLog}
+                onAlign={handleAlignChannel}
+                onSkip={handleSkipChannel}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
         {compareMode === 'ebom' && (
           <div className="p-6 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -890,6 +1292,8 @@ export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
             </div>
           </div>
         )}
+          </>
+        )}
       </div>
 
       {/* 底部工具栏 */}
@@ -923,6 +1327,11 @@ export default function CompareCenter({ tbomLink = null }: CompareCenterProps) {
           </div>
         </div>
       </div>
+      <RunPickerDialog
+        open={runPickerOpen}
+        onClose={() => setRunPickerOpen(false)}
+        onSelect={handleManualRunSelect}
+      />
     </div>
   );
 }

@@ -185,6 +185,7 @@ flowchart LR
 
 主要步骤：
 1. 在 XBOM `Test` Tab 的运行详情中勾选对比通道（`ACC_*` / `PSD_*` / `FRF_*` / `COH_*`）。
+3. Compare 载入试验通道后，展示控制面板（运行列表、ACC/PSD/FRF/COH 标签、通道搜索）与曲线面板；支持手动追加运行、自动抽稀/缩放/光标对齐、导出 CSV/PNG，并在单位/采样率不一致时提示自动对齐或跳过。
 2. 点击“送入 Compare（试验/仿真）”，构造 compare payload（`run_id`、通道与单位/采样率元数据）。
 3. Compare 载入试验通道；用户选择一个仿真结果（`simulation_result_id`），系统自动对齐单位/采样率（必要时提示转换/重采样）。
 4. 进行图表交互分析（缩放/区间/光标对齐/读数），可导出 CSV/PNG。

@@ -173,6 +173,14 @@ describe('TbomRunDetail', () => {
       expect(screen.getByText('传感器短时过载')).toBeInTheDocument();
       expect(screen.getByText('扫频范围')).toBeInTheDocument();
 
+      const container = screen.getByTestId('run-detail-dialog');
+      expect(container).toHaveClass('rounded-3xl');
+
+      const maximizeButton = screen.getByRole('button', { name: '最大化' });
+      await userEvent.click(maximizeButton);
+      expect(screen.getByRole('button', { name: '退出最大化' })).toBeInTheDocument();
+      expect(container).toHaveClass('rounded-none');
+
       const compareButton = screen.getByRole('button', { name: /展开 Compare/i });
       await userEvent.click(compareButton);
 

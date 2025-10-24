@@ -24,6 +24,7 @@ import SimulationDimensionManager from './simulation/SimulationDimensionManager'
 import { useSimulationExplorerState, TreeNodeReference } from './simulation/useSimulationExplorerState';
 import type { SimulationFile, SimulationFilters, SimulationDimension } from './simulation/types';
 import { simulationJumpTargets, SIMULATION_JUMP_UNMAPPED, type SimulationJumpTarget } from './simulation/simulationJumpMap';
+import { clearSimulationRunsFromStorage } from './simulation/testSimBridge';
 import ProductDefinitionPanel from './definition/ProductDefinitionPanel';
 import EbomDetailPanel from './ebom/EbomDetailPanel';
 import { EBOM_BASELINES } from './ebom/data';
@@ -3913,6 +3914,13 @@ const buildNodeTags = (node: BomNode) => {
       const compareKey = file.compareKey ?? (conditionId ? `${file.id}::${conditionId}` : file.id);
       const variant = conditionId ? file.conditionVariants?.[conditionId] : undefined;
       const compareVersion = file.compareVersion ?? file.belongsToVersion ?? file.version;
+      const compareMeta = {
+        categoryId: currentSimulationCategory?.id ?? file.compareMeta?.categoryId,
+        categoryName: currentSimulationCategory?.name ?? file.compareMeta?.categoryName,
+        instanceId: currentSimulationInstance?.id ?? file.compareMeta?.instanceId ?? file.id,
+        instanceName: currentSimulationInstance?.name ?? file.compareMeta?.instanceName,
+        version: compareVersion ?? currentSimulationSnapshot?.version ?? currentSimulationInstance?.version,
+      };
       simulationDispatch({
         type: 'ADD_COMPARE',
         payload: {
@@ -3921,6 +3929,7 @@ const buildNodeTags = (node: BomNode) => {
           activeConditionName: conditionName,
           compareKey,
            compareVersion,
+          compareMeta,
           preview: variant ? { ...variant } : file.preview
         }
       });
@@ -3944,6 +3953,7 @@ const buildNodeTags = (node: BomNode) => {
 
     const handleClearCompare = () => {
       simulationDispatch({ type: 'CLEAR_COMPARE' });
+      clearSimulationRunsFromStorage();
     };
 
     const handleRegisterCompareInstance = (instanceId: string, instanceName: string) => {

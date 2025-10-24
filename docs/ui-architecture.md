@@ -108,6 +108,8 @@ docs/
 - 左侧主导航暂不暴露 TBOM 入口；需通过 XBOM 深链按钮或直接访问 `/tbom?from=ebom&node&path` 进入试验视图。产品结构页面在切换到“试验BOM”时，左侧导航区域动态替换为 TBOM 筛选与树面板，右侧呈现详情与关联信息，并在进入后自动展开节点与聚焦搜索框。
 - 错误态在导航面板顶部提示，并通过 `aria-live` 宣告；重试按钮调用 `router.refresh()`，同步输出 `console.warn` 便于排查。
 - 运行详情浮层（`components/tbom/detail/TbomRunDetail`）在 Client 侧通过局部状态启动，打开时锁定 `document.body` 滚动并广播 `aria-live` 状态；与 Compare 对接通过 `localStorage.tbomComparePayload` 传递运行上下文（通道/单位/采样率/统计），Compare 模块监听 storage 事件动态展现上下文卡片。
+- Compare 试验模式：`components/compare/CompareCenter.tsx` 在接收到 `tbomComparePayload` 或用户手动挑选运行时，利用 `useTestSimCompare` 管理运行、通道、对齐状态，主要 UI 拆分到 `components/compare/testSim/`（控制面板、曲线、对齐面板、Run Picker）。曲线渲染使用 Recharts + Decimation Hook，默认抽稀至 ≤4k 点，并支持 Brush 缩放、同步光标、对齐日志。
+- 仿真 Compare 联动：`components/structure/simulation/SimulationCompareDrawer.tsx` 暴露“同步到 Compare”入口，将曲线型仿真结果序列化到 `localStorage.testSimSimulationRuns` 并广播 `test-sim-compare:runs-updated`，Compare 页面加载后会自动合并仿真源；缺省曲线时显示“等待仿真结果”，并在 Compare 控制面板提供“生成仿真示例”按钮用于 Mock。
 
 约定：
 - URL 参数：`from=ebom&node=<ebom_node_id>&path=<ebom_path>`；ProductStructure 的 `Test` Tab 读取后应用“按结构节点过滤”。

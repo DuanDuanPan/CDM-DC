@@ -2,6 +2,7 @@
 
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
+import clsx from 'clsx';
 import {
   useCallback,
   useEffect,
@@ -232,6 +233,7 @@ function classifySeverity(severity: string) {
 export default function TbomRunDetail({ run, test, project, filters = null, onClose }: TbomRunDetailProps) {
   const [mounted, setMounted] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('正在加载运行详情...');
@@ -417,12 +419,21 @@ export default function TbomRunDetail({ run, test, project, filters = null, onCl
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/50 px-4 py-8">
+    <div
+      className={clsx(
+        'fixed inset-0 z-[999] flex bg-slate-900/50',
+        isFullscreen ? 'items-stretch justify-stretch px-0 py-0' : 'items-center justify-center px-4 py-8',
+      )}
+    >
       <div
+        data-testid="run-detail-dialog"
         role="dialog"
         aria-modal="true"
         aria-label={`运行 ${run.run_id} 详情`}
-        className="flex h-full max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className={clsx(
+          'flex h-full flex-col overflow-hidden bg-white shadow-2xl',
+          isFullscreen ? 'w-full max-w-none rounded-none' : 'max-h-[92vh] w-full max-w-6xl rounded-3xl',
+        )}
       >
         <span className="sr-only" aria-live="polite">
           {statusMessage}
@@ -450,6 +461,14 @@ export default function TbomRunDetail({ run, test, project, filters = null, onCl
             <div>
               执行时间：<span className="font-medium text-white/90">{formatDateTime(run.executed_at)}</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsFullscreen((value) => !value)}
+              className="inline-flex items-center gap-1 rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <i className={isFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'} />
+              {isFullscreen ? '退出最大化' : '最大化'}
+            </button>
             <button
               ref={closeButtonRef}
               type="button"
