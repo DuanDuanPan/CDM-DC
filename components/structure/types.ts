@@ -1,78 +1,67 @@
-export type RequirementRoleKey =
-  | 'system-team'
-  | 'assembly-team'
-  | 'component-lead'
-  | 'simulation-team'
-  | 'test-team'
-  | 'quality-team'
-  | 'management'
-  | 'data-steward';
-
-export interface RequirementMetric {
-  label: string;
-  value: string;
-  trend: string;
-  status: 'excellent' | 'good' | 'warning' | 'danger';
-  note: string;
-  source?: string;
-  updatedAt?: string;
-}
-
-export interface RequirementFocusArea {
-  label: string;
-  detail: string;
-  icon: string;
-}
-
-export interface RequirementStructuredParameter {
-  name: string;
-  requirement: string;
-  current: string;
-  gap: string;
-  status: 'met' | 'risk' | 'watch';
-  note: string;
-  source?: string;
-  updatedAt?: string;
-}
-
-export interface RequirementAction {
-  title: string;
-  owner: string;
-  due: string;
-  status: 'open' | 'in-progress' | 'done';
-  remark?: string;
-}
-
-export interface RequirementRoleInsight {
-  title: string;
-  overview: string;
-  metrics: RequirementMetric[];
-  focusAreas: RequirementFocusArea[];
-  structuredParameters: RequirementStructuredParameter[];
-  linkedRequirements: string[];
-  actions: RequirementAction[];
-}
-
-export interface RequirementParameter {
-  name: string;
-  value: string;
-  unit: string;
-  range?: string;
-}
-
-export interface RequirementAttachment {
-  type: 'image' | 'document' | 'table';
-  name: string;
-  url?: string;
-}
-
-export interface RequirementItem {
+export interface BomNode {
   id: string;
   name: string;
-  type: 'performance' | 'functional' | 'interface' | 'quality';
-  priority: 'high' | 'medium' | 'low';
-  status: 'completed' | 'in-progress' | 'pending';
-  content: string;
-  parameters: RequirementParameter[];
-  attachments?: RequirementAttachment[];
+  level: number;
+  bomType?: string;
+  unitType?: string;
+  nodeCategory?: string;
+  schemeType?: string;
+  description?: string;
+  subsystemType?: string;
+  children?: BomNode[];
+}
+
+export interface BomType {
+  id: string;
+  name: string;
+  count: number;
+  icon: string;
+  color: string;
+}
+
+export interface Version {
+  id: string;
+  name: string;
+  date: string;
+  author: string;
+  description: string;
+  status: 'current' | 'baseline' | 'archived';
+}
+
+export interface InputData {
+  id: string;
+  name: string;
+  type: 'parameter' | 'file';
+  value?: string;
+  unit?: string;
+  category?: 'design' | 'performance' | 'material' | 'geometry';
+  source?: 'manual' | 'calculation' | 'simulation' | 'test';
+  fileType?: 'cad' | 'document' | 'simulation' | 'test_data' | 'image';
+  size?: string;
+  version?: string;
+  status?: 'active' | 'archived' | 'draft';
+  lastUpdated: string;
+  updatedBy: string;
+}
+
+export interface OutputData {
+  id: string;
+  name: string;
+  category: 'scheme_doc' | 'condition_lib' | 'performance_budget' | 'power_balance' | 'control_sequence' | 'vv_plan' | 'risk_reliability' | 'icd_xbom' | 'baseline_strategy';
+  type: 'document' | 'model' | 'data' | 'chart' | 'table' | 'plan' | 'matrix';
+  format: string;
+  status: 'draft' | 'review' | 'approved' | 'baseline';
+  completeness: number;
+  version: string;
+  lastUpdated: string;
+  updatedBy: string;
+  description: string;
+  parameters?: Array<{
+    name: string;
+    value: string;
+    unit: string;
+    description: string;
+  }>;
+  dependencies?: string[];
+  deliverables?: string[];
 }

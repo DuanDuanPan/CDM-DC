@@ -111,3 +111,28 @@ function serializeError(error: unknown) {
   }
   return { message: String(error) };
 }
+
+type ApiClientDefaults = {
+  baseUrl?: string;
+  basePath?: string;
+  timeoutMs?: number;
+};
+
+export function createApiClient(defaults: ApiClientDefaults = {}) {
+  return function apiClient<T = unknown>(path: string, options: ApiOptions<T> = {}) {
+    const normalizedPath = defaults.basePath
+      ? `${defaults.basePath.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+      : path;
+    return api(normalizedPath, {
+      ...options,
+      baseUrl: options.baseUrl ?? defaults.baseUrl,
+      timeoutMs: options.timeoutMs ?? defaults.timeoutMs,
+    });
+  };
+}
+
+export function dataEnvelope<T extends z.ZodTypeAny>(schema: T) {
+  return z.object({
+    data: schema,
+  });
+}

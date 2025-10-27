@@ -2,17 +2,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
-interface Project {
-  id: string;
-  name: string;
-  code: string;
-  category: string;
-  subCategory?: string;
-  level: number;
-  type: 'model' | 'tech' | 'simulation' | 'other';
-  icon: string;
-}
+import {
+  PROJECT_CATALOG,
+  PROJECT_TYPE_COLOR,
+  PROJECT_TYPE_ICON,
+  type ProjectCatalogItem,
+} from './data/projects';
 
 interface HeaderProps {
   selectedProject: string;
@@ -32,27 +27,8 @@ export default function Header({ selectedProject, onProjectChange }: HeaderProps
     setMounted(true);
   }, []);
   
-  const projects: Project[] = [
-    // 型号研制项目
-    { id: 'p1', name: '发动机核心机', code: 'CJ-1000A', category: '型号研制项目', subCategory: 'CJ系列', level: 1, type: 'model', icon: 'ri-rocket-line' },
-    { id: 'p2', name: '涡扇发动机', code: 'WS-20', category: '型号研制项目', subCategory: 'WS系列', level: 1, type: 'model', icon: 'ri-rocket-line' },
-    { id: 'p3', name: '民用航发验证', code: 'CJ-1000AX', category: '型号研制项目', subCategory: 'CJ系列', level: 2, type: 'model', icon: 'ri-rocket-line' },
-    
-    // 技术研究项目
-    { id: 'p4', name: '高温合金研究', code: 'GH4169', category: '技术研究项目', subCategory: '国家级课题', level: 1, type: 'tech', icon: 'ri-flask-line' },
-    { id: 'p5', name: '叶片冷却技术', code: 'BLADE-COOL', category: '技术研究项目', subCategory: '集团级课题', level: 2, type: 'tech', icon: 'ri-flask-line' },
-    { id: 'p6', name: '燃烧室优化', code: 'COMBUST-OPT', category: '技术研究项目', subCategory: '公司级课题', level: 1, type: 'tech', icon: 'ri-flask-line' },
-    
-    // 仿真型号项目
-    { id: 'p7', name: '整机性能仿真', code: 'SIM-PERF', category: '仿真型号项目', subCategory: '性能仿真', level: 1, type: 'simulation', icon: 'ri-computer-line' },
-    { id: 'p8', name: '结构强度分析', code: 'SIM-STRUCT', category: '仿真型号项目', subCategory: '结构仿真', level: 1, type: 'simulation', icon: 'ri-computer-line' },
-    
-    // 其他项目
-    { id: 'p9', name: '质量管理体系', code: 'QMS-2024', category: '其他项目', level: 1, type: 'other', icon: 'ri-settings-3-line' },
-    { id: 'p10', name: '人员培训计划', code: 'TRAIN-2024', category: '其他项目', level: 1, type: 'other', icon: 'ri-settings-3-line' }
-  ];
-
-  const categories = [...new Set(projects.map(p => p.category))];
+  const projects: ProjectCatalogItem[] = PROJECT_CATALOG;
+  const categories = [...new Set(projects.map((project) => project.category))];
 
   const filteredProjects = projects.filter(project => {
     const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,25 +39,11 @@ export default function Header({ selectedProject, onProjectChange }: HeaderProps
     return matchesSearch && matchesCategory && matchesType;
   });
 
-  const getProjectIcon = (type: string) => {
-    switch (type) {
-      case 'model': return 'ri-rocket-line';
-      case 'tech': return 'ri-flask-line';
-      case 'simulation': return 'ri-computer-line';
-      case 'other': return 'ri-settings-3-line';
-      default: return 'ri-folder-line';
-    }
-  };
+  const getProjectIcon = (type: ProjectCatalogItem['type']) =>
+    PROJECT_TYPE_ICON[type] ?? 'ri-folder-line';
 
-  const getProjectColor = (type: string) => {
-    switch (type) {
-      case 'model': return 'text-blue-600 bg-blue-100';
-      case 'tech': return 'text-green-600 bg-green-100';
-      case 'simulation': return 'text-purple-600 bg-purple-100';
-      case 'other': return 'text-gray-600 bg-gray-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
+  const getProjectColor = (type: ProjectCatalogItem['type']) =>
+    PROJECT_TYPE_COLOR[type] ?? 'text-gray-600 bg-gray-100';
 
   const groupedProjects = filteredProjects.reduce((acc, project) => {
     if (!acc[project.category]) {
@@ -99,7 +61,7 @@ export default function Header({ selectedProject, onProjectChange }: HeaderProps
       acc[project.category]['其他'].push(project);
     }
     return acc;
-  }, {} as Record<string, Record<string, Project[]>>);
+  }, {} as Record<string, Record<string, ProjectCatalogItem[]>>);
 
   // 获取当前选中项目的信息
   const currentProject = projects.find(p => p.name === selectedProject) || projects[0];

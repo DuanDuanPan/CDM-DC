@@ -1,0 +1,108 @@
+import type { BomNode } from '../types';
+
+export const REQUIREMENT_BOM_TREE: BomNode[] = [
+  {
+    id: 'REQ-ENGINE-001',
+    name: '航空发动机产品级功能单元',
+    level: 0,
+    bomType: 'requirement',
+    unitType: 'product_functional_unit',
+    nodeCategory: 'product',
+    children: [
+      {
+        id: 'REQ-PROPULSION-001',
+        name: '推进子系统功能单元',
+        level: 1,
+        bomType: 'requirement',
+        unitType: 'subsystem_functional_unit',
+        nodeCategory: 'subsystem',
+        children: [
+          {
+            id: 'REQ-COMPRESSOR-BLADE',
+            name: '压气机叶片 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component',
+          },
+          {
+            id: 'REQ-COMPRESSOR-ROTOR',
+            name: '压气机转子 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component',
+          },
+          {
+            id: 'REQ-COMBUSTOR-LINER',
+            name: '燃烧室内胆 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component',
+          },
+          {
+            id: 'REQ-TURBINE-DISK',
+            name: '涡轮盘 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component',
+          },
+        ],
+      },
+      {
+        id: 'REQ-CONTROL-001',
+        name: '控制子系统功能单元',
+        level: 1,
+        bomType: 'requirement',
+        unitType: 'subsystem_functional_unit',
+        nodeCategory: 'subsystem',
+        children: [
+          {
+            id: 'REQ-FADEC-UNIT',
+            name: 'FADEC控制器 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component',
+          },
+          {
+            id: 'REQ-SENSOR-UNIT',
+            name: '传感器组件 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component',
+          },
+        ],
+      },
+      {
+        id: 'REQ-AUXILIARY-001',
+        name: '辅助子系统功能单元',
+        level: 1,
+        bomType: 'requirement',
+        unitType: 'subsystem_functional_unit',
+        nodeCategory: 'subsystem',
+        children: [
+          {
+            id: 'REQ-LUBRICATION-UNIT',
+            name: '润滑系统组件 (成附件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'component_assembly',
+            nodeCategory: 'component',
+          },
+          {
+            id: 'REQ-COOLING-UNIT',
+            name: '冷却系统组件 (重要零件)',
+            level: 2,
+            bomType: 'requirement',
+            unitType: 'important_part',
+            nodeCategory: 'component',
+          },
+        ],
+      },
+    ],
+  },
+];

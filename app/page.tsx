@@ -1,26 +1,21 @@
 
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import Dashboard from '../components/dashboard/Dashboard';
-import DataExplorer from '../components/explorer/DataExplorer';
-import ProductStructure from '../components/structure/ProductStructure';
-import CompareCenter from '../components/compare/CompareCenter';
-import UploadManager from '../components/upload/UploadManager';
-import CompletionPanel from '../components/completion/CompletionPanel';
-import RelationGraph from '../components/graph/RelationGraph';
-import Settings from '../components/settings/Settings';
 import NodeTestBadge from '../components/tbom/structure/NodeTestBadge';
+import { useDeepLinkState } from './hooks/useDeepLinkState';
 
-const DOMAIN_TO_MODULE: Record<string, string> = {
-  requirement: 'structure',
-  ebom: 'structure',
-  simulation: 'structure',
-  physical: 'dashboard',
-};
+const Dashboard = dynamic(() => import('../components/dashboard/Dashboard'));
+const DataExplorer = dynamic(() => import('../components/explorer/DataExplorer'));
+const ProductStructure = dynamic(() => import('../components/structure/ProductStructure'));
+const CompareCenter = dynamic(() => import('../components/compare/CompareCenter'));
+const UploadManager = dynamic(() => import('../components/upload/UploadManager'));
+const CompletionPanel = dynamic(() => import('../components/completion/CompletionPanel'));
+const RelationGraph = dynamic(() => import('../components/graph/RelationGraph'));
+const Settings = dynamic(() => import('../components/settings/Settings'));
 
 export default function Home() {
   return (
@@ -31,108 +26,15 @@ export default function Home() {
 }
 
 function HomeContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const fromParam = searchParams.get('from');
-  const moduleParam = searchParams.get('module');
-  const domainParam = searchParams.get('domain');
-  const deepLinkNode = searchParams.get('node');
-  const deepLinkPath = searchParams.get('path');
-  const requirementParam = searchParams.get('requirementId');
-  const simulationParam = searchParams.get('simulationRef');
-  const assetParam = searchParams.get('assetSn');
-  const tbomProjectParam = searchParams.get('tbomProject');
-  const tbomTestParam = searchParams.get('tbomTest');
-  const tbomRunParam = searchParams.get('tbomRun');
-
-  const initialModule = useMemo(() => {
-    if (moduleParam) return moduleParam;
-    if (fromParam === 'tbom' && domainParam && DOMAIN_TO_MODULE[domainParam]) {
-      return DOMAIN_TO_MODULE[domainParam];
-    }
-    if (fromParam === 'ebom') return 'structure';
-    return 'dashboard';
-  }, [domainParam, fromParam, moduleParam]);
-
-  const [activeModule, setActiveModule] = useState(initialModule);
+  const {
+    activeModule,
+    handleModuleChange,
+    tbomDeepLink,
+    isFromEbom,
+    badgeCount,
+    openTbom,
+  } = useDeepLinkState();
   const [selectedProject, setSelectedProject] = useState('航空发动机项目');
-
-  const deepLinkKey = useMemo(
-    () =>
-      [
-        moduleParam ?? '',
-        fromParam ?? '',
-        domainParam ?? '',
-        deepLinkNode ?? '',
-        requirementParam ?? '',
-        simulationParam ?? '',
-        assetParam ?? '',
-      ].join('|'),
-    [assetParam, domainParam, deepLinkNode, fromParam, moduleParam, requirementParam, simulationParam],
-  );
-
-  const deepLinkKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const desiredModule =
-      moduleParam ??
-      (fromParam === 'tbom' && domainParam && DOMAIN_TO_MODULE[domainParam]
-        ? DOMAIN_TO_MODULE[domainParam]
-        : undefined) ??
-      (fromParam === 'ebom' ? 'structure' : undefined);
-    if (!desiredModule) {
-      deepLinkKeyRef.current = deepLinkKey;
-      return;
-    }
-    if (deepLinkKeyRef.current !== deepLinkKey) {
-      deepLinkKeyRef.current = deepLinkKey;
-      if (desiredModule !== activeModule) {
-        setActiveModule(desiredModule);
-      }
-    }
-  }, [activeModule, deepLinkKey, domainParam, fromParam, moduleParam]);
-
-  const tbomDeepLink = useMemo(
-    () => ({
-      from: fromParam,
-      domain: domainParam,
-      node: deepLinkNode,
-      path: deepLinkPath,
-      requirementId: requirementParam,
-      simulationRef: simulationParam,
-      assetSn: assetParam,
-      projectId: tbomProjectParam,
-      testId: tbomTestParam,
-      runId: tbomRunParam,
-    }),
-    [
-      assetParam,
-      deepLinkNode,
-      deepLinkPath,
-      domainParam,
-      fromParam,
-      requirementParam,
-      simulationParam,
-      tbomProjectParam,
-      tbomRunParam,
-      tbomTestParam,
-    ],
-  );
-
-  const isFromEbom = fromParam === 'ebom';
-  const badgeCount = deepLinkNode ? 3 : 0;
-
-  const tbomHref = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set('from', 'ebom');
-    if (deepLinkNode) params.set('node', deepLinkNode);
-    if (deepLinkPath) params.set('path', deepLinkPath);
-    return `/tbom${params.toString() ? `?${params.toString()}` : ''}`;
-  }, [deepLinkNode, deepLinkPath]);
-
-  const handleModuleChange = (module: string) => {
-    setActiveModule(module);
-  };
 
   const renderContent = () => {
     switch (activeModule) {
@@ -164,8 +66,8 @@ function HomeContent() {
         onProjectChange={setSelectedProject}
       />
 
-      <div className="flex h-[calc(100vh-64px)]">
-        <Sidebar 
+          <div className="flex h-[calc(100vh-64px)]">
+          <Sidebar 
           activeModule={activeModule} 
           onModuleChange={handleModuleChange} 
         />
@@ -190,7 +92,7 @@ function HomeContent() {
                   <NodeTestBadge count={badgeCount} />
                   <button
                     type="button"
-                    onClick={() => router.push(tbomHref)}
+                    onClick={openTbom}
                     className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
                   >
                     <i className="ri-external-link-line" />

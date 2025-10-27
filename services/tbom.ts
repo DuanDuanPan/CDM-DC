@@ -19,32 +19,22 @@ import {
   TbomTestListSchema,
   TbomTimeseriesSampleSchema,
 } from '../components/tbom/types';
-import { api } from './http';
+import { createApiClient, dataEnvelope } from './http';
 
-const projectsResponseSchema = z.object({
-  data: TbomProjectListSchema,
-});
+const tbomApi = createApiClient({ basePath: '/tbom' });
 
-const testsResponseSchema = z.object({
-  data: TbomTestListSchema,
-});
+const projectsResponseSchema = dataEnvelope(TbomProjectListSchema);
 
-const runsResponseSchema = z.object({
-  data: TbomRunListSchema,
-});
+const testsResponseSchema = dataEnvelope(TbomTestListSchema);
 
-const attachmentsResponseSchema = z.object({
-  data: TbomAttachmentListSchema,
-});
+const runsResponseSchema = dataEnvelope(TbomRunListSchema);
 
-const testCardResponseSchema = z.object({
-  data: z.array(TbomTestCardRowSchema),
-});
+const attachmentsResponseSchema = dataEnvelope(TbomAttachmentListSchema);
 
-const TBOM_BASE_PATH = '/tbom';
+const testCardResponseSchema = dataEnvelope(z.array(TbomTestCardRowSchema));
 
 export async function listProjects(): Promise<TbomProject[]> {
-  const result = await api(`${TBOM_BASE_PATH}/projects`, {
+  const result = await tbomApi('projects', {
     schema: projectsResponseSchema,
   });
   return result.data.map((project) => ({
@@ -54,7 +44,7 @@ export async function listProjects(): Promise<TbomProject[]> {
 }
 
 export async function listTests(): Promise<TbomTest[]> {
-  const result = await api(`${TBOM_BASE_PATH}/tests`, {
+  const result = await tbomApi('tests', {
     schema: testsResponseSchema,
   });
   return result.data.map((test) => ({
@@ -64,7 +54,7 @@ export async function listTests(): Promise<TbomTest[]> {
 }
 
 export async function listRuns(): Promise<TbomRun[]> {
-  const result = await api(`${TBOM_BASE_PATH}/runs`, {
+  const result = await tbomApi('runs', {
     schema: runsResponseSchema,
   });
   return result.data.map((run) => ({
@@ -75,26 +65,26 @@ export async function listRuns(): Promise<TbomRun[]> {
 }
 
 export async function fetchTimeseries(runId: string): Promise<string> {
-  return api(`${TBOM_BASE_PATH}/timeseries/${encodeURIComponent(runId)}`, {
+  return tbomApi(`timeseries/${encodeURIComponent(runId)}`, {
     parseAs: 'text',
   });
 }
 
 export async function fetchEvents(runId: string): Promise<string> {
-  return api(`${TBOM_BASE_PATH}/events/${encodeURIComponent(runId)}`, {
+  return tbomApi(`events/${encodeURIComponent(runId)}`, {
     parseAs: 'text',
   });
 }
 
 export async function listRunAttachments(runId: string): Promise<TbomAttachment[]> {
-  const response = await api(`${TBOM_BASE_PATH}/attachments/${encodeURIComponent(runId)}`, {
+  const response = await tbomApi(`attachments/${encodeURIComponent(runId)}`, {
     schema: attachmentsResponseSchema,
   });
   return response.data;
 }
 
 export async function listRunTestCard(runId: string): Promise<TbomTestCardRow[]> {
-  const response = await api(`${TBOM_BASE_PATH}/test-card/${encodeURIComponent(runId)}`, {
+  const response = await tbomApi(`test-card/${encodeURIComponent(runId)}`, {
     schema: testCardResponseSchema,
   });
   return response.data.map((item) => ({
