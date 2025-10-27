@@ -2,6 +2,13 @@
 
 > 项目：产品过程数据中心 · 试验BOM增强｜维护：文档基线
 
+## 2025-10-27 · Story 1.10 · Test Measurement Cockpit
+- Test Tab 驾驶舱：`components/structure/ProductStructure.tsx` 引入 `TestResourcePanel`、`SimulationCorrelationPlan`、`VerificationEvidenceExport`，整合成熟度、资产、结构热力图、需求矩阵、资源/计量、仿真对标与证据导出分区。
+- Compare 联动：`SimulationCorrelationPlan` 支持将含 `comparePayload` 的试验计划一键写入 `localStorage.tbomComparePayload` 并广播 `tbom-compare:payload-updated` 事件；缺失仿真结果显示操作指引。
+- 证据包导出：新增 `evidenceExport.ts` 统一打包 CSV/JSON、驾驶舱截图（PNG）与 PDF，文件名模板 `TestEvidencePackage_<stage?>_<node?>_<timestamp>.zip`，导出日志写入 `localStorage.testEvidenceExportLogs` 并在 UI 展示/重放。
+- 数据模型：`SolutionVerificationData` 增补 `resourceDependencies`、`measurementAssets`、`simulationPlan.comparePayload`、`simulationPlan.lastSyncedAt/guidance` 等字段，Mock 数据同步更新。
+- 文档更新：`docs/front-end-spec.md` 补充 Test Tab 驾驶舱规范；`docs/bff-mock-plan.md` 明确新字段输出及 Compare 载荷要求；本条记录 Story 1.10 交付。
+
 ## 2025-10-23 · Story 1.8 · Cross-Domain Traceability
 - TBOM 关联：新增 `components/tbom/relations/` 模块，统一 chips 映射、可达性公告与跨域导航上下文持久化；`TbomRelationPanel`、`TbomRunDetail` 复用 chips 并支持空/错态提示。
 - 跨域联动：`app/page.tsx` 支持 `module/domain` 深链，`ProductStructure`、`CompareCenter`、`Dashboard` 接收 TBOM link 并提供返回入口、仿真/实物流转与试验列表；Compare 自动加载 TBOM payload。

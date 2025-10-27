@@ -14,6 +14,12 @@ import ThermalOverview from './thermal/ThermalOverview';
 import ControlOverview from './control/ControlOverview';
 import ManufacturingOverview from './manufacturing/ManufacturingOverview';
 import VerificationOverview from './verification/VerificationOverview';
+import TestCoverageHeatmap from './verification/TestCoverageHeatmap';
+import TestRequirementMatrix from './verification/TestRequirementMatrix';
+import TestResourcePanel from './verification/TestResourcePanel';
+import SimulationCorrelationPlan from './verification/SimulationCorrelationPlan';
+import VerificationEvidenceExport from './verification/VerificationEvidenceExport';
+import type { SolutionVerificationData } from './verification/types';
 import ConfigurationQualityOverview from './quality/ConfigurationQualityOverview';
 import CollaborationHub from './collaboration/CollaborationHub';
 import SimulationTreePanel from './simulation/SimulationTreePanel';
@@ -137,6 +143,7 @@ interface OutputData {
   dependencies?: string[]; // 依赖的其他输出项
   deliverables?: string[]; // 交付物清单
 }
+
 
 const VIEW_PREFERENCE_PREFIX = 'product-structure-active-tab';
 const NON_SIMULATION_DIMENSIONS: SimulationDimension[] = ['type'];
@@ -511,6 +518,11 @@ export default function ProductStructure({ tbomLink = null }: ProductStructurePr
 
   const tbomTargetNode = tbomLink?.node ?? null;
 
+  const handleRequirementJump = useCallback((requirementId: string) => {
+    setActiveTab('definition');
+    setPendingRequirementFocus(requirementId);
+  }, []);
+
   const handleReturnToTbom = useCallback(() => {
     const params = new URLSearchParams();
     params.set('module', 'structure');
@@ -684,6 +696,7 @@ export default function ProductStructure({ tbomLink = null }: ProductStructurePr
   const [compareToast, setCompareToast] = useState<{ label: string; type: 'file' | 'instance' } | null>(null);
   const [isDimensionManagerOpen, setIsDimensionManagerOpen] = useState(false);
   const dimensionManagerAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const testPanelRef = useRef<HTMLDivElement | null>(null);
 
   const [testingState, testingActions] = useTestingExplorerState(TEST_PROJECTS);
   const {
@@ -1829,7 +1842,197 @@ export default function ProductStructure({ tbomLink = null }: ProductStructurePr
           note: '脚本已更新，将在下一轮试验验证。'
         }
       ]
-    },
+      ,
+      maturity: [
+        {
+          phase: '概念',
+          target: 0.8,
+          actual: 0.92,
+          eta: '已完成',
+          status: 'done' as const,
+          owner: '系统工程 · 刘工'
+        },
+        {
+          phase: '初样',
+          target: 0.85,
+          actual: 0.74,
+          eta: '2024-02-05',
+          status: 'warning' as const,
+          owner: '试验经理 · 周工'
+        },
+        {
+          phase: '试样',
+          target: 0.9,
+          actual: 0.58,
+          eta: '2024-03-12',
+          status: 'risk' as const,
+          owner: '项目经理 · 王总'
+        }
+      ],
+      assets: [
+        {
+          id: 'PLAN-REQ-001',
+          name: '试验技术要求 V2.0',
+          owner: '系统工程 · 刘工',
+          version: 'v2.0',
+          status: 'approved',
+          updatedAt: '2024-01-15 14:00'
+        },
+        {
+          id: 'PLAN-OUTLINE-002',
+          name: '试验大纲 V1.3（初样）',
+          owner: '试验保障 · 王工',
+          version: 'v1.3',
+          status: 'in-review',
+          updatedAt: '2024-01-19 09:20'
+        },
+        {
+          id: 'CARD-ENV-003',
+          name: '环境应力试验卡片',
+          owner: '环境实验室 · 朱工',
+          version: 'v0.9',
+          status: 'draft',
+          updatedAt: '2024-01-17 18:45'
+        }
+      ],
+      structureCoverage: [
+        {
+          nodeId: 'EBOM-ROOT/FAN/BLD-GRP/BLD-01',
+          nodeName: '风扇叶片分段',
+          target: 0.95,
+          actual: 0.68,
+          blockers: 2,
+          risk: '高'
+        },
+        {
+          nodeId: 'EBOM-ROOT/COMB/LINER',
+          nodeName: '燃烧室内胆',
+          target: 0.9,
+          actual: 0.82,
+          blockers: 0,
+          risk: '中'
+        },
+        {
+          nodeId: 'EBOM-ROOT/ACC/PUMP',
+          nodeName: '燃油泵组件',
+          target: 0.88,
+          actual: 0.54,
+          blockers: 1,
+          risk: '高'
+        }
+      ],
+      requirementMappings: [
+        {
+          requirementId: 'REQ-FT-001',
+          title: '起飞推力保持 ≥120 kN',
+          linkedTests: 4,
+          status: 'partial',
+          owner: '动力系统 · 孙工'
+        },
+        {
+          requirementId: 'REQ-ENV-010',
+          title: '整机环境应力合格',
+          linkedTests: 3,
+          status: 'planned',
+          owner: '环境实验室 · 朱工'
+        },
+        {
+          requirementId: 'REQ-CONT-021',
+          title: '低温控制律稳定性',
+          linkedTests: 2,
+          status: 'gap',
+          owner: '控制系统 · 李工'
+        }
+      ],
+      resourceDependencies: [
+        {
+          type: '台架',
+          name: '高空台 HAT-02',
+          availability: 'W05-W07',
+          status: 'conflict',
+          owner: '试验保障 · 王工',
+          impact: '与环境筛选冲突',
+          mitigation: '计划调整至 W08'
+        },
+        {
+          type: '仪器',
+          name: '多通道压力采集 128ch',
+          availability: 'W04-W06',
+          status: 'ok',
+          owner: '测量组 · 何工',
+          impact: '可复用 TB-ENV-02',
+          mitigation: '无需'
+        }
+      ],
+      measurementAssets: [
+        {
+          instrument: '热像仪 FLIR-X900',
+          calibrationDue: '2024-02-12',
+          uncertainty: '±1.5°C',
+          status: 'warning',
+          owner: '计量室 · 马工'
+        },
+        {
+          instrument: '六分力传感器 FS-6D',
+          calibrationDue: '2024-03-01',
+          uncertainty: '±0.2%',
+          status: 'ok',
+          owner: '计量室 · 马工'
+        }
+      ],
+      simulationPlan: [
+        {
+          id: 'SIM-CORR-01',
+          name: '起飞推力对标',
+          model: 'CFD-V21-takeoff',
+          metric: '推力偏差 ≤2%',
+          window: 'W04',
+          status: 'scheduled',
+          targetDelta: '≤2%',
+          lastSyncedAt: '2024-01-19 11:40',
+          comparePayload: {
+            runId: 'RUN-FT-20240118',
+            projectId: 'PRJ-FT-01',
+            testId: 'TEST-TK-ACC',
+            channels: [
+              { channel: 'ACC_X', unit: 'g', sampleRate: 5120, min: -1.8, max: 2.1 },
+              { channel: 'ACC_Y', unit: 'g', sampleRate: 5120, min: -1.5, max: 1.9 },
+              { channel: 'THRUST', unit: 'kN', sampleRate: 256, min: 95, max: 123 }
+            ]
+          }
+        },
+        {
+          id: 'SIM-CORR-02',
+          name: '低温控制律稳定性',
+          model: 'CTRL-V18-lowtemp',
+          metric: '超调 <5%',
+          window: 'W05-W06',
+          status: 'risk',
+          targetDelta: '≤5%',
+          guidance: '仿真模型待输出最新低温补偿结果，预计 2024-01-25 完成。'
+        },
+        {
+          id: 'SIM-CORR-03',
+          name: '巡航燃油效率核对',
+          model: 'SYS-V20-cruise',
+          metric: '耗油差异 ≤1.5%',
+          window: 'W03',
+          status: 'done',
+          targetDelta: '≤1.5%',
+          lastSyncedAt: '2024-01-15 17:20',
+          guidance: 'Compare 已完成对齐并导出报告，归档于 验证数据包 PKG-FUNC-002。',
+          comparePayload: {
+            runId: 'RUN-CRUISE-20240112',
+            projectId: 'PRJ-FT-01',
+            testId: 'TEST-CR-PSD',
+            channels: [
+              { channel: 'PSD_THRUST', unit: 'kN^2/Hz', sampleRate: 1024, min: 0.12, max: 0.48 },
+              { channel: 'FUEL_FLOW', unit: 'kg/s', sampleRate: 256, min: 0.28, max: 0.35 }
+            ]
+          }
+        }
+      ]
+    } as SolutionVerificationData,
     configuration: {
       baselineMetrics: [
         {
@@ -2718,6 +2921,11 @@ export default function ProductStructure({ tbomLink = null }: ProductStructurePr
         }
       }
     }
+  };
+
+  const handleHeatmapNodeSelect = (nodeId: string) => {
+    handleNodeClick(nodeId);
+    setActiveTab('test');
   };
 
   const getFirstAvailableNode = (nodes: BomNode[]): BomNode | null => {
@@ -5307,13 +5515,141 @@ const buildNodeTags = (node: BomNode) => {
               )}
 
               {activeTab === 'test' && selectedBomType === 'solution' && (
-                <div role="tabpanel" id="panel-test" aria-labelledby="tab-test" className="space-y-6">
+                <div
+                  ref={testPanelRef}
+                  role="tabpanel"
+                  id="panel-test"
+                  aria-labelledby="tab-test"
+                  className="space-y-6"
+                >
+                  <section className="rounded-2xl border border-blue-100 bg-white/80 px-5 py-5 shadow-sm">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+                          <i className="ri-test-tube-line"></i>
+                          验证成熟度摘要
+                        </p>
+                        <h3 className="text-xl font-semibold text-slate-900">方案阶段关键门控一览</h3>
+                        <p className="text-sm text-slate-600">按阶段查看目标覆盖率、当前进展与预计闭环时间，评估是否满足概念/初样/试样/正样门。</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 hover:border-blue-300"
+                        >
+                          <i className="ri-download-2-line" aria-hidden></i>
+                          导出摘要 CSV
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('test')}
+                          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-blue-700"
+                        >
+                          <i className="ri-link"></i>
+                          跳转试验BOM
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {(solutionOverview.verification.maturity ?? []).map((phase) => (
+                        <div
+                          key={phase.phase}
+                          className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3"
+                        >
+                          <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
+                            <span>{phase.phase}</span>
+                            <span className={`text-xs font-medium ${phase.status === 'risk' ? 'text-red-600' : phase.status === 'warning' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                              {phase.status === 'risk' ? '高风险' : phase.status === 'warning' ? '注意' : '达成'}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">目标 {Math.round(phase.target * 100)}% · 当前 {Math.round(phase.actual * 100)}%</p>
+                          <p className="text-xs text-slate-500">ETA：{phase.eta} · 负责人 {phase.owner}</p>
+                          <div className="mt-2 h-2 rounded-full bg-slate-200">
+                            <div
+                              className={`h-2 rounded-full ${phase.status === 'risk' ? 'bg-red-500' : phase.status === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                              style={{ width: `${Math.min(phase.actual * 100, 100)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">试验方案资产</p>
+                        <p className="text-xs text-slate-500">集中管理试验技术要求、大纲、试验卡片等文档，随时查看版本与审签状态。</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="button" className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50">上传</button>
+                        <button type="button" className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50">批量导出</button>
+                      </div>
+                    </div>
+                    <div className="mt-4 overflow-x-auto">
+                      <table className="w-full text-left text-sm text-slate-700">
+                        <thead>
+                          <tr className="text-xs uppercase tracking-wide text-slate-500">
+                            <th className="py-2">文档</th>
+                            <th className="py-2">责任人</th>
+                            <th className="py-2">版本</th>
+                            <th className="py-2">状态</th>
+                            <th className="py-2">更新时间</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(solutionOverview.verification.assets ?? []).map((asset) => (
+                            <tr key={asset.id} className="border-t border-slate-100 text-sm">
+                              <td className="py-2 font-medium text-slate-900">{asset.name}</td>
+                              <td className="py-2">{asset.owner}</td>
+                              <td className="py-2">{asset.version}</td>
+                              <td className="py-2 text-xs">
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 ${asset.status === 'approved' ? 'bg-emerald-50 text-emerald-700' : asset.status === 'in-review' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                                  {asset.status}
+                                </span>
+                              </td>
+                              <td className="py-2 text-slate-500">{asset.updatedAt}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
                   <VerificationOverview
                     summary={solutionOverview.verification.summary}
                     coverage={solutionOverview.verification.coverage}
                     campaigns={solutionOverview.verification.campaigns}
                     packages={solutionOverview.verification.packages}
                     blockers={solutionOverview.verification.blockers}
+                  />
+
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <TestCoverageHeatmap
+                      nodes={solutionOverview.verification.structureCoverage ?? []}
+                      onSelectNode={handleHeatmapNodeSelect}
+                    />
+                    <TestRequirementMatrix
+                      items={solutionOverview.verification.requirementMappings ?? []}
+                      onSelectRequirement={handleRequirementJump}
+                    />
+                  </div>
+
+                  <TestResourcePanel
+                    resources={solutionOverview.verification.resourceDependencies ?? []}
+                    measurementAssets={solutionOverview.verification.measurementAssets ?? []}
+                    blockers={solutionOverview.verification.blockers ?? []}
+                  />
+
+                  <SimulationCorrelationPlan
+                    plans={solutionOverview.verification.simulationPlan ?? []}
+                  />
+
+                  <VerificationEvidenceExport
+                    verification={solutionOverview.verification}
+                    baseline={solutionOverview.baseline}
+                    productName={selectedNode?.name ?? '方案试验驾驶舱'}
+                    captureElement={testPanelRef.current ?? null}
                   />
                 </div>
               )}

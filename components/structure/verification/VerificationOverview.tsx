@@ -1,4 +1,4 @@
-interface SummaryMetric {
+export interface SummaryMetric {
   label: string;
   value: string;
   trend: string;
@@ -6,7 +6,7 @@ interface SummaryMetric {
   note?: string;
 }
 
-interface CoverageItem {
+export interface CoverageItem {
   area: string;
   coverage: number;
   tests: number;
@@ -16,7 +16,7 @@ interface CoverageItem {
   note?: string;
 }
 
-interface CampaignItem {
+export interface CampaignItem {
   id: string;
   name: string;
   scope: string;
@@ -27,7 +27,7 @@ interface CampaignItem {
   note?: string;
 }
 
-interface EvidencePackage {
+export interface EvidencePackage {
   id: string;
   name: string;
   owner: string;
@@ -38,7 +38,7 @@ interface EvidencePackage {
   note?: string;
 }
 
-interface BlockerItem {
+export interface BlockerItem {
   id: string;
   title: string;
   impact: string;
@@ -48,7 +48,7 @@ interface BlockerItem {
   note?: string;
 }
 
-interface VerificationOverviewProps {
+export interface VerificationOverviewProps {
   summary: SummaryMetric[];
   coverage: CoverageItem[];
   campaigns: CampaignItem[];

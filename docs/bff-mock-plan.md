@@ -57,3 +57,12 @@
 - 试点节点见：`docs/pilot-scope.md`；
 - 新鲜度标注：绿色 ≤24h，黄色 24–72h，红色 >72h（见 docs/data-freshness-policy.md）。
 
+## 9. Solution Verification 驾驶舱字段（Story 1.10）
+- `GET /api/xbom/summary?nodeId=...&view=test` 需返回 `solutionOverview.verification` 扩展字段：
+  - `resourceDependencies[]`：`{ type, name, availability, status:'conflict'|'ok', owner, impact, mitigation? }`
+  - `measurementAssets[]`：`{ instrument, calibrationDue, uncertainty, status:'warning'|'ok', owner }`
+  - `simulationPlan[]`：`{ id, name, model, metric, targetDelta, window, status:'scheduled'|'risk'|'done', lastSyncedAt?, guidance?, comparePayload? }`
+    - `comparePayload`：当仿真结果齐备时输出 `{ runId, projectId, testId, channels:[{ channel, unit?, sampleRate?, min?, max? }] }`，供前端写入 `localStorage.tbomComparePayload`
+  - 兼容现有字段 `maturity[]`、`assets[]`、`structureCoverage[]`、`requirementMappings[]`
+- Mock 数据需支持阶段/节点过滤，缺失仿真时返回 `guidance` 文案供 UI 显示提示。
+- 证据导出无专属 API，前端基于上述 payload 打包；若后续引入后端导出，建议复用 manifest + tables 结构。

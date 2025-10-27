@@ -210,6 +210,32 @@ flowchart LR
 
 ---
 
+### 3.4 Test Tab · 方案阶段试验驾驶舱（Story 1.10）
+
+**目标**：为方案阶段试验与测量评审提供结构化驾驶舱，联网 Compare、阻塞追踪与证据导出。
+
+- **信息分层**
+  1. `VerificationOverview` 卡片群：阶段进度、覆盖率、数据包、阻塞。
+  2. `TestCoverageHeatmap` + `TestRequirementMatrix`：横向对齐结构热力与需求矩阵。
+  3. `TestResourcePanel`：聚合 `resourceDependencies` 与 `measurementAssets`，显示冲突/预警并匹配同名阻塞。
+  4. `SimulationCorrelationPlan`：列出试验计划、指标、仿真模型以及 Compare 载荷；缺失仿真结果时显示指引。
+  5. `VerificationEvidenceExport`：阶段/节点筛选、PNG/PDF 附件开关、导出日志。
+
+- **数据契约补充（`solutionOverview.verification`）**
+  - `resourceDependencies[]`: `{ type, name, availability, status, owner, impact, mitigation? }`
+  - `measurementAssets[]`: `{ instrument, calibrationDue, uncertainty, status, owner }`
+  - `simulationPlan[]`: `{ id, name, model, metric, targetDelta, window, status, lastSyncedAt?, guidance?, comparePayload? }`
+    - `comparePayload`: `{ runId, projectId, testId, channels[] }`，导出时用于写入 `tbomComparePayload`
+  - 导出打包 `manifest.json` + `tables/*.csv` + `summary.json`，勾选 PNG/PDF 时生成 `visuals/test-cockpit.(png|pdf)`
+  - 导出日志存放在 `localStorage.testEvidenceExportLogs`，最多保留最近 20 条，支持“一键再次导出”
+
+- **交互与反馈**
+  - “送入 Compare”按钮成功后弹出 toast，失败提示补全仿真指引。
+  - 导出操作显示 loading 状态，完成/失败分别反馈 `aria-live`。
+  - 资源/计量卡片可聚焦阅读，冲突/预警使用对比色（Red/Amber）。
+
+---
+
 ## 4. Visual Design System
 
 ### 4.1 Color Palette（Tailwind Tokens）
