@@ -41,8 +41,6 @@ import TbomRunDetail from '@/components/tbom/detail/TbomRunDetail';
 import TbomImportWizard from '@/components/tbom/import/TbomImportWizard';
 import type { TbomRun } from '@/components/tbom/types';
 import { useTbomPanelState } from './hooks/useTbomPanelState';
-import { useSolutionDataState } from './hooks/useSolutionDataState';
-import { SolutionDataPanel } from './solution/SolutionDataPanel';
 import ProductStructureHome from './ProductStructureHome';
 import type { BomNode, BomType, Version } from './types';
 import { REQUIREMENT_BOM_TREE } from './data/requirementBomTree';
@@ -357,38 +355,6 @@ export default function ProductStructure({ tbomLink = null }: ProductStructurePr
   }, [router, tbomTargetNode]);
 
   
-  // 添加缺失的状态变量
-  // 方案输入/输出数据管理
-  const {
-    showInputDataForm,
-    setShowInputDataForm,
-    newInputData,
-    setNewInputData,
-    inputDataList,
-    handleAddInputData,
-    handleDeleteInputData,
-    getCategoryLabel,
-    getSourceLabel,
-    getFileTypeInfo,
-    showOutputDataForm,
-    setShowOutputDataForm,
-    newOutputData,
-    setNewOutputData,
-    showDependencyModal,
-    setShowDependencyModal,
-    showDeliverableModal,
-    setShowDeliverableModal,
-    showPreviewModal,
-    setShowPreviewModal,
-    selectedOutputItem,
-    outputDataList,
-    handleAddOutputData,
-    handleDeleteOutputData,
-    handleDependencyClick,
-    handleDeliverableClick,
-    handlePreviewClick,
-  } = useSolutionDataState();
-
   const {
     state: simulationState,
     dispatch: simulationDispatch,
@@ -3040,14 +3006,7 @@ const buildNodeTags = (node: BomNode) => {
 
               {activeTab === 'process' && selectedBomType === 'solution' && (
                 <div role="tabpanel" id="panel-process" aria-labelledby="tab-process" className="space-y-6">
-                  <ManufacturingOverview
-                    readiness={solutionOverview.manufacturing.readiness}
-                    specialProcesses={solutionOverview.manufacturing.specialProcesses}
-                    delivery={solutionOverview.manufacturing.delivery}
-                    constraints={solutionOverview.manufacturing.constraints}
-                    capacity={solutionOverview.manufacturing.capacity}
-                    supplierRisks={solutionOverview.manufacturing.supplierRisks}
-                  />
+                  <ManufacturingOverview {...solutionOverview.manufacturing} />
                 </div>
               )}
 
@@ -3066,38 +3025,6 @@ const buildNodeTags = (node: BomNode) => {
                     notifications={solutionOverview.collaboration.notifications}
                     actions={solutionOverview.collaboration.actions}
                     reviews={solutionOverview.collaboration.reviews}
-                  />
-                  <SolutionDataPanel
-                    selectedNode={selectedNode}
-                    bomStructureData={bomStructureData}
-                    findNodeById={findNodeById}
-                    inputDataList={inputDataList}
-                    showInputDataForm={showInputDataForm}
-                    setShowInputDataForm={setShowInputDataForm}
-                    newInputData={newInputData}
-                    setNewInputData={setNewInputData}
-                    handleAddInputData={handleAddInputData}
-                    handleDeleteInputData={handleDeleteInputData}
-                    getCategoryLabel={getCategoryLabel}
-                    getSourceLabel={getSourceLabel}
-                    getFileTypeInfo={getFileTypeInfo}
-                    outputDataList={outputDataList}
-                    showOutputDataForm={showOutputDataForm}
-                    setShowOutputDataForm={setShowOutputDataForm}
-                    newOutputData={newOutputData}
-                    setNewOutputData={setNewOutputData}
-                    handleAddOutputData={handleAddOutputData}
-                    handleDeleteOutputData={handleDeleteOutputData}
-                    showDependencyModal={showDependencyModal}
-                    setShowDependencyModal={setShowDependencyModal}
-                    showDeliverableModal={showDeliverableModal}
-                    setShowDeliverableModal={setShowDeliverableModal}
-                    showPreviewModal={showPreviewModal}
-                    setShowPreviewModal={setShowPreviewModal}
-                    selectedOutputItem={selectedOutputItem}
-                    handleDependencyClick={handleDependencyClick}
-                    handleDeliverableClick={handleDeliverableClick}
-                    handlePreviewClick={handlePreviewClick}
                   />
                 </div>
               )}

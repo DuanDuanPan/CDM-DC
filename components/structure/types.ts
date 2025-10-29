@@ -1,3 +1,86 @@
+export type QuickNavigateTarget = {
+  bomType: 'solution' | 'simulation' | 'test' | 'design' | 'requirement';
+  tab?: string;
+};
+
+export type TransformationStepId = 'rbom' | 'abom' | 'dbom' | 'caebom' | 'tbom';
+export type TransformationLinkKind = 'principle' | 'baseline' | 'evidence';
+export type TransformationLinkVisibility = Partial<Record<TransformationLinkKind, boolean>>;
+
+export interface TransformationOverviewStep {
+  id: TransformationStepId;
+  title: string;
+  subtitle: string;
+  icon: string;
+  highlights: string[];
+  bomTarget: QuickNavigateTarget;
+  warnings?: Array<{ level: 'info' | 'warning' | 'error'; message: string }>;
+}
+
+export interface TransformationOverviewPrincipleHighlight {
+  id: string;
+  name: string;
+  status: 'candidate' | 'selected' | 'retired';
+  coverage: number;
+  relatedNodes: number;
+  updatedAt: string;
+}
+
+export interface TransformationOverviewIndicator {
+  label: string;
+  value: string;
+  trend?: 'up' | 'down' | 'flat';
+  status: 'good' | 'warn' | 'alert';
+  hint?: string;
+  link?: QuickNavigateTarget;
+}
+
+export interface TransformationGraphNode {
+  id: string;
+  name: string;
+  children?: TransformationGraphNode[];
+  highlight?: boolean;
+}
+
+export interface TransformationGraphStage {
+  id: TransformationStepId;
+  title: string;
+  tree: TransformationGraphNode;
+}
+
+export interface TransformationGraphLinkEndpoint {
+  stageId: TransformationStepId;
+  nodeId: string;
+}
+
+export interface TransformationGraphLink {
+  source: TransformationGraphLinkEndpoint;
+  target: TransformationGraphLinkEndpoint;
+  kind?: TransformationLinkKind;
+}
+
+export interface TransformationPathSummary {
+  id: string;
+  title: string;
+  kind: TransformationLinkKind;
+  steps: string[];
+  description?: string;
+}
+
+export interface TransformationOverviewGraphData {
+  stages: TransformationGraphStage[];
+  links: TransformationGraphLink[];
+  summaries?: TransformationPathSummary[];
+}
+
+export interface TransformationOverviewData {
+  lastSyncedAt: string;
+  steps: TransformationOverviewStep[];
+  principleHighlight?: TransformationOverviewPrincipleHighlight;
+  healthIndicators: TransformationOverviewIndicator[];
+  graph?: TransformationOverviewGraphData;
+}
+
 export interface BomNode {
   id: string;
   name: string;

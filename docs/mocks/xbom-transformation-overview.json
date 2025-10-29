@@ -1,0 +1,654 @@
+{
+  "lastSyncedAt": "2025-10-25T14:05:00Z",
+  "steps": [
+    {
+      "id": "rbom",
+      "title": "RBOM · 需求结构",
+      "subtitle": "系统需求 → 原理对象映射",
+      "icon": "ri-file-list-3-line",
+      "highlights": [
+        "输出需求树 + 原理对象 ID",
+        "驱动系统级设计进入方案对比"
+      ],
+      "bomTarget": {
+        "bomType": "requirement",
+        "tab": "structure"
+      }
+    },
+    {
+      "id": "abom",
+      "title": "ABOM · 方案结构",
+      "subtitle": "原理对象驱动方案分支",
+      "icon": "ri-flow-chart",
+      "highlights": [
+        "形成功能/逻辑/物理三层模型",
+        "评审后标记方案选定状态"
+      ],
+      "bomTarget": {
+        "bomType": "solution",
+        "tab": "overview"
+      }
+    },
+    {
+      "id": "dbom",
+      "title": "DBOM · 设计结构",
+      "subtitle": "方案落地为详细设计",
+      "icon": "ri-layout-masonry-line",
+      "highlights": [
+        "补齐三维模型、材料、接口信息",
+        "继承原理对象生成设计基线"
+      ],
+      "bomTarget": {
+        "bomType": "design",
+        "tab": "structure"
+      }
+    },
+    {
+      "id": "caebom",
+      "title": "CAEBOM · 仿真结构",
+      "subtitle": "仿真类型 → 实例 → 版本",
+      "icon": "ri-cpu-line",
+      "highlights": [
+        "挂接边界条件与可信度标签",
+        "回写仿真结论至原理对象"
+      ],
+      "bomTarget": {
+        "bomType": "simulation",
+        "tab": "simulation"
+      },
+      "warnings": [
+        {
+          "level": "warning",
+          "message": "待补齐 2 项结构强度仿真实例"
+        }
+      ]
+    },
+    {
+      "id": "tbom",
+      "title": "TBOM · 试验结构",
+      "subtitle": "试验类型 → 项目 → 任务",
+      "icon": "ri-flask-line",
+      "highlights": [
+        "同步样机/工装配置和结论",
+        "标记质量门通过与滞后项"
+      ],
+      "bomTarget": {
+        "bomType": "test",
+        "tab": "structure"
+      }
+    }
+  ],
+  "principleHighlight": {
+    "id": "PO-TP-COAX",
+    "name": "同轴涡轮泵 · 双级增压原理",
+    "status": "selected",
+    "coverage": 0.92,
+    "relatedNodes": 5,
+    "updatedAt": "2025-10-24T09:30:00Z"
+  },
+  "healthIndicators": [
+    {
+      "label": "映射完整度",
+      "value": "96%",
+      "trend": "up",
+      "status": "good",
+      "hint": "RBOM→DBOM 原理对象覆盖率提升 2%"
+    },
+    {
+      "label": "待补仿真节点",
+      "value": "4",
+      "status": "warn",
+      "hint": "CAEBOM 缺少结构强度与热-流耦合各 2 项"
+    },
+    {
+      "label": "试验计划滞后",
+      "value": "1",
+      "status": "alert",
+      "hint": "TBOM F-类别项目延期未更新",
+      "link": {
+        "bomType": "test",
+        "tab": "projects"
+      }
+    }
+  ],
+  "graph": {
+    "stages": [
+      {
+        "id": "rbom",
+        "title": "RBOM · 需求结构",
+        "tree": {
+          "id": "rbom-root",
+          "name": "发动机需求",
+          "children": [
+            {
+              "id": "rbom-system",
+              "name": "系统级需求",
+              "children": [
+                {
+                  "id": "rbom-general",
+                  "name": "一般要求"
+                },
+                {
+                  "id": "rbom-function",
+                  "name": "功能要求",
+                  "children": [
+                    {
+                      "id": "rbom-ignition",
+                      "name": "点火方式",
+                      "highlight": true
+                    },
+                    {
+                      "id": "rbom-thrust",
+                      "name": "最大推力",
+                      "highlight": true
+                    },
+                    {
+                      "id": "rbom-isp",
+                      "name": "比冲"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "rbom-architecture",
+              "name": "系统架构需求",
+              "children": [
+                {
+                  "id": "rbom-architecture-model",
+                  "name": "架构模型",
+                  "highlight": true
+                }
+              ]
+            },
+            {
+              "id": "rbom-turbopump",
+              "name": "YY 涡轮泵需求",
+              "children": [
+                {
+                  "id": "rbom-tp-performance",
+                  "name": "性能要求",
+                  "highlight": true
+                },
+                {
+                  "id": "rbom-tp-function",
+                  "name": "功能要求"
+                },
+                {
+                  "id": "rbom-tp-structure",
+                  "name": "结构需求"
+                }
+              ]
+            },
+            {
+              "id": "rbom-thrust-chamber",
+              "name": "XX 推力室需求",
+              "children": [
+                {
+                  "id": "rbom-tc-performance",
+                  "name": "性能要求",
+                  "highlight": true
+                },
+                {
+                  "id": "rbom-tc-structure",
+                  "name": "骨架模型"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "abom",
+        "title": "ABOM · 方案结构",
+        "tree": {
+          "id": "abom-root",
+          "name": "发动机方案池",
+          "children": [
+            {
+              "id": "abom-solution-a",
+              "name": "方案一 · 同轴泵",
+              "children": [
+                { "id": "abom-a-func", "name": "功能架构模型" },
+                { "id": "abom-a-logic", "name": "逻辑架构模型" },
+                { "id": "abom-a-physical", "name": "物理架构模型" },
+                { "id": "abom-a-param", "name": "参数模型" },
+                { "id": "abom-a-doc", "name": "文件模型" }
+              ]
+            },
+            {
+              "id": "abom-solution-b",
+              "name": "方案二 · 双涡泵",
+              "children": [
+                { "id": "abom-b-func", "name": "功能架构模型" },
+                { "id": "abom-b-logic", "name": "逻辑架构模型" },
+                { "id": "abom-b-physical", "name": "物理架构模型" },
+                { "id": "abom-b-param", "name": "参数模型" },
+                { "id": "abom-b-doc", "name": "文件模型" }
+              ]
+            },
+            {
+              "id": "abom-solution-c",
+              "name": "方案三 · 同轴 + 预压",
+              "highlight": true,
+              "children": [
+                { "id": "abom-c-func", "name": "功能架构模型" },
+                { "id": "abom-c-logic", "name": "逻辑架构模型" },
+                { "id": "abom-c-physical", "name": "物理架构模型", "highlight": true },
+                { "id": "abom-c-param", "name": "参数模型" },
+                { "id": "abom-c-doc", "name": "文件模型" }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "dbom",
+        "title": "DBOM · 设计结构",
+        "tree": {
+          "id": "dbom-root",
+          "name": "方案三设计基线",
+          "children": [
+            {
+              "id": "dbom-turbopump",
+              "name": "同轴涡轮泵组件",
+              "children": [
+                {
+                  "id": "dbom-tp-pump",
+                  "name": "泵体",
+                  "children": [
+                    {
+                      "id": "dbom-tp-impeller",
+                      "name": "叶轮",
+                      "highlight": true
+                    },
+                    {
+                      "id": "dbom-tp-volute",
+                      "name": "蜗壳"
+                    }
+                  ]
+                },
+                {
+                  "id": "dbom-tp-rotor",
+                  "name": "转子总成",
+                  "children": [
+                    {
+                      "id": "dbom-tp-shaft",
+                      "name": "主轴"
+                    },
+                    {
+                      "id": "dbom-tp-bearing",
+                      "name": "轴承",
+                      "highlight": true
+                    }
+                  ]
+                },
+                {
+                  "id": "dbom-tp-seal",
+                  "name": "密封组件"
+                }
+              ]
+            },
+            {
+              "id": "dbom-prepump",
+              "name": "双预压泵",
+              "children": [
+                {
+                  "id": "dbom-prepump-rotor",
+                  "name": "转子"
+                },
+                {
+                  "id": "dbom-prepump-control",
+                  "name": "控制阀"
+                }
+              ]
+            },
+            {
+              "id": "dbom-combustor",
+              "name": "推力室",
+              "children": [
+                {
+                  "id": "dbom-comb-shell",
+                  "name": "身部",
+                  "highlight": true
+                },
+                {
+                  "id": "dbom-comb-head",
+                  "name": "头部"
+                },
+                {
+                  "id": "dbom-comb-cooling",
+                  "name": "冷却通道"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "caebom",
+        "title": "CAEBOM · 仿真结构",
+        "tree": {
+          "id": "caebom-root",
+          "name": "同轴涡轮泵仿真",
+          "children": [
+            {
+              "id": "caebom-structure",
+              "name": "结构强度",
+              "children": [
+                {
+                  "id": "caebom-structure-v1",
+                  "name": "版本 v1",
+                  "children": [
+                    { "id": "caebom-structure-v1-geo", "name": "几何模型" },
+                    { "id": "caebom-structure-v1-sim", "name": "仿真模型" },
+                    { "id": "caebom-structure-v1-spec", "name": "说明文件" },
+                    { "id": "caebom-structure-v1-result", "name": "结果文件" },
+                    { "id": "caebom-structure-v1-report", "name": "仿真报告" }
+                  ]
+                },
+                {
+                  "id": "caebom-structure-v2",
+                  "name": "版本 v2",
+                  "highlight": true,
+                  "children": [
+                    { "id": "caebom-structure-v2-geo", "name": "几何模型" },
+                    { "id": "caebom-structure-v2-sim", "name": "仿真模型" },
+                    { "id": "caebom-structure-v2-spec", "name": "说明文件" },
+                    { "id": "caebom-structure-v2-result", "name": "结果文件" },
+                    { "id": "caebom-structure-v2-report", "name": "仿真报告", "highlight": true }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "caebom-thermal",
+              "name": "热-流耦合",
+              "children": [
+                {
+                  "id": "caebom-thermal-v1",
+                  "name": "版本 v1",
+                  "highlight": true,
+                  "children": [
+                    { "id": "caebom-thermal-v1-geo", "name": "几何模型" },
+                    { "id": "caebom-thermal-v1-sim", "name": "仿真模型" },
+                    { "id": "caebom-thermal-v1-spec", "name": "说明文件" },
+                    { "id": "caebom-thermal-v1-result", "name": "结果文件" },
+                    { "id": "caebom-thermal-v1-report", "name": "仿真报告" }
+                  ]
+                },
+                {
+                  "id": "caebom-thermal-v2",
+                  "name": "版本 v2",
+                  "children": [
+                    { "id": "caebom-thermal-v2-geo", "name": "几何模型" },
+                    { "id": "caebom-thermal-v2-sim", "name": "仿真模型" },
+                    { "id": "caebom-thermal-v2-spec", "name": "说明文件" },
+                    { "id": "caebom-thermal-v2-result", "name": "结果文件" },
+                    { "id": "caebom-thermal-v2-report", "name": "仿真报告" }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "caebom-system",
+              "name": "系统级仿真",
+              "children": [
+                {
+                  "id": "caebom-system-performance",
+                  "name": "推力性能验证",
+                  "highlight": true,
+                  "children": [
+                    { "id": "caebom-system-performance-geo", "name": "几何模型" },
+                    { "id": "caebom-system-performance-sim", "name": "仿真模型" },
+                    { "id": "caebom-system-performance-spec", "name": "说明文件" },
+                    { "id": "caebom-system-performance-result", "name": "结果文件" },
+                    { "id": "caebom-system-performance-report", "name": "仿真报告" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "tbom",
+        "title": "TBOM · 试验结构",
+        "tree": {
+          "id": "tbom-root",
+          "name": "同轴涡轮泵试验验证项目",
+          "children": [
+            {
+              "id": "tbom-project-integration",
+              "name": "试验项目 · 综合验证",
+              "highlight": true,
+              "children": [
+                {
+                  "id": "tbom-test1",
+                  "name": "XX1次试验",
+                  "children": [
+                    {
+                      "id": "tbom-test1-input",
+                      "name": "试验输入",
+                      "children": [
+                        { "id": "tbom-test1-tech", "name": "关联试验技术要求" },
+                        { "id": "tbom-test1-outline", "name": "关联试验大纲" },
+                        { "id": "tbom-test1-review", "name": "关联审评记录" }
+                      ]
+                    },
+                    { "id": "tbom-test1-plan", "name": "试验方案" },
+                    { "id": "tbom-test1-prep", "name": "试验准备" },
+                    { "id": "tbom-test1-sample", "name": "试验样片" },
+                    { "id": "tbom-test1-bbom", "name": "关联 BBOM", "highlight": true },
+                    {
+                      "id": "tbom-test1-run-001",
+                      "name": "001次上台",
+                      "highlight": true,
+                      "children": [
+                        { "id": "tbom-test1-run-001-data", "name": "试验过程数据" },
+                        { "id": "tbom-test1-run-001-result", "name": "试验结果数据", "highlight": true },
+                        { "id": "tbom-test1-run-001-media", "name": "图片/视频及其他" },
+                        { "id": "tbom-test1-run-001-issue", "name": "故障记录" }
+                      ]
+                    },
+                    {
+                      "id": "tbom-test1-run-veh1",
+                      "name": "XX001次试车",
+                      "children": [
+                        { "id": "tbom-test1-run-veh1-data", "name": "试验过程数据" },
+                        { "id": "tbom-test1-run-veh1-result", "name": "试验结果数据" },
+                        { "id": "tbom-test1-run-veh1-media", "name": "图片/视频及其他" }
+                      ]
+                    },
+                    {
+                      "id": "tbom-test1-run-veh2",
+                      "name": "XX002次试车",
+                      "children": [
+                        { "id": "tbom-test1-run-veh2-data", "name": "试验过程数据" },
+                        { "id": "tbom-test1-run-veh2-result", "name": "试验结果数据" }
+                      ]
+                    },
+                    {
+                      "id": "tbom-test1-output",
+                      "name": "试验输出",
+                      "children": [
+                        { "id": "tbom-test1-report", "name": "试验报告" },
+                        { "id": "tbom-test1-analysis", "name": "试验分析结论", "highlight": true },
+                        { "id": "tbom-test1-review-output", "name": "试验结果评审记录" }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "tbom-test2",
+                  "name": "XX2次试验",
+                  "children": [
+                    { "id": "tbom-test2-plan", "name": "试验方案" },
+                    { "id": "tbom-test2-prep", "name": "试验准备" },
+                    {
+                      "id": "tbom-test2-run",
+                      "name": "试验执行",
+                      "children": [
+                        { "id": "tbom-test2-run-logs", "name": "试验过程数据" },
+                        { "id": "tbom-test2-run-result", "name": "试验结果数据" }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "tbom-project-integration-output",
+                  "name": "试验项目输出",
+                  "children": [
+                    { "id": "tbom-project-integration-report", "name": "试验报告" },
+                    { "id": "tbom-project-integration-analysis", "name": "试验分析结论" },
+                    { "id": "tbom-project-integration-review", "name": "试验结果评审记录" }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tbom-project-durability",
+              "name": "试验项目 · 耐久验证",
+              "children": [
+                {
+                  "id": "tbom-durability-test",
+                  "name": "1000 小时耐久试验",
+                  "children": [
+                    { "id": "tbom-durability-input", "name": "试验输入" },
+                    { "id": "tbom-durability-plan", "name": "试验方案" },
+                    {
+                      "id": "tbom-durability-run",
+                      "name": "试验执行",
+                      "children": [
+                        { "id": "tbom-durability-run-logs", "name": "试验过程数据" },
+                        { "id": "tbom-durability-run-result", "name": "试验结果数据", "highlight": true },
+                        { "id": "tbom-durability-run-media", "name": "图片/视频及其他" }
+                      ]
+                    },
+                    { "id": "tbom-durability-output", "name": "试验输出" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "links": [
+      {
+        "source": { "stageId": "rbom", "nodeId": "rbom-tp-performance" },
+        "target": { "stageId": "abom", "nodeId": "abom-c-physical" },
+        "kind": "principle"
+      },
+      {
+        "source": { "stageId": "rbom", "nodeId": "rbom-ignition" },
+        "target": { "stageId": "abom", "nodeId": "abom-c-func" },
+        "kind": "principle"
+      },
+      {
+        "source": { "stageId": "abom", "nodeId": "abom-c-physical" },
+        "target": { "stageId": "dbom", "nodeId": "dbom-tp-impeller" },
+        "kind": "baseline"
+      },
+      {
+        "source": { "stageId": "dbom", "nodeId": "dbom-tp-impeller" },
+        "target": { "stageId": "caebom", "nodeId": "caebom-structure-v2" },
+        "kind": "evidence"
+      },
+      {
+        "source": { "stageId": "dbom", "nodeId": "dbom-tp-impeller" },
+        "target": { "stageId": "tbom", "nodeId": "tbom-test1-run-001-result" },
+        "kind": "evidence"
+      },
+      {
+        "source": { "stageId": "rbom", "nodeId": "rbom-architecture-model" },
+        "target": { "stageId": "abom", "nodeId": "abom-solution-c" },
+        "kind": "principle"
+      },
+      {
+        "source": { "stageId": "abom", "nodeId": "abom-c-prepump-physical" },
+        "target": { "stageId": "dbom", "nodeId": "dbom-prepump-rotor" },
+        "kind": "baseline"
+      },
+      {
+        "source": { "stageId": "rbom", "nodeId": "rbom-tc-performance" },
+        "target": { "stageId": "abom", "nodeId": "abom-c-logic" },
+        "kind": "principle"
+      },
+      {
+        "source": { "stageId": "abom", "nodeId": "abom-c-thermal" },
+        "target": { "stageId": "dbom", "nodeId": "dbom-comb-cooling" },
+        "kind": "baseline"
+      },
+      {
+        "source": { "stageId": "dbom", "nodeId": "dbom-comb-cooling" },
+        "target": { "stageId": "caebom", "nodeId": "caebom-thermal-v1" },
+        "kind": "evidence"
+      },
+      {
+        "source": { "stageId": "caebom", "nodeId": "caebom-thermal-v1" },
+        "target": { "stageId": "tbom", "nodeId": "tbom-test1-run-veh1-result" },
+        "kind": "evidence"
+      },
+      {
+        "source": { "stageId": "rbom", "nodeId": "rbom-thrust" },
+        "target": { "stageId": "abom", "nodeId": "abom-c-physical" },
+        "kind": "principle"
+      },
+      {
+        "source": { "stageId": "abom", "nodeId": "abom-c-physical" },
+        "target": { "stageId": "caebom", "nodeId": "caebom-system-performance" },
+        "kind": "baseline"
+      },
+      {
+        "source": { "stageId": "caebom", "nodeId": "caebom-system-performance" },
+        "target": { "stageId": "tbom", "nodeId": "tbom-test1-analysis" },
+        "kind": "evidence"
+      },
+      {
+        "source": { "stageId": "dbom", "nodeId": "dbom-tp-bearing" },
+        "target": { "stageId": "tbom", "nodeId": "tbom-durability-run-result" },
+        "kind": "evidence"
+      }
+    ],
+    "summaries": [
+      {
+        "id": "summary-turbopump",
+        "title": "同轴涡轮泵原理对象链路",
+        "kind": "principle",
+        "steps": [
+          "RBOM · YY 涡轮泵性能要求",
+          "ABOM · 方案三 · 物理架构模型",
+          "DBOM · 叶轮",
+          "CAEBOM · 结构强度 v2",
+          "TBOM · 满功率运行"
+        ],
+        "description": "原理对象 PO-TP-COAX 在各阶段的映射与验证闭环。"
+      },
+      {
+        "id": "summary-prepump",
+        "title": "双预压泵设计继承链路",
+        "kind": "baseline",
+        "steps": [
+          "ABOM · 方案三 · 物理架构模型",
+          "DBOM · 双预压泵转子",
+          "CAEBOM · 热-流耦合 v1",
+          "TBOM · 部分负荷运行"
+        ],
+        "description": "方案三中双预压泵的关键设计输出与验证数据。"
+      },
+      {
+        "id": "summary-thrust",
+        "title": "推力指标验证链路",
+        "kind": "evidence",
+        "steps": [
+          "RBOM · 最大推力",
+          "ABOM · 方案三 · 物理架构模型",
+          "CAEBOM · 推力性能验证",
+          "TBOM · 方案三总装试车"
+        ],
+        "description": "核心性能指标从需求到系统级试车的闭环验证。"
+      }
+    ]
+  }
+}

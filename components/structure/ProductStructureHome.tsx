@@ -1,9 +1,7 @@
 'use client';
 
-type QuickNavigateTarget = {
-  bomType: 'solution' | 'simulation' | 'test' | 'design' | 'requirement';
-  tab?: string;
-};
+import TransformationOverview from '@/components/structure/TransformationOverview';
+import type { QuickNavigateTarget } from '@/components/structure/types';
 
 type ProductStructureHomeProps = {
   currentBomType: string;
@@ -47,34 +45,11 @@ const ROLE_SHORTCUTS: Array<{
   },
 ];
 
-const FLOW_STEPS = [
-  {
-    title: '统一结构语言',
-    detail: '以 XBOM 节点 ID + 层级路径作为主键，为设计、仿真、试验提供一致的语义锚点。',
-    icon: 'ri-node-tree',
-  },
-  {
-    title: '映射规则',
-    detail: '结构路径 → 试验类型 → 项目/运行；结构路径 → 仿真实例/版本，确保跨域可追踪。',
-    icon: 'ri-git-branch-line',
-  },
-  {
-    title: '指标与反馈',
-    detail: '在方案视图聚合覆盖率、风险、版本状态，并回写给 XBOM 节点。',
-    icon: 'ri-pulse-line',
-  },
-  {
-    title: '闭环运营',
-    detail: '角色沿专属路径操作，同时保留统一的数字线索记录，形成可审计的全流程。',
-    icon: 'ri-infinity-line',
-  },
-];
-
 export default function ProductStructureHome({ currentBomType, onQuickNavigate }: ProductStructureHomeProps) {
   return (
     <div className="min-h-full">
       <div className="bg-gradient-to-br from-white via-blue-50/40 to-indigo-50/30 border-b border-blue-100/70">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:flex-row lg:items-center lg:justify-between lg:py-14">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 lg:flex-row lg:items-center lg:justify-between lg:py-14">
           <div className="max-w-3xl space-y-4">
             <span className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
               <i className="ri-link"></i>
@@ -109,23 +84,8 @@ export default function ProductStructureHome({ currentBomType, onQuickNavigate }
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:py-12">
-        <section>
-          <h2 className="text-lg font-semibold text-slate-900">XBOM → 数字线索 映射流程</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {FLOW_STEPS.map((step) => (
-              <article key={step.title} className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                    <i className={`${step.icon} text-lg`} />
-                  </span>
-                  <h3 className="text-sm font-semibold text-slate-900">{step.title}</h3>
-                </div>
-                <p className="mt-3 text-xs leading-relaxed text-slate-600">{step.detail}</p>
-              </article>
-            ))}
-          </div>
-        </section>
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 lg:py-12">
+        <TransformationOverview onQuickNavigate={onQuickNavigate} />
 
         <section>
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

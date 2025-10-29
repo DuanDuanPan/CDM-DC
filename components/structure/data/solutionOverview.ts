@@ -1,10 +1,164 @@
 import type { Version } from '../types';
+import type { ManufacturingOverviewData } from '../manufacturing/types';
 
 export const SOLUTION_VERSIONS: Version[] = [
     { id: 'v2.1', name: 'V2.1', date: '2024-01-15', author: '张工程师', description: '最新版本 - 性能优化', status: 'current' },
     { id: 'v2.0', name: 'V2.0', date: '2024-01-10', author: '李博士', description: '基线版本 - 设计基准', status: 'baseline' },
     { id: 'v1.5', name: 'V1.5', date: '2024-01-05', author: '王总师', description: '归档版本 - 初始设计', status: 'archived' }
   ];
+
+const manufacturing: ManufacturingOverviewData = {
+  readinessSummary: {
+    score: 0.78,
+    gateCompletion: 0.62,
+    riskHeat: 0.4,
+    metrics: [
+      {
+        label: '关键件制造就绪度',
+        value: 0.82,
+        status: 'warning' as const,
+        note: '涡轮盘批次等待热处理结果'
+      },
+      {
+        label: '特殊工艺覆盖度',
+        value: 0.76,
+        status: 'warning' as const,
+        note: '涂层工艺验证未完成'
+      },
+      {
+        label: '物料入库率',
+        value: 0.68,
+        status: 'risk' as const,
+        note: '供应商延迟交付燃烧室衬套'
+      },
+      {
+        label: '质量文件齐备度',
+        value: 0.91,
+        status: 'good' as const
+      }
+    ]
+  },
+  stageGates: [
+    {
+      id: 'SG-01',
+      title: 'PBOM Stage-Gate：关键件工艺评审完成',
+      owner: '制造中心 · 许工',
+      status: 'in-progress' as const,
+      updatedAt: '2025-10-18',
+      note: '待完成热等静压验证，计划 10-24 回传结论。'
+    },
+    {
+      id: 'SG-02',
+      title: '供应链就绪确认（核心供应商）',
+      owner: '供应链 · 陈工',
+      status: 'done' as const,
+      updatedAt: '2025-10-12',
+      note: '核心四家供应商均签署交付节奏承诺。'
+    },
+    {
+      id: 'SG-03',
+      title: '制造风险评审 & 缓解计划锁定',
+      owner: '制造工程 · 李娜',
+      status: 'open' as const,
+      updatedAt: '2025-10-17',
+      note: '需补齐涂层工艺替代路线假设验证结果。'
+    }
+  ],
+  assumptions: [
+    {
+      id: 'ASS-01',
+      topic: '热等静压设备夜班排产可覆盖样机',
+      source: '制造例会纪要 2025-10-15',
+      confidence: 'medium' as const,
+      status: 'validating' as const,
+      nextAction: '10-22 完成设备维护后复核排产窗口',
+      dueAt: '2025-10-24'
+    },
+    {
+      id: 'ASS-02',
+      topic: '叶片涂层可外协至备份供应商',
+      source: '工艺应急预案 V1.1',
+      confidence: 'low' as const,
+      status: 'pending' as const,
+      nextAction: '待仿真团队确认外协参数与热特性影响',
+      dueAt: '2025-10-28'
+    },
+    {
+      id: 'ASS-03',
+      topic: '控制电子盒软硬件构型与设计基线一致',
+      source: '设计-制造对齐会 2025-10-10',
+      confidence: 'high' as const,
+      status: 'validated' as const,
+      nextAction: '正样版本冻结后同步量产团队'
+    }
+  ],
+  riskHighlights: [
+    {
+      id: 'RISK-01',
+      title: '燃烧室衬套交付滑移',
+      severity: 'red' as const,
+      impact: '若延迟 5 天，将影响 W06 样机装配窗口。',
+      mitigation: '已启动备份供应商切换预案并派驻质量工程师。',
+      owner: '供应链 · 陈工',
+      reviewAt: '2025-10-24',
+      updatedAt: '2025-10-18'
+    },
+    {
+      id: 'RISK-02',
+      title: '涂层工艺验证待完成',
+      severity: 'amber' as const,
+      impact: '若验证失败需启用备选工艺，增加 3 天再验证时间。',
+      mitigation: '与试验团队联合安排 10-21 补充样件测试。',
+      owner: '表面处理 · 李工',
+      reviewAt: '2025-10-23',
+      updatedAt: '2025-10-17'
+    },
+    {
+      id: 'RISK-03',
+      title: '热等静压工装可用性',
+      severity: 'amber' as const,
+      impact: '工装标定若延期将压缩验证窗口 2 天。',
+      mitigation: '维护结束后进行快速首件验证，必要时启用备份工装。',
+      owner: '制造中心 · 许工',
+      reviewAt: '2025-10-25',
+      updatedAt: '2025-10-18'
+    }
+  ],
+  riskRegisterLink: '#/manufacturing/risk-register',
+  collaboration: {
+    triggers: [
+      {
+        id: 'review',
+        label: '发起工艺评审',
+        description: 'PBOM Stage-Gate 复核会议',
+        owner: '制造工程 · 李娜',
+        lastTriggeredAt: '2025-10-17T09:00:00+08:00'
+      },
+      {
+        id: 'request-input',
+        label: '请求工艺输入',
+        description: '向制造侧收集假设与风险更新',
+        owner: '系统工程 · 赵强',
+        lastTriggeredAt: '2025-10-19T14:30:00+08:00'
+      },
+      {
+        id: 'sync-baseline',
+        label: '同步至设计基线',
+        description: '确认制造假设反馈至设计 V2.1',
+        owner: '设计负责人 · 孙工',
+        lastTriggeredAt: '2025-10-16T11:20:00+08:00'
+      }
+    ],
+    updatedAt: '2025-10-19T15:30:00+08:00',
+    note: '等待 10-24 Stage-Gate 复核结果后更新基线计划。'
+  },
+  snapshot: {
+    version: 'PBOM-2025.10-S1',
+    publishedAt: '2025-10-18',
+    author: '工艺团队 · 李娜',
+    note: '适用于 W05-W08 初样验证窗口'
+  }
+};
 
 export const SOLUTION_OVERVIEW = {
     baseline: 'V2.1 - 最新版本',
@@ -342,162 +496,7 @@ export const SOLUTION_OVERVIEW = {
         }
       ]
     },
-    manufacturing: {
-      readiness: [
-        {
-          label: '关键件制造就绪度',
-          value: 0.82,
-          status: 'warning' as const,
-          note: '涡轮盘批次等待热处理结果'
-        },
-        {
-          label: '特殊工艺覆盖度',
-          value: 0.76,
-          status: 'warning' as const,
-          note: '涂层工艺验证未完成'
-        },
-        {
-          label: '物料入库率',
-          value: 0.68,
-          status: 'risk' as const,
-          note: '供应商延迟交付燃烧室衬套'
-        },
-        {
-          label: '质量文件齐备度',
-          value: 0.91,
-          status: 'good' as const
-        }
-      ],
-      specialProcesses: [
-        {
-          name: '涡轮盘热等静压',
-          owner: '制造中心 · 许工',
-          status: '进行中' as const,
-          risk: '高' as const,
-          note: '等待设备维护完成'
-        },
-        {
-          name: '叶片涂层工艺',
-          owner: '表面处理 · 李工',
-          status: '计划中' as const,
-          risk: '中' as const,
-          note: '需要试验验证数据'
-        },
-        {
-          name: '机匣精密机加工',
-          owner: '机加中心 · 王工',
-          status: '已完成' as const,
-          risk: '低' as const
-        }
-      ],
-      delivery: [
-        {
-          item: '高压涡轮盘',
-          supplier: '航材集团',
-          eta: '2024-02-02',
-          status: 'delay' as const,
-          note: '热处理排产延后 5 天'
-        },
-        {
-          item: '燃烧室衬套',
-          supplier: '复合材料厂',
-          eta: '2024-01-28',
-          status: 'pending' as const,
-          note: '等待工艺评审'
-        },
-        {
-          item: '控制电子盒',
-          supplier: '电子系统公司',
-          eta: '2024-01-22',
-          status: 'on-time' as const,
-          note: '检验计划已安排'
-        }
-      ],
-      constraints: [
-        {
-          id: 'PROC-HT-01',
-          area: '表面处理 · 涂层车间',
-          constraint: '等离子喷涂设备维护占用 2 天',
-          impact: '高温部件喷涂排队延长，影响高压部件装配窗口（W05）。',
-          mitigation: '与 3# 线共享夜班排产',
-          owner: '表面处理 · 李工',
-          status: 'mitigating' as const
-        },
-        {
-          id: 'PROC-HIP-02',
-          area: '制造中心 · 热等静压',
-          constraint: '炉温均匀性 ±6°C 需重新标定',
-          impact: '新批次涡轮盘需延后热处理，验证件交付存在风险。',
-          mitigation: '外协检测完成前启用备份工装',
-          owner: '制造中心 · 许工',
-          status: 'open' as const
-        },
-        {
-          id: 'PROC-NDT-03',
-          area: '质检中心 · 无损探伤',
-          constraint: '超声探伤检测脚本升级完成',
-          impact: '检测效率提升 20%，可恢复常规排产。',
-          mitigation: '脚本回归测试通过',
-          owner: '质检中心 · 赵工',
-          status: 'resolved' as const
-        }
-      ],
-      capacity: [
-        {
-          line: '涡轮盘生产线',
-          window: 'W04-W06',
-          utilization: 0.82,
-          capacity: '12 套/周',
-          risk: 'medium' as const,
-          note: '热等静压设备需夜班排产以满足基线节奏。'
-        },
-        {
-          line: '燃烧室装配线',
-          window: 'W03-W05',
-          utilization: 0.68,
-          capacity: '10 套/周',
-          risk: 'low' as const,
-          note: '有 2 人新入场培训，产能爬坡可覆盖额外需求。'
-        },
-        {
-          line: '控制系统集成线',
-          window: 'W05-W07',
-          utilization: 0.9,
-          capacity: '8 套/周',
-          risk: 'high' as const,
-          note: '试验用电子盒占用 3 套，需要提前协调备件。'
-        }
-      ],
-      supplierRisks: [
-        {
-          item: '高压涡轮盘毛坯',
-          supplier: '航材集团',
-          status: 'red' as const,
-          ottr: 0.74,
-          nextDelivery: '2024-02-02',
-          impact: '上一批次合格率 85%，需返工两件，压缩验证节奏。',
-          mitigation: '派驻质量工程师驻场并启动备份供应商切换预案。'
-        },
-        {
-          item: '燃烧室复合材料件',
-          supplier: '复合材料厂',
-          status: 'amber' as const,
-          ottr: 0.81,
-          nextDelivery: '2024-01-28',
-          impact: '工艺评审待通过，存在 3 天滑移风险。',
-          mitigation: '提前锁定材料批次，同步提交评审补充资料。'
-        },
-        {
-          item: '控制电子盒',
-          supplier: '电子系统公司',
-          status: 'green' as const,
-          ottr: 0.95,
-          nextDelivery: '2024-01-22',
-          impact: '生产节奏稳定，可支持样机装配。',
-          mitigation: '维持现有看板协同与双周例会机制。'
-        }
-      ]
-    },
+    manufacturing,
     verification: {
       summary: [
         {
