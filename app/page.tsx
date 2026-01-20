@@ -30,6 +30,7 @@ function HomeContent() {
     activeModule,
     handleModuleChange,
     tbomDeepLink,
+    deepLinkNode,
     isFromEbom,
     badgeCount,
     openTbom,

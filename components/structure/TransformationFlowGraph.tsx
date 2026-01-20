@@ -15,7 +15,7 @@ import type {
 const STAGE_GAP = 160;
 const COLUMN_WIDTH = 220;
 const TREE_PADDING_X = 28;
-const VERTICAL_GAP = 60;
+const VERTICAL_GAP = 72;
 const VIEW_PADDING = { top: 80, right: 160, bottom: 100, left: 160 };
 const ZOOM_MIN = 0.2;
 const AUTO_ZOOM_MIN = 0.05;
@@ -39,6 +39,9 @@ type LayoutNode = {
   y: number;
   depth: number;
   parentId?: string;
+  principleIds?: string[];
+  isRoot?: boolean;
+  hidden?: boolean;
 };
 
 type StagePanel = {
@@ -52,6 +55,8 @@ type StagePanel = {
 
 type TreeLink = {
   stageId: string;
+  sourceId: string;
+  targetId: string;
   source: { x: number; y: number };
   target: { x: number; y: number };
 };
@@ -62,6 +67,7 @@ type CrossLink = {
   targetId: string;
   source: { x: number; y: number };
   target: { x: number; y: number };
+  principleId?: string;
 };
 
 type LayoutGraph = {
@@ -92,6 +98,9 @@ type TransformationFlowGraphProps = {
   className?: string;
   highlightLinks?: boolean;
   visibleKinds?: TransformationLinkVisibility;
+  activePrincipleId?: string | null;
+  onSelectPrinciple?: (principleId: string | null) => void;
+  highlightAll?: boolean;
 };
 
 const isKindVisible = (kind: TransformationLinkKind | undefined, visibility?: TransformationLinkVisibility) => {
@@ -99,34 +108,58 @@ const isKindVisible = (kind: TransformationLinkKind | undefined, visibility?: Tr
   return visibility[kind] !== false;
 };
 
-const layoutStage = (stage: TransformationGraphStage): StageLayout => {
-  const root = hierarchy<TransformationGraphNode>(stage.tree);
+const layoutStage = (stage: TransformationGraphStage, principleMap?: Record<string, string[]>): StageLayout => {
   const treeLayout = tree<TransformationGraphNode>()
     .nodeSize([VERTICAL_GAP, COLUMN_WIDTH - TREE_PADDING_X])
     .separation((a, b) => (a.parent === b.parent ? 1.3 : 1.6));
 
-  treeLayout(root);
+  const root = treeLayout(hierarchy<TransformationGraphNode>(stage.tree));
 
   const minY = Math.min(...root.descendants().map((node) => node.x));
   const maxY = Math.max(...root.descendants().map((node) => node.x));
   const height = maxY - minY + VERTICAL_GAP;
 
-  const nodes: LayoutNode[] = root.descendants().map((node) => ({
-    id: `${stage.id}:${node.data.id}`,
-    label: node.data.name,
-    stageId: stage.id,
-    highlight: node.data.highlight,
-    x: node.y + TREE_PADDING_X,
-    y: node.x - minY,
-    depth: node.depth,
-    parentId: node.parent ? `${stage.id}:${node.parent.data.id}` : undefined,
-  }));
+  const nodes: LayoutNode[] = root.descendants().map((node) => {
+    const id = `${stage.id}:${node.data.id}`;
+    return {
+      id,
+      label: node.data.name,
+      stageId: stage.id,
+      highlight: node.data.highlight,
+      x: node.y + TREE_PADDING_X,
+      y: node.x - minY,
+      depth: node.depth,
+      parentId: node.parent ? `${stage.id}:${node.parent.data.id}` : undefined,
+      principleIds: principleMap?.[id],
+      isRoot: stage.id === 'pbom' ? node.depth === 0 : undefined,
+    };
+  });
 
-  const links: TreeLink[] = root.links().map((link) => ({
+  let links: TreeLink[] = root.links().map((link) => ({
     stageId: stage.id,
+    sourceId: `${stage.id}:${link.source.data.id}`,
+    targetId: `${stage.id}:${link.target.data.id}`,
     source: { x: link.source.y + TREE_PADDING_X, y: link.source.x - minY },
     target: { x: link.target.y + TREE_PADDING_X, y: link.target.x - minY },
   }));
+
+  if (stage.id === 'pbom') {
+    const leafNodes = nodes.filter((node) => node.depth > 0);
+    const verticalGap = VERTICAL_GAP * 1.6;
+
+    leafNodes.forEach((node, index) => {
+      node.x = TREE_PADDING_X + 36;
+      node.y = index * verticalGap;
+    });
+
+    const rootNode = nodes.find((node) => node.depth === 0);
+    if (rootNode) {
+      rootNode.x = TREE_PADDING_X;
+      rootNode.y = leafNodes.length ? leafNodes[0].y - verticalGap : 0;
+    }
+
+    links = [];
+  }
 
   const panel: StagePanel = {
     id: stage.id,
@@ -137,7 +170,8 @@ const layoutStage = (stage: TransformationGraphStage): StageLayout => {
     label: stage.title,
   };
 
-  const stageNodes = nodes.length ? nodes : [];
+  const visibleNodes = nodes.filter((node) => !node.hidden);
+  const stageNodes = visibleNodes.length ? visibleNodes : nodes;
 
   if (stageNodes.length) {
     const minNodeY = Math.min(...stageNodes.map((node) => node.y));
@@ -153,7 +187,8 @@ const layoutStage = (stage: TransformationGraphStage): StageLayout => {
   if (stageNodes.length) {
     const nodeBounds = stageNodes.map((node) => {
       const labelWidth = Math.max(node.label.length, 2) * LABEL_CHAR_WIDTH;
-      if (node.depth % 2 === 0) {
+      const useStartAnchor = stage.id === 'pbom' || node.depth % 2 === 0;
+      if (useStartAnchor) {
         return {
           minX: node.x,
           maxX: node.x + LABEL_PADDING + labelWidth,
@@ -185,7 +220,8 @@ const layoutStage = (stage: TransformationGraphStage): StageLayout => {
 
 const buildLayoutGraph = (data: TransformationOverviewGraphData, visibility?: TransformationLinkVisibility): LayoutGraph => {
   const stagesToUse = data.stages;
-  const stageLayouts = stagesToUse.map((stage) => layoutStage(stage));
+  const principleMap = data.principleNodeMappings;
+  const stageLayouts = stagesToUse.map((stage) => layoutStage(stage, principleMap));
 
   let cursor = 0;
   stageLayouts.forEach((layout, index) => {
@@ -227,6 +263,7 @@ const buildLayoutGraph = (data: TransformationOverviewGraphData, visibility?: Tr
         targetId,
         source: { x: source.x, y: source.y },
         target: { x: target.x, y: target.y },
+        principleId: link.principleId,
       } as CrossLink;
     })
     .filter((link): link is CrossLink => Boolean(link));
@@ -341,6 +378,9 @@ export default function TransformationFlowGraph({
   className,
   highlightLinks = true,
   visibleKinds,
+  activePrincipleId,
+  onSelectPrinciple,
+  highlightAll = false,
 }: TransformationFlowGraphProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -351,6 +391,50 @@ export default function TransformationFlowGraph({
   const [showHint, setShowHint] = useState(true);
 
   const layout = useMemo(() => buildLayoutGraph(data, visibleKinds), [data, visibleKinds]);
+  const activeNodeIds = useMemo(() => {
+    if (highlightAll) {
+      return new Set(layout.nodes.map((node) => node.id));
+    }
+
+    if (!activePrincipleId || !data.principleNodeMappings) {
+      return null;
+    }
+
+    const set = new Set<string>();
+    Object.entries(data.principleNodeMappings).forEach(([nodeKey, principleIds]) => {
+      if (principleIds.includes(activePrincipleId)) {
+        set.add(nodeKey);
+      }
+    });
+    return set;
+  }, [layout, highlightAll, data.principleNodeMappings, activePrincipleId]);
+
+  const highlightNodeIds = useMemo(() => {
+    if (highlightAll) {
+      return new Set(layout.nodes.map((node) => node.id));
+    }
+
+    if (!activeNodeIds) {
+      return null;
+    }
+
+    const expanded = new Set(activeNodeIds);
+    const parentMap = new Map<string, string | undefined>();
+    layout.nodes.forEach((node) => {
+      parentMap.set(node.id, node.parentId);
+    });
+
+    activeNodeIds.forEach((nodeId) => {
+      let current = parentMap.get(nodeId);
+      while (current) {
+        if (expanded.has(current)) break;
+        expanded.add(current);
+        current = parentMap.get(current);
+      }
+    });
+
+    return expanded;
+  }, [activeNodeIds, layout, highlightAll]);
   const layoutRef = useRef(layout);
 
   useEffect(() => {
@@ -552,20 +636,29 @@ export default function TransformationFlowGraph({
         link.target.x) /
         2},${link.target.y} ${link.target.x},${link.target.y}`;
 
-    const treeLinkSelection = viewport
-      .select<SVGGElement>('g.tree-links')
-      .selectAll<SVGPathElement, TreeLink>('path.tree-link')
-      .data(layout.treeLinks, (link) => `${link.stageId}-${link.source.x}-${link.target.x}-${link.target.y}`);
+  const treeLinkSelection = viewport
+    .select<SVGGElement>('g.tree-links')
+    .selectAll<SVGPathElement, TreeLink>('path.tree-link')
+    .data(layout.treeLinks, (link) => `${link.stageId}-${link.sourceId}->${link.targetId}`);
 
-    treeLinkSelection
-      .enter()
-      .append('path')
-      .attr('class', 'tree-link')
-      .attr('fill', 'none')
-      .attr('stroke', '#dbe4ff')
-      .attr('stroke-width', 1)
-      .merge(treeLinkSelection as any)
-      .attr('d', (link) => linkGenerator(link));
+  treeLinkSelection
+    .enter()
+    .append('path')
+    .attr('class', 'tree-link')
+    .attr('fill', 'none')
+    .attr('stroke', '#dbe4ff')
+    .attr('stroke-width', 1)
+    .merge(treeLinkSelection as any)
+    .attr('d', (link) => linkGenerator(link))
+    .attr('stroke-opacity', (link) => {
+      if (!highlightNodeIds) return 0.35;
+      return highlightNodeIds.has(link.sourceId) && highlightNodeIds.has(link.targetId) ? 0.55 : 0.1;
+    })
+    .attr('stroke', (link) => (link.stageId === 'pbom' ? '#c7d2fe' : '#dbe4ff'))
+    .attr('stroke-width', (link) => {
+      if (!highlightNodeIds) return 1.1;
+      return highlightNodeIds.has(link.sourceId) && highlightNodeIds.has(link.targetId) ? 1.7 : 0.7;
+    });
 
     treeLinkSelection.exit().remove();
 
@@ -574,23 +667,37 @@ export default function TransformationFlowGraph({
       .selectAll<SVGPathElement, CrossLink>('path.cross-link')
       .data(layout.crossLinks, (link) => `${link.sourceId}->${link.targetId}`);
 
-    crossLinkSelection
-      .enter()
-      .append('path')
-      .attr('class', 'cross-link')
-      .attr('fill', 'none')
-      .attr('pointer-events', 'none')
-      .attr('stroke-width', highlightLinks ? 2 : 1.5)
-      .attr('stroke-opacity', 0.6)
-      .merge(crossLinkSelection as any)
-      .attr('stroke', (link) => LINK_COLORS[link.kind] ?? '#94a3b8')
-      .attr('d', (link) => linkGenerator(link));
+  crossLinkSelection
+    .enter()
+    .append('path')
+    .attr('class', 'cross-link')
+    .attr('fill', 'none')
+    .attr('pointer-events', 'none')
+    .attr('stroke-width', highlightLinks ? 2 : 1.5)
+    .attr('stroke-opacity', 0.6)
+    .merge(crossLinkSelection as any)
+    .attr('stroke', (link) => LINK_COLORS[link.kind] ?? '#94a3b8')
+    .attr('d', (link) => linkGenerator(link))
+    .attr('stroke-opacity', (link) => {
+      if (!highlightLinks) return 0.4;
+      if (!activePrincipleId) return 0.6;
+      return link.principleId === activePrincipleId ? 0.9 : 0.12;
+    })
+    .attr('stroke-width', (link) => {
+      if (!highlightLinks) return 1.5;
+      if (!activePrincipleId) return 2;
+      return link.principleId === activePrincipleId ? 2.6 : 1.2;
+    });
 
     crossLinkSelection.exit().remove();
 
     const nodeGroup = viewport.select<SVGGElement>('g.nodes');
 
-    const nodeSelection = nodeGroup.selectAll<SVGGElement, LayoutNode>('g.node').data(layout.nodes, (node) => node.id);
+    const visibleLayoutNodes = layout.nodes.filter((node) => !node.hidden);
+
+    const nodeSelection = nodeGroup
+      .selectAll<SVGGElement, LayoutNode>('g.node')
+      .data(visibleLayoutNodes, (node) => node.id);
 
     const nodeEnter = nodeSelection
       .enter()
@@ -614,26 +721,107 @@ export default function TransformationFlowGraph({
 
     nodeMerge
       .attr('transform', (node) => `translate(${node.x}, ${node.y})`)
-      .style('cursor', 'default');
+      .style('cursor', (node) => (node.stageId === 'pbom' && node.principleIds?.length ? 'pointer' : 'default'))
+      .attr('opacity', (node) => {
+        if (!highlightNodeIds || !activePrincipleId) return 1;
+        if (node.stageId === 'pbom' && !node.principleIds?.length) return 1;
+        return highlightNodeIds.has(node.id) ? 1 : 0.25;
+      })
+      .on('click', (event, node) => {
+        if (node.stageId === 'pbom') {
+          if (node.principleIds?.length) {
+            onSelectPrinciple?.(node.principleIds[0]);
+            event.stopPropagation();
+          } else {
+            onSelectPrinciple?.(null);
+            event.stopPropagation();
+          }
+        }
+      });
 
     nodeMerge
       .select('circle')
-      .attr('r', (node) => (node.highlight ? 8 : 6))
-      .attr('fill', (node) => (node.highlight ? '#2563eb' : '#f8fbff'))
-      .attr('stroke', (node) => (node.highlight ? '#1d4ed8' : '#94a3b8'))
-      .attr('stroke-width', (node) => (node.highlight ? 2 : 1.2));
+      .attr('r', (node) => {
+        const isPBOM = node.stageId === 'pbom';
+        const isActive = highlightNodeIds ? highlightNodeIds.has(node.id) : node.highlight;
+        if (isPBOM) {
+          if (node.principleIds?.length) {
+            return isActive ? 8.5 : 6.2;
+          }
+          return 4.2;
+        }
+        return isActive || node.highlight ? 7 : 5.5;
+      })
+      .attr('fill', (node) => {
+        const isPBOM = node.stageId === 'pbom';
+        const hasPrinciple = Boolean(node.principleIds?.length);
+        const isActive = highlightNodeIds ? highlightNodeIds.has(node.id) : node.highlight;
+        if (isPBOM) {
+          if (!hasPrinciple) {
+            return '#ffffff';
+          }
+          return isActive ? '#2563eb' : '#e0e7ff';
+        }
+        return isActive || node.highlight ? '#2563eb' : '#f8fbff';
+      })
+      .attr('stroke', (node) => {
+        const isPBOM = node.stageId === 'pbom';
+        const hasPrinciple = Boolean(node.principleIds?.length);
+        const isActive = highlightNodeIds ? highlightNodeIds.has(node.id) : node.highlight;
+        if (isPBOM) {
+          if (!hasPrinciple) {
+            return '#cbd5f5';
+          }
+          return isActive ? '#1d4ed8' : '#94a3b8';
+        }
+        return isActive || node.highlight ? '#1d4ed8' : '#94a3b8';
+      })
+      .attr('stroke-width', (node) => {
+        const isPBOM = node.stageId === 'pbom';
+        const hasPrinciple = Boolean(node.principleIds?.length);
+        const isActive = highlightNodeIds ? highlightNodeIds.has(node.id) : node.highlight;
+        if (isPBOM) {
+          if (!hasPrinciple) {
+            return 1;
+          }
+          return isActive ? 2 : 1.2;
+        }
+        return isActive || node.highlight ? 2 : 1.1;
+      });
 
     nodeMerge
       .select('text.node-label')
-      .attr('x', (node) => (node.depth % 2 === 0 ? 12 : -12))
-      .attr('text-anchor', (node) => (node.depth % 2 === 0 ? 'start' : 'end'))
-      .attr('font-weight', (node) => (node.highlight ? 600 : 400))
+      .attr('x', (node) => {
+        if (node.stageId === 'pbom') {
+          return node.principleIds?.length ? 12 : 10;
+        }
+        return node.depth % 2 === 0 ? 12 : -12;
+      })
+      .attr('text-anchor', (node) => {
+        if (node.stageId === 'pbom') {
+          return 'start';
+        }
+        return node.depth % 2 === 0 ? 'start' : 'end';
+      })
+      .attr('font-weight', (node) => {
+        const isActive = highlightNodeIds ? highlightNodeIds.has(node.id) : node.highlight;
+        return isActive ? 600 : 400;
+      })
+      .attr('fill', (node) => {
+        if (!highlightNodeIds || !activePrincipleId) {
+          return '#0f172a';
+        }
+        if (node.stageId === 'pbom' && !node.principleIds?.length) {
+          return '#0f172a';
+        }
+        return highlightNodeIds.has(node.id) ? '#0f172a' : '#94a3b8';
+      })
       .text((node) => node.label);
 
     nodeSelection.exit().remove();
 
     applyAutoZoom();
-  }, [layout, highlightLinks, applyAutoZoom]);
+  }, [layout, highlightLinks, applyAutoZoom, highlightNodeIds, activePrincipleId, onSelectPrinciple]);
 
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return;

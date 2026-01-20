@@ -19,8 +19,8 @@ interface OperatingPoint {
 }
 
 interface PerformanceOverviewProps {
-  operatingPoints: OperatingPoint[];
-  assumptions: Array<{ title: string; detail: string }>;
+  operatingPoints: ReadonlyArray<OperatingPoint>;
+  assumptions: ReadonlyArray<{ title: string; detail: string }>;
 }
 
 const marginBars = (

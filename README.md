@@ -5,6 +5,39 @@
 - 启动开发服务：`npm run dev`
 - 访问应用：<http://localhost:3000>
 
+## Docker + Nginx 验证（生产构建）
+> 镜像内使用 Nginx（80）反向代理 Next.js Standalone（3000）。
+
+1. 构建镜像：
+   - `docker build -t cdm-dc-prototype .`
+2. 运行并验证：
+   - `docker run --rm -p 8080:80 cdm-dc-prototype`
+   - 访问：<http://localhost:8080>
+   - 可选校验：`curl -I http://localhost:8080/tbom`
+
+## 离线导出 / 导入镜像
+> 适用于无法直接 `docker pull` / 无网络环境。
+
+### 导出（在有构建环境的机器上）
+- `docker save cdm-dc-prototype:docker -o ~/Desktop/cdm-dc-prototype-image.tar`
+
+### 导入（在目标机器上）
+- `docker load -i cdm-dc-prototype-image.tar`
+
+### 启动与访问（在目标机器上）
+- 启动：`docker run -d --name cdm-dc-prototype -p 8080:80 cdm-dc-prototype:docker`
+- 访问：<http://localhost:8080>
+- 停止：`docker stop cdm-dc-prototype`
+- 删除：`docker rm cdm-dc-prototype`
+- 查看日志：`docker logs -f cdm-dc-prototype`
+
+### 可选：用官方 Nginx 镜像反代本地 Standalone
+1. 本地构建并启动 Standalone：
+   - `npm run build`
+   - `PORT=3000 HOSTNAME=0.0.0.0 node .next/standalone/server.js`
+2. Docker 运行 Nginx（使用 `nginx.docker.conf`）：
+   - `docker run --rm -p 8080:80 -v "$PWD/nginx.docker.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.16.1`
+
 ## 自动化测试基座
 本项目预置了 React Testing Library（Jest）与 Playwright 的最小运行配置。
 

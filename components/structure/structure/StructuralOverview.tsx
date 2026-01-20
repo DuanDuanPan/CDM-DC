@@ -23,9 +23,9 @@ interface ValidationItem {
 }
 
 interface StructuralOverviewProps {
-  loadCases: LoadCase[];
-  margins: StructuralMargin[];
-  validation: ValidationItem[];
+  loadCases: ReadonlyArray<LoadCase>;
+  margins: ReadonlyArray<StructuralMargin>;
+  validation: ReadonlyArray<ValidationItem>;
 }
 
 const loadCaseStatusStyle: Record<LoadCase['status'], string> = {

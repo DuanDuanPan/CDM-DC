@@ -1,5 +1,6 @@
 import type { Version } from '../types';
 import type { ManufacturingOverviewData } from '../manufacturing/types';
+import type { SolutionVerificationData } from '../verification/types';
 
 export const SOLUTION_VERSIONS: Version[] = [
     { id: 'v2.1', name: 'V2.1', date: '2024-01-15', author: '张工程师', description: '最新版本 - 性能优化', status: 'current' },

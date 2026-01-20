@@ -42,11 +42,11 @@ interface UpcomingReview {
 }
 
 interface CollaborationHubProps {
-  presence: PresenceMember[];
-  activities: CollaborationActivity[];
-  notifications: CollaborationNotification[];
-  actions: CollaborationAction[];
-  reviews: UpcomingReview[];
+  presence: ReadonlyArray<PresenceMember>;
+  activities: ReadonlyArray<CollaborationActivity>;
+  notifications: ReadonlyArray<CollaborationNotification>;
+  actions: ReadonlyArray<CollaborationAction>;
+  reviews: ReadonlyArray<UpcomingReview>;
 }
 
 const presenceStatusStyle: Record<PresenceMember['status'], string> = {

@@ -17,9 +17,9 @@ interface ThermalEffectiveness {
 }
 
 interface ThermalOverviewProps {
-  scenarios: ThermalScenario[];
-  effectiveness: ThermalEffectiveness[];
-  assumptions: string[];
+  scenarios: ReadonlyArray<ThermalScenario>;
+  effectiveness: ReadonlyArray<ThermalEffectiveness>;
+  assumptions: ReadonlyArray<string>;
 }
 
 const statusBadge: Record<ThermalScenario['status'], string> = {

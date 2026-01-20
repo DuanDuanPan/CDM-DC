@@ -23,9 +23,9 @@ interface DiagnosticMetric {
 }
 
 interface ControlOverviewProps {
-  interfaces: ControlInterface[];
-  strategies: ControlStrategy[];
-  diagnostics: DiagnosticMetric[];
+  interfaces: ReadonlyArray<ControlInterface>;
+  strategies: ReadonlyArray<ControlStrategy>;
+  diagnostics: ReadonlyArray<DiagnosticMetric>;
 }
 
 const interfaceStatusStyle: Record<ControlInterface['status'], string> = {

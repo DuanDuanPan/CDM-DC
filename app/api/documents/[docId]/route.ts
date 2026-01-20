@@ -6,8 +6,12 @@ const DOC_MAP: Record<string, string> = {
   'xbom-transformation': 'xbom-transformation-mechanism.md',
 };
 
-export async function GET(_: Request, { params }: { params: { docId: string } }) {
-  const fileName = DOC_MAP[params.docId];
+export async function GET(
+  _: Request,
+  { params }: { params: Promise<{ docId: string }> }
+) {
+  const { docId } = await params;
+  const fileName = DOC_MAP[docId];
   if (!fileName) {
     return NextResponse.json({ error: 'DOC_NOT_FOUND' }, { status: 404 });
   }

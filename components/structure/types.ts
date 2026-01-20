@@ -3,7 +3,7 @@ export type QuickNavigateTarget = {
   tab?: string;
 };
 
-export type TransformationStepId = 'rbom' | 'abom' | 'dbom' | 'caebom' | 'tbom';
+export type TransformationStepId = 'rbom' | 'pbom' | 'abom' | 'dbom' | 'caebom' | 'tbom';
 export type TransformationLinkKind = 'principle' | 'baseline' | 'evidence';
 export type TransformationLinkVisibility = Partial<Record<TransformationLinkKind, boolean>>;
 
@@ -35,11 +35,50 @@ export interface TransformationOverviewIndicator {
   link?: QuickNavigateTarget;
 }
 
+export interface TransformationPrincipleStageNode {
+  nodeId: string;
+  nodeName: string;
+  path: string[];
+  status?: 'selected' | 'candidate' | 'retired';
+  note?: string;
+}
+
+export type TransformationPrincipleStageMappings = Partial<Record<TransformationStepId, TransformationPrincipleStageNode[]>>;
+
+export interface TransformationPrincipleEvidenceRef {
+  stage: 'simulation' | 'test' | 'design' | 'requirement' | 'solution';
+  nodeId: string;
+  nodeName: string;
+  docType: 'simulation' | 'test' | 'analysis' | 'document';
+}
+
+export interface TransformationPrincipleGap {
+  stage: TransformationStepId;
+  description: string;
+}
+
+export interface TransformationPrincipleObject {
+  principleId: string;
+  name: string;
+  status: 'selected' | 'candidate' | 'retired';
+  category?: 'system' | 'subsystem' | 'component' | 'function';
+  coverage?: {
+    ratio: number | null;
+    relatedNodes: number;
+    lastUpdatedAt?: string | null;
+  };
+  stages: TransformationPrincipleStageMappings;
+  evidenceRefs?: TransformationPrincipleEvidenceRef[];
+  gaps?: TransformationPrincipleGap[];
+}
+
 export interface TransformationGraphNode {
   id: string;
   name: string;
   children?: TransformationGraphNode[];
   highlight?: boolean;
+  principleIds?: string[];
+  isRoot?: boolean;
 }
 
 export interface TransformationGraphStage {
@@ -57,6 +96,7 @@ export interface TransformationGraphLink {
   source: TransformationGraphLinkEndpoint;
   target: TransformationGraphLinkEndpoint;
   kind?: TransformationLinkKind;
+  principleId?: string;
 }
 
 export interface TransformationPathSummary {
@@ -71,6 +111,7 @@ export interface TransformationOverviewGraphData {
   stages: TransformationGraphStage[];
   links: TransformationGraphLink[];
   summaries?: TransformationPathSummary[];
+  principleNodeMappings?: Record<string, string[]>;
 }
 
 export interface TransformationOverviewData {
@@ -79,6 +120,7 @@ export interface TransformationOverviewData {
   principleHighlight?: TransformationOverviewPrincipleHighlight;
   healthIndicators: TransformationOverviewIndicator[];
   graph?: TransformationOverviewGraphData;
+  principleObjects?: TransformationPrincipleObject[];
 }
 
 export interface BomNode {
@@ -147,4 +189,82 @@ export interface OutputData {
   }>;
   dependencies?: string[];
   deliverables?: string[];
+}
+
+export type RequirementRoleKey =
+  | 'system-team'
+  | 'assembly-team'
+  | 'component-lead'
+  | 'simulation-team'
+  | 'test-team'
+  | 'quality-team'
+  | 'management'
+  | 'data-steward';
+
+export interface RequirementRoleMetric {
+  label: string;
+  value: string;
+  trend: string;
+  status: 'excellent' | 'good' | 'warning' | 'danger';
+  note: string;
+  source: string;
+  updatedAt: string;
+}
+
+export interface RequirementRoleFocusArea {
+  label: string;
+  detail: string;
+  icon: string;
+}
+
+export interface RequirementRoleStructuredParameter {
+  name: string;
+  requirement: string;
+  current: string;
+  gap: string;
+  status: 'met' | 'watch' | 'risk';
+  note: string;
+  source: string;
+  updatedAt: string;
+}
+
+export interface RequirementRoleActionItem {
+  title: string;
+  owner: string;
+  due: string;
+  status: 'open' | 'in-progress' | 'done';
+  remark?: string;
+}
+
+export interface RequirementRoleInsight {
+  title: string;
+  overview: string;
+  metrics: RequirementRoleMetric[];
+  focusAreas: RequirementRoleFocusArea[];
+  structuredParameters: RequirementRoleStructuredParameter[];
+  linkedRequirements: string[];
+  actions: RequirementRoleActionItem[];
+}
+
+export interface RequirementItemParameter {
+  name: string;
+  value: string;
+  unit: string;
+  range: string;
+}
+
+export interface RequirementItemAttachment {
+  type: 'document' | 'table' | 'image';
+  name: string;
+}
+
+export interface RequirementItem {
+  id: string;
+  name: string;
+  type: 'performance' | 'functional' | 'interface' | 'quality';
+  priority: 'high' | 'medium' | 'low';
+  status: 'in-progress' | 'pending' | 'completed';
+  content: string;
+  parameters: RequirementItemParameter[];
+  attachments?: RequirementItemAttachment[];
 }

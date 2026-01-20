@@ -273,8 +273,9 @@ export async function exportVerificationEvidence(options: EvidenceExportOptions)
   if (includeImage && captureElement) {
     const html2canvas = await ensureHtml2Canvas();
     if (html2canvas) {
-      capturedCanvas = await html2canvas(captureElement, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
-      const pngData = capturedCanvas.toDataURL('image/png');
+      const canvas = await html2canvas(captureElement, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+      capturedCanvas = canvas;
+      const pngData = canvas.toDataURL('image/png');
       const base64 = pngData.split(',')[1];
       zip.file('visuals/test-cockpit.png', base64, { base64: true });
     }

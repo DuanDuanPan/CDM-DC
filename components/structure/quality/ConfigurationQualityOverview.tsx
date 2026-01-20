@@ -51,11 +51,11 @@ interface NonConformance {
 }
 
 interface ConfigurationQualityOverviewProps {
-  baselineMetrics: BaselineMetric[];
-  changeImpacts: ChangeImpact[];
-  baselineGaps: BaselineGap[];
-  qualityGates: QualityGate[];
-  nonConformances: NonConformance[];
+  baselineMetrics: ReadonlyArray<BaselineMetric>;
+  changeImpacts: ReadonlyArray<ChangeImpact>;
+  baselineGaps: ReadonlyArray<BaselineGap>;
+  qualityGates: ReadonlyArray<QualityGate>;
+  nonConformances: ReadonlyArray<NonConformance>;
 }
 
 const baselineStatusStyle: Record<BaselineMetric['status'], string> = {

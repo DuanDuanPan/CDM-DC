@@ -2998,7 +2998,7 @@ const buildNodeTags = (node: BomNode) => {
                   <VerificationEvidenceExport
                     verification={solutionOverview.verification}
                     baseline={solutionOverview.baseline}
-                    productName={selectedNode?.name ?? '方案试验驾驶舱'}
+                    productName={currentRequirementNode?.name ?? '方案试验驾驶舱'}
                     captureElement={testPanelRef.current ?? null}
                   />
                 </div>

@@ -124,6 +124,7 @@ export function useDeepLinkState() {
     activeModule,
     handleModuleChange,
     tbomDeepLink,
+    deepLinkNode,
     isFromEbom,
     badgeCount,
     openTbom,

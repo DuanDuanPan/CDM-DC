@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Tooltip from '@/components/common/Tooltip';
 import { useMarkdownPreview } from '@/app/hooks/useMarkdownPreview';
 import { useTransformationOverview } from '@/components/structure/hooks/useTransformationOverview';
@@ -10,6 +10,10 @@ import type {
   TransformationOverviewIndicator,
   TransformationOverviewStep,
   TransformationLinkKind,
+  TransformationStepId,
+  TransformationPrincipleObject,
+  TransformationPrincipleStageNode,
+  TransformationOverviewGraphData,
 } from '@/components/structure/types';
 
 type TransformationOverviewProps = {
@@ -33,6 +37,155 @@ const WARNING_COLOR: Record<'info' | 'warning' | 'error', string> = {
   warning: 'bg-amber-50 text-amber-600 border-amber-200',
   error: 'bg-rose-50 text-rose-600 border-rose-200',
 };
+
+const PRINCIPLE_STAGE_ORDER: Array<{ id: TransformationStepId; label: string }> = [
+  { id: 'rbom', label: 'RBOM · 需求' },
+  { id: 'abom', label: 'ABOM · 方案' },
+  { id: 'dbom', label: 'DBOM · 设计' },
+  { id: 'caebom', label: 'CAEBOM · 仿真' },
+  { id: 'tbom', label: 'TBOM · 试验' },
+];
+
+const PRINCIPLE_STATUS_META: Record<TransformationPrincipleObject['status'], { label: string; badge: string }> = {
+  selected: { label: '选定', badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+  candidate: { label: '候选', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
+  retired: { label: '已退役', badge: 'bg-slate-100 text-slate-600 border-slate-200' },
+};
+
+const PRINCIPLE_CATEGORY_META: Record<NonNullable<TransformationPrincipleObject['category']>, { label: string; icon: string }> = {
+  system: { label: '系统级', icon: 'ri-stack-line' },
+  subsystem: { label: '子系统', icon: 'ri-puzzle-2-line' },
+  component: { label: '部组件', icon: 'ri-tools-line' },
+  function: { label: '功能单元', icon: 'ri-flow-chart' },
+};
+
+const PRINCIPLE_NODE_STATUS_META: Record<NonNullable<TransformationPrincipleStageNode['status']>, { label: string; tone: string }> = {
+  selected: { label: '选定', tone: 'bg-blue-100 text-blue-600 border-blue-200' },
+  candidate: { label: '候选', tone: 'bg-amber-100 text-amber-700 border-amber-200' },
+  retired: { label: '退役', tone: 'bg-slate-100 text-slate-600 border-slate-200' },
+};
+
+function normalizePrincipleNodeId(principleId: string) {
+  return `pbom-${principleId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+function cloneGraph(graph: TransformationOverviewGraphData): TransformationOverviewGraphData {
+  return JSON.parse(JSON.stringify(graph)) as TransformationOverviewGraphData;
+}
+
+function indexStageNodes(stages: TransformationOverviewGraphData['stages']) {
+  const nodeSet = new Set<string>();
+  const walk = (stageId: TransformationStepId, node: { id: string; children?: { id: string }[] }) => {
+    nodeSet.add(`${stageId}:${node.id}`);
+    node.children?.forEach((child) => walk(stageId, child));
+  };
+
+  stages.forEach((stage) => {
+    walk(stage.id, stage.tree);
+  });
+
+  return nodeSet;
+}
+
+function buildPrincipleStage(principles: TransformationPrincipleObject[], highlightId?: string) {
+  return {
+    id: 'pbom' as TransformationStepId,
+    title: 'PBOM · 原理对象',
+    tree: {
+      id: 'pbom-root',
+      name: '原理对象',
+      children: principles.map((principle) => ({
+        id: normalizePrincipleNodeId(principle.principleId),
+        name: principle.name,
+        highlight: principle.principleId === highlightId,
+      })),
+    },
+  } as const;
+}
+
+function augmentGraphWithPrinciples(
+  graph: TransformationOverviewGraphData,
+  principles: TransformationPrincipleObject[],
+  highlightId?: string
+): TransformationOverviewGraphData {
+  if (!principles.length) {
+    return graph;
+  }
+
+  const cloned = cloneGraph(graph);
+  const pbomStage = buildPrincipleStage(principles, highlightId);
+  const existingIndex = cloned.stages.findIndex((stage) => stage.id === 'pbom');
+  if (existingIndex >= 0) {
+    cloned.stages.splice(existingIndex, 1);
+  }
+  cloned.stages.unshift(pbomStage);
+
+  const nodeSet = indexStageNodes(cloned.stages);
+  const mapping: Record<string, string[]> = { ...(cloned.principleNodeMappings ?? {}) };
+
+  const addMapping = (stageId: TransformationStepId, nodeId: string, principleId: string) => {
+    const key = `${stageId}:${nodeId}`;
+    if (!mapping[key]) {
+      mapping[key] = [principleId];
+      return;
+    }
+    if (!mapping[key].includes(principleId)) {
+      mapping[key].push(principleId);
+    }
+  };
+
+  const nonPrincipleLinks = (cloned.links ?? []).filter((link) => link.kind !== 'principle');
+  const principleLinks = principles.flatMap((principle) => {
+    const pbomNodeId = normalizePrincipleNodeId(principle.principleId);
+    const pbomKey = `pbom:${pbomNodeId}`;
+    if (!nodeSet.has(pbomKey)) {
+      return [];
+    }
+
+    addMapping('pbom', pbomNodeId, principle.principleId);
+
+    const links = [] as TransformationOverviewGraphData['links'];
+    const stageOrder: TransformationStepId[] = ['rbom', 'abom', 'dbom', 'caebom', 'tbom'];
+
+    stageOrder.forEach((stageId) => {
+      const mappings = principle.stages?.[stageId];
+      if (!mappings?.length) {
+        return;
+      }
+
+      mappings.forEach((node) => {
+        const nodeKey = `${stageId}:${node.nodeId}`;
+        if (!nodeSet.has(nodeKey)) {
+          return;
+        }
+
+        addMapping(stageId, node.nodeId, principle.principleId);
+
+        if (stageId === 'rbom') {
+          links.push({
+            kind: 'principle',
+            source: { stageId: 'rbom', nodeId: node.nodeId },
+            target: { stageId: 'pbom', nodeId: pbomNodeId },
+            principleId: principle.principleId,
+          });
+        } else {
+          links.push({
+            kind: 'principle',
+            source: { stageId: 'pbom', nodeId: pbomNodeId },
+            target: { stageId, nodeId: node.nodeId },
+            principleId: principle.principleId,
+          });
+        }
+      });
+    });
+
+    return links;
+  });
+
+  cloned.links = [...nonPrincipleLinks, ...principleLinks];
+  cloned.principleNodeMappings = mapping;
+  return cloned;
+}
 
 function formatDateTime(value: string | undefined) {
   if (!value) return '—';
@@ -308,6 +461,151 @@ function StepCard({ step, onNavigate }: { step: TransformationOverviewStep; onNa
   );
 }
 
+type PrincipleObjectCardProps = {
+  principle: TransformationPrincipleObject;
+  active?: boolean;
+  onSelect?: (principleId: string | null) => void;
+};
+
+function PrincipleStageListItem({ node }: { node: TransformationPrincipleStageNode }) {
+  const statusMeta = node.status ? PRINCIPLE_NODE_STATUS_META[node.status] : null;
+  return (
+    <li className="rounded-lg border border-slate-200 bg-white/90 px-3 py-2">
+      <div className="text-sm font-medium text-slate-900">{node.nodeName}</div>
+      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+        <span>{node.path.join(' / ')}</span>
+        {statusMeta ? (
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusMeta.tone}`}>
+            {statusMeta.label}
+          </span>
+        ) : null}
+      </div>
+      {node.note ? <div className="mt-1 text-[11px] text-slate-400">{node.note}</div> : null}
+    </li>
+  );
+}
+
+function PrincipleObjectCard({ principle, active, onSelect }: PrincipleObjectCardProps) {
+  const statusMeta = PRINCIPLE_STATUS_META[principle.status];
+  const coverageRatio = principle.coverage?.ratio;
+  const coverageText = typeof coverageRatio === 'number' && coverageRatio !== null ? `${Math.round(coverageRatio * 100)}%` : '—';
+  const relatedNodes = principle.coverage?.relatedNodes ?? 0;
+  const updatedAt = principle.coverage?.lastUpdatedAt ? formatDateTime(principle.coverage.lastUpdatedAt) : '—';
+  const categoryMeta = principle.category ? PRINCIPLE_CATEGORY_META[principle.category] : null;
+
+  const stageRows = PRINCIPLE_STAGE_ORDER.map(({ id, label }) => {
+    const nodes = principle.stages?.[id] ?? [];
+    if (!nodes || nodes.length === 0) {
+      return null;
+    }
+    return {
+      id,
+      label,
+      nodes,
+    };
+  }).filter(Boolean) as Array<{ id: TransformationStepId; label: string; nodes: TransformationPrincipleStageNode[] }>;
+
+  return (
+    <article
+      className={`flex flex-col gap-3 rounded-2xl border bg-white/95 p-4 shadow-sm transition ${
+        active ? 'border-blue-300 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-200'
+      }`}
+      role="button"
+      tabIndex={onSelect ? 0 : -1}
+      onClick={() => onSelect?.(principle.principleId)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect?.(principle.principleId);
+        }
+      }}
+    >
+      <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            {categoryMeta ? (
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                <i className={`${categoryMeta.icon} text-sm`}></i>
+              </span>
+            ) : null}
+            <h4 className="text-sm font-semibold text-slate-900">{principle.name}</h4>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusMeta.badge}`}>
+              <i className="ri-checkbox-circle-line"></i>
+              {statusMeta.label}
+            </span>
+            <span>覆盖率：{coverageText}</span>
+            <span>覆盖节点：{relatedNodes}</span>
+            <span>最近更新：{updatedAt}</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] font-medium text-slate-600">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
+            <i className="ri-hashtag"></i>
+            {principle.principleId}
+          </span>
+          {categoryMeta ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
+              {categoryMeta.label}
+            </span>
+          ) : null}
+        </div>
+      </header>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {stageRows.map((stage) => (
+          <section key={stage.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <h5 className="text-xs font-semibold text-slate-700">{stage.label}</h5>
+            <ul className="mt-2 flex flex-col gap-2">
+              {stage.nodes.map((node) => (
+                <PrincipleStageListItem key={`${stage.id}-${node.nodeId}`} node={node} />
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+
+      {principle.evidenceRefs && principle.evidenceRefs.length ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-700">
+          <div className="flex items-center gap-2 font-semibold">
+            <i className="ri-file-paper-2-line"></i>
+            关联验证证据
+          </div>
+          <ul className="mt-2 space-y-1">
+            {principle.evidenceRefs.map((ref) => (
+              <li key={`${principle.principleId}-${ref.nodeId}`} className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-emerald-600">
+                  {ref.stage.toUpperCase()}
+                </span>
+                <span className="text-slate-700">{ref.nodeName}</span>
+                <span className="text-[11px] text-slate-500">{ref.docType === 'simulation' ? '仿真报告' : ref.docType === 'test' ? '试验结论' : '文档'}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {principle.gaps && principle.gaps.length ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          <div className="flex items-center gap-2 font-semibold">
+            <i className="ri-alert-line"></i>
+            待补全项
+          </div>
+          <ul className="mt-2 space-y-1">
+            {principle.gaps.map((gap, index) => (
+              <li key={`${principle.principleId}-gap-${index}`} className="leading-relaxed">
+                <span className="font-semibold">{PRINCIPLE_STAGE_ORDER.find((stage) => stage.id === gap.stage)?.label ?? gap.stage.toUpperCase()}：</span>
+                {gap.description}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 function IndicatorItem({ indicator, onNavigate }: { indicator: TransformationOverviewIndicator; onNavigate: (target: QuickNavigateTarget) => void }) {
   const style = INDICATOR_STYLES[indicator.status];
   const icon = INDICATOR_ICONS[indicator.status];
@@ -398,6 +696,51 @@ export default function TransformationOverview({ onQuickNavigate }: Transformati
   };
 
   const pathSummaries = useMemo(() => data?.graph?.summaries ?? [], [data?.graph?.summaries]);
+  const principleObjects = useMemo(() => data?.principleObjects ?? [], [data?.principleObjects]);
+  const [activePrincipleId, setActivePrincipleId] = useState<string | null>(null);
+  const [hasUserSelectedPrinciple, setHasUserSelectedPrinciple] = useState(false);
+  const [highlightAll, setHighlightAll] = useState(true);
+
+  const handleSelectPrinciple = useCallback((principleId: string | null) => {
+    if (principleId === null) {
+      setHighlightAll(true);
+      setActivePrincipleId(null);
+      setHasUserSelectedPrinciple(true);
+      return;
+    }
+    setHighlightAll(false);
+    setActivePrincipleId(principleId);
+    setHasUserSelectedPrinciple(true);
+  }, []);
+
+  useEffect(() => {
+    if (!principleObjects.length) {
+      setActivePrincipleId(null);
+      setHighlightAll(true);
+      setHasUserSelectedPrinciple(false);
+      return;
+    }
+
+    if (hasUserSelectedPrinciple) {
+      return;
+    }
+
+    const highlightId = data?.principleHighlight?.id;
+    if (highlightId && principleObjects.some((obj) => obj.principleId === highlightId)) {
+      setActivePrincipleId(highlightId);
+      setHighlightAll(false);
+      return;
+    }
+
+    setActivePrincipleId(null);
+    setHighlightAll(true);
+  }, [principleObjects, data?.principleHighlight?.id, hasUserSelectedPrinciple]);
+  const graphWithPrinciples = useMemo(() => {
+    if (!data?.graph) {
+      return null;
+    }
+    return augmentGraphWithPrinciples(data.graph, principleObjects, data.principleHighlight?.id);
+  }, [data?.graph, principleObjects, data?.principleHighlight?.id]);
 
   const principleCard = useMemo(() => {
     if (!data?.principleHighlight) {
@@ -482,7 +825,29 @@ export default function TransformationOverview({ onQuickNavigate }: Transformati
       return null;
     }
 
-    const graphPanel = data.graph ? (
+    const principleList = principleObjects.length ? (
+      <div className="mt-6 space-y-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h4 className="text-sm font-semibold text-slate-900">原理对象映射</h4>
+            <p className="text-xs text-slate-500">同一工程实体在各阶段 BOM 的节点汇总</p>
+          </div>
+          <span className="text-[11px] text-slate-500">共 {principleObjects.length} 项映射</span>
+        </div>
+        <div className="grid gap-3">
+          {principleObjects.map((principle) => (
+            <PrincipleObjectCard
+              key={principle.principleId}
+              principle={principle}
+              active={principle.principleId === activePrincipleId}
+              onSelect={handleSelectPrinciple}
+            />
+          ))}
+        </div>
+      </div>
+    ) : null;
+
+    const graphPanel = graphWithPrinciples ? (
       <div className="rounded-3xl border border-slate-200 bg-white/95 p-5 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -537,11 +902,15 @@ export default function TransformationOverview({ onQuickNavigate }: Transformati
         </div>
         <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-3" style={{ minHeight: 540 }}>
           <TransformationFlowGraph
-            data={data.graph}
+            data={graphWithPrinciples}
             className="h-full w-full rounded-2xl bg-white shadow-inner"
             visibleKinds={linkVisibility}
+            activePrincipleId={activePrincipleId}
+            onSelectPrinciple={handleSelectPrinciple}
+            highlightAll={highlightAll}
           />
         </div>
+        {principleList}
       </div>
     ) : null;
 
@@ -622,7 +991,12 @@ export default function TransformationOverview({ onQuickNavigate }: Transformati
     loading,
     onQuickNavigate,
     pathSummaries,
+    principleObjects,
     principleCard,
+    graphWithPrinciples,
+    activePrincipleId,
+    handleSelectPrinciple,
+    highlightAll,
     refresh,
     setShowGraphFullscreen,
   ]);
@@ -663,7 +1037,7 @@ export default function TransformationOverview({ onQuickNavigate }: Transformati
 
       <div className="mt-6">{content}</div>
 
-      {showGraphFullscreen && data?.graph ? (
+      {showGraphFullscreen && (graphWithPrinciples ?? data?.graph) ? (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/70 px-4 py-6">
           <div className="flex h-full max-h-[95vh] w-full max-w-[96vw] flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl">
             <header className="flex flex-col gap-3 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
@@ -718,9 +1092,12 @@ export default function TransformationOverview({ onQuickNavigate }: Transformati
             </header>
             <div className="flex-1 bg-slate-50 p-6">
               <TransformationFlowGraph
-                data={data.graph}
+                data={(graphWithPrinciples ?? data?.graph)!}
                 className="h-full w-full rounded-2xl bg-white shadow-inner"
                 visibleKinds={linkVisibility}
+                activePrincipleId={activePrincipleId}
+                onSelectPrinciple={handleSelectPrinciple}
+                highlightAll={highlightAll}
               />
             </div>
           </div>
